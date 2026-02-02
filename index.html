@@ -274,8 +274,22 @@ const BangkokExplorer = () => {
         })
       });
 
+      console.log('[DYNAMIC] Google Places Response:', { 
+        status: response.status, 
+        ok: response.ok,
+        statusText: response.statusText
+      });
+
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('[DYNAMIC] Error fetching Google Places:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+          area,
+          interests,
+          placeTypes
+        });
         throw new Error(`Google API Error ${response.status}: ${errorText}`);
       }
 
@@ -3168,4 +3182,4 @@ ReactDOM.createRoot(document.getElementById('root')).render(<BangkokExplorer />)
     </script>
 </body>
 </html>
-v1.2 - [static vs dynamic]
+v1.3 - [static vs dynamic]
