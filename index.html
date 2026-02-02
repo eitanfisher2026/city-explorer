@@ -311,7 +311,26 @@ const BangkokExplorer = () => {
 
       // Transform Google Places data to our format
       const transformed = data.places
-        .filter(place => place.rating >= 4.0) // Only high-rated places
+        .filter(place => {
+          // Filter 1: Rating check
+          if (place.rating < 4.0) return false;
+          
+          // Filter 2: Type validation - CRITICAL!
+          // Only include places that have at least one of the types we requested
+          const placeTypesFromGoogle = place.types || [];
+          const hasValidType = placeTypesFromGoogle.some(type => placeTypes.includes(type));
+          
+          if (!hasValidType) {
+            console.log('[DYNAMIC] Filtered out (invalid type):', {
+              name: place.displayName?.text,
+              googleTypes: placeTypesFromGoogle,
+              expectedTypes: placeTypes
+            });
+            return false;
+          }
+          
+          return true;
+        })
         .map((place, index) => ({
           name: place.displayName?.text || 'Unknown Place',
           lat: place.location?.latitude || center.lat,
