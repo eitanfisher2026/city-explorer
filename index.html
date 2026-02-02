@@ -309,11 +309,18 @@ const BangkokExplorer = () => {
         return [];
       }
 
-      // Transform Google Places data to our format
+      // Filter and transform Google Places data
+      let filteredCount = 0;
+      let ratingFilteredCount = 0;
+      let typeFilteredCount = 0;
+      
       const transformed = data.places
         .filter(place => {
           // Filter 1: Rating check
-          if (place.rating < 4.0) return false;
+          if (place.rating < 4.0) {
+            ratingFilteredCount++;
+            return false;
+          }
           
           // Filter 2: Type validation - CRITICAL!
           // Only include places that have at least one of the types we requested
@@ -321,13 +328,19 @@ const BangkokExplorer = () => {
           const hasValidType = placeTypesFromGoogle.some(type => placeTypes.includes(type));
           
           if (!hasValidType) {
-            console.log('[DYNAMIC] Filtered out (invalid type):', {
+            typeFilteredCount++;
+            console.log('[DYNAMIC] ❌ Filtered out (invalid type):', {
               name: place.displayName?.text,
               googleTypes: placeTypesFromGoogle,
               expectedTypes: placeTypes
             });
             return false;
           }
+          
+          console.log('[DYNAMIC] ✅ Kept:', {
+            name: place.displayName?.text,
+            matchingTypes: placeTypesFromGoogle.filter(t => placeTypes.includes(t))
+          });
           
           return true;
         })
@@ -342,7 +355,13 @@ const BangkokExplorer = () => {
           ratingCount: place.userRatingCount || 0
         }));
       
-      console.log('[DYNAMIC] Transformed places:', transformed.length);
+      console.log('[DYNAMIC] Filtering summary:', {
+        received: data.places.length,
+        ratingFiltered: ratingFilteredCount,
+        typeFiltered: typeFilteredCount,
+        final: transformed.length
+      });
+      
       return transformed;
     } catch (error) {
       console.error('[DYNAMIC] Error fetching Google Places:', {
