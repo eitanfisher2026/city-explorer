@@ -1986,10 +1986,10 @@ const BangkokExplorer = () => {
                                   <div className="absolute top-0.5 left-0.5 flex gap-0.5">
                                     <button
                                       onClick={() => toggleStopActive(stop.originalIndex)}
-                                      className={`text-[9px] px-1 py-0.5 rounded ${isDisabled ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-700'}`}
-                                      title={isDisabled ? 'הפעל' : 'דלג'}
+                                      className={`text-[9px] px-1 py-0.5 rounded ${isDisabled ? 'bg-green-500 text-white' : 'bg-gray-400 text-white'}`}
+                                      title={isDisabled ? 'הכלל במסלול' : 'דלג זמנית על המקום'}
                                     >
-                                      {isDisabled ? '▶️' : '⏸'}
+                                      {isDisabled ? '✅' : '✕'}
                                     </button>
                                     
                                     {!isCustom && (
@@ -2106,30 +2106,38 @@ const BangkokExplorer = () => {
                 <div className="mt-3 space-y-2">
                   <a
                     href={(() => {
-                      // Filter only valid coordinates
-                      const validStops = route.stops.filter(s => s.lat && s.lng && s.lat !== 0 && s.lng !== 0);
+                      // Filter active stops with valid coordinates
+                      const activeStops = route.stops.filter((s, i) => {
+                        const isActive = !disabledStops.includes(s.id || i);
+                        const hasValidCoords = s.lat && s.lng && s.lat !== 0 && s.lng !== 0;
+                        return isActive && hasValidCoords;
+                      });
                       
-                      if (validStops.length === 0) {
+                      if (activeStops.length === 0) {
                         return '#';
                       }
                       
                       // Calculate center
-                      const avgLat = validStops.reduce((sum, s) => sum + s.lat, 0) / validStops.length;
-                      const avgLng = validStops.reduce((sum, s) => sum + s.lng, 0) / validStops.length;
+                      const avgLat = activeStops.reduce((sum, s) => sum + s.lat, 0) / activeStops.length;
+                      const avgLng = activeStops.reduce((sum, s) => sum + s.lng, 0) / activeStops.length;
                       
-                      // Create search query with all place names
-                      const query = validStops.map(s => s.name).join(' OR ');
+                      // Create search query with all active place names
+                      const query = activeStops.map(s => s.name).join(' OR ');
                       
-                      // Return search URL with all places
+                      // Return search URL with active places
                       return `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${avgLat},${avgLng},13z`;
                     })()}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => {
-                      const validStops = route.stops.filter(s => s.lat && s.lng && s.lat !== 0 && s.lng !== 0);
-                      if (validStops.length === 0) {
+                      const activeStops = route.stops.filter((s, i) => {
+                        const isActive = !disabledStops.includes(s.id || i);
+                        const hasValidCoords = s.lat && s.lng && s.lat !== 0 && s.lng !== 0;
+                        return isActive && hasValidCoords;
+                      });
+                      if (activeStops.length === 0) {
                         e.preventDefault();
-                        alert('אין מקומות עם קואורדינטות תקינות');
+                        alert('אין מקומות פעילים עם קואורדינטות תקינות');
                       }
                     }}
                     style={{
@@ -2476,10 +2484,10 @@ const BangkokExplorer = () => {
                       <div className="flex gap-1 flex-shrink-0">
                         <button
                           onClick={() => toggleStopActive(i)}
-                          className={`text-xs px-2 py-1 rounded ${isDisabled ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-700'}`}
-                          title={isDisabled ? 'הפעל' : 'השבת'}
+                          className={`text-xs px-2 py-1 rounded ${isDisabled ? 'bg-green-500 text-white' : 'bg-gray-400 text-white'}`}
+                          title={isDisabled ? 'הכלל במסלול' : 'דלג זמנית על המקום'}
                         >
-                          {isDisabled ? '✓' : '⏸'}
+                          {isDisabled ? '✅' : '✕'}
                         </button>
                       </div>
                     </div>
@@ -2491,30 +2499,38 @@ const BangkokExplorer = () => {
             <div className="space-y-3 mb-4">
               <a
                 href={(() => {
-                  // Filter only valid coordinates
-                  const validStops = route.stops.filter(s => s.lat && s.lng && s.lat !== 0 && s.lng !== 0);
+                  // Filter active stops with valid coordinates
+                  const activeStops = route.stops.filter((s, i) => {
+                    const isActive = !disabledStops.includes(s.id || i);
+                    const hasValidCoords = s.lat && s.lng && s.lat !== 0 && s.lng !== 0;
+                    return isActive && hasValidCoords;
+                  });
                   
-                  if (validStops.length === 0) {
+                  if (activeStops.length === 0) {
                     return '#';
                   }
                   
                   // Calculate center
-                  const avgLat = validStops.reduce((sum, s) => sum + s.lat, 0) / validStops.length;
-                  const avgLng = validStops.reduce((sum, s) => sum + s.lng, 0) / validStops.length;
+                  const avgLat = activeStops.reduce((sum, s) => sum + s.lat, 0) / activeStops.length;
+                  const avgLng = activeStops.reduce((sum, s) => sum + s.lng, 0) / activeStops.length;
                   
-                  // Create search query with all place names
-                  const query = validStops.map(s => s.name).join(' OR ');
+                  // Create search query with all active place names
+                  const query = activeStops.map(s => s.name).join(' OR ');
                   
-                  // Return search URL with all places
+                  // Return search URL with active places
                   return `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${avgLat},${avgLng},13z`;
                 })()}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => {
-                  const validStops = route.stops.filter(s => s.lat && s.lng && s.lat !== 0 && s.lng !== 0);
-                  if (validStops.length === 0) {
+                  const activeStops = route.stops.filter((s, i) => {
+                    const isActive = !disabledStops.includes(s.id || i);
+                    const hasValidCoords = s.lat && s.lng && s.lat !== 0 && s.lng !== 0;
+                    return isActive && hasValidCoords;
+                  });
+                  if (activeStops.length === 0) {
                     e.preventDefault();
-                    alert('אין מקומות עם קואורדינטות תקינות');
+                    alert('אין מקומות פעילים עם קואורדינטות תקינות');
                   }
                 }}
                 style={{
