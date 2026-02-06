@@ -1,0 +1,1931 @@
+// ============================================================================
+// Bangkok Explorer - Views (JSX)
+// Main screens: Form, Route, Search, Saved, MyContent, Settings
+// This JSX runs INSIDE the BangkokExplorer component return statement
+// ============================================================================
+
+        {currentView === 'form' && (
+          <div className="bg-white rounded-xl shadow-lg p-3 space-y-3">
+            <div className="flex items-center justify-center gap-2">
+              <h2 className="text-base font-bold text-center">תכנן את הטיול</h2>
+              <button
+                onClick={() => showHelpFor('main')}
+                className="text-gray-400 hover:text-blue-500 text-sm"
+                title="עזרה"
+              >
+                ❓
+              </button>
+            </div>
+
+            {/* Split Layout: Areas (right) | Interests (left) */}
+            <div className="grid grid-cols-[95px_1fr] gap-3 items-stretch" style={{ paddingBottom: '60px' }}>
+              
+              {/* Right Column: Areas */}
+              <div className="flex flex-col min-h-0">
+                <label className="font-medium text-xs mb-1.5 block text-center">🗺️ איזור</label>
+                <div className="border border-gray-200 rounded-lg p-1.5 flex-1 overflow-y-auto min-h-0">
+                  <div className="space-y-1.5">
+                    {areaOptions.map(area => (
+                      <button
+                        key={area.id}
+                        onClick={() => setFormData({...formData, area: area.id})}
+                        style={{
+                          border: formData.area === area.id ? '3px solid #3b82f6' : '2px solid #d1d5db',
+                          backgroundColor: formData.area === area.id ? '#dbeafe' : '#ffffff',
+                          boxShadow: formData.area === area.id ? '0 4px 6px -1px rgba(59, 130, 246, 0.3)' : 'none'
+                        }}
+                        className="w-full p-1.5 rounded-lg text-xs"
+                      >
+                        <div className="text-base mb-0.5">{area.icon}</div>
+                        <div style={{
+                          fontWeight: 'bold',
+                          fontSize: '10px',
+                          color: formData.area === area.id ? '#1e40af' : '#374151'
+                        }}>{area.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Left Column: Interests */}
+              <div className="flex flex-col min-h-0">
+                <label className="font-medium text-xs mb-1.5 block">⭐ מה מעניין?</label>
+                <div className="grid grid-cols-3 gap-2 overflow-y-auto border border-gray-200 rounded-lg p-2 flex-1 min-h-0">
+                {allInterestOptions.filter(option => option && option.id).map(option => {
+                  const tooltip = interestTooltips[option.id] || option.label;
+                  const customInterest = customInterests.find(ci => ci.id === option.id);
+                  const isCustom = !!customInterest;
+                  
+                  return (
+                    <button
+                      key={option.id}
+                      onClick={() => toggleInterest(option.id)}
+                      title={tooltip}
+                      style={{
+                        border: formData.interests.includes(option.id) ? '3px solid #f97316' : '2px solid #d1d5db',
+                        backgroundColor: formData.interests.includes(option.id) ? '#fed7aa' : '#ffffff',
+                        boxShadow: formData.interests.includes(option.id) ? '0 4px 6px -1px rgba(0, 0, 0, 0.2)' : 'none',
+                        position: 'relative'
+                      }}
+                      className="p-1.5 rounded-lg text-xs"
+                    >
+                      <div className="text-lg mb-1">{option.icon}</div>
+                      <div style={{
+                        fontWeight: '600',
+                        fontSize: '11px',
+                        color: formData.interests.includes(option.id) ? '#c2410c' : '#374151'
+                      }}>{option.label}</div>
+                      {/* Info icon - purple and larger for custom interests */}
+                      <div style={{
+                        position: 'absolute',
+                        top: '2px',
+                        left: '2px',
+                        fontSize: isCustom ? '11px' : '9px',
+                        color: isCustom ? '#a855f7' : '#9ca3af',
+                        opacity: isCustom ? '1' : '0.7',
+                        fontWeight: isCustom ? 'bold' : 'normal'
+                      }}>ⓘ</div>
+                    </button>
+                  );
+                })}
+              </div>
+              {formData.interests.length > 0 && (
+                <div style={{
+                  marginTop: '8px',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  color: '#059669',
+                  backgroundColor: '#d1fae5',
+                  padding: '8px',
+                  borderRadius: '8px'
+                }}>
+                  ✓ {formData.interests.length} נבחרו
+                </div>
+              )}
+              </div>
+              {/* End of Left Column */}
+              
+            </div>
+            {/* End of Split Layout */}
+
+            {/* Generate Button - sticky at bottom for mobile */}
+            <div style={{
+              position: 'sticky',
+              bottom: '20px',
+              zIndex: 100,
+              marginTop: '20px'
+            }}>
+              <button
+                onClick={generateRoute}
+                disabled={formData.interests.length === 0}
+                style={{
+                  width: '100%',
+                  backgroundColor: '#2563eb',
+                  color: 'white',
+                  padding: '10px',
+                  borderRadius: '12px',
+                  fontWeight: 'bold',
+                  fontSize: '14px',
+                  border: 'none',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)',
+                  opacity: formData.interests.length === 0 ? 0.5 : 1
+                }}
+              >
+                {isGenerating ? 'מחפש...' : `🔍 מצא נקודות עניין (${formData.maxStops} מקומות)`}
+              </button>
+            </div>
+            
+            {formData.interests.length === 0 && (
+              <p className="text-center text-gray-500 text-xs">בחר לפחות תחום עניין אחד</p>
+            )}
+
+            {/* Show stops list ONLY after route is calculated */}
+            {route && (
+              <div id="route-results" className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3 mt-4" dir="rtl">
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="font-bold text-blue-900 text-sm">מקומות ב{route.areaName} ({route.stops.length}):</h3>
+                  <button
+                    onClick={() => showHelpFor('placesListing')}
+                    className="text-blue-400 hover:text-blue-600 text-sm"
+                    title="עזרה"
+                  >
+                    ❓
+                  </button>
+                </div>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {(() => {
+                    // Group stops by interest
+                    const groupedStops = {};
+                    let stopCounter = 0;
+                    
+                    route.stops.forEach((stop, i) => {
+                      const interests = stop.interests || ['other'];
+                      interests.forEach(interest => {
+                        if (!groupedStops[interest]) {
+                          groupedStops[interest] = [];
+                        }
+                        groupedStops[interest].push({ ...stop, originalIndex: i, displayNumber: stopCounter + 1 });
+                      });
+                      stopCounter++;
+                    });
+                    
+                    return Object.entries(groupedStops).map(([interest, stops]) => {
+                      const interestObj = allInterestOptions.find(opt => opt.id === interest);
+                      if (!interestObj) return null;
+                      
+                      return (
+                        <div key={interest} className="bg-white rounded-lg p-2 border border-gray-200">
+                          {/* Interest header with fetch-more button */}
+                          <div className="flex items-center justify-between mb-1.5">
+                            <div className="font-bold text-xs text-gray-700 flex items-center gap-1">
+                              <span style={{ fontSize: '14px' }}>{interestObj.icon}</span>
+                              <span>{interestObj.label} ({stops.length})</span>
+                            </div>
+                            <button
+                              onClick={async () => {
+                                // Fetch more for this specific interest
+                                await fetchMoreForInterest(interest);
+                              }}
+                              className="text-[10px] px-2 py-0.5 rounded bg-blue-500 text-white hover:bg-blue-600"
+                              title={`הוסף עוד ${interestObj.label}`}
+                            >
+                              + עוד
+                            </button>
+                          </div>
+                          
+                          {/* Stops in this interest */}
+                          <div className="space-y-1.5">
+                            {stops.map((stop) => {
+                              const hasValidCoords = stop.lat && stop.lng && stop.lat !== 0 && stop.lng !== 0;
+                              const stopId = stop.id || stop.originalIndex;
+                              const isDisabled = disabledStops.includes(stopId);
+                              const isCustom = stop.custom;
+                              
+                              return (
+                                <div key={stop.originalIndex} className="bg-gray-50 p-1.5 rounded border relative" style={{ 
+                                  borderColor: hasValidCoords ? (isDisabled ? '#9ca3af' : '#e5e7eb') : '#ef4444',
+                                  backgroundColor: hasValidCoords ? (isDisabled ? '#f3f4f6' : '#fafafa') : '#fef2f2',
+                                  opacity: isDisabled ? 0.6 : 1
+                                }}>
+                                  {/* Action buttons */}
+                                  <div className="absolute top-0.5 left-0.5 flex gap-0.5">
+                                    {/* Temporary skip button - toggles between active/paused */}
+                                    <button
+                                      onClick={() => toggleStopActive(stop.originalIndex)}
+                                      className={`text-[9px] px-1 py-0.5 rounded ${isDisabled ? 'bg-yellow-500 text-white' : 'bg-gray-400 text-white'}`}
+                                      title={isDisabled ? 'החזר למסלול' : 'דלג זמנית'}
+                                    >
+                                      {isDisabled ? '⏸️' : '✕'}
+                                    </button>
+                                    
+                                    {(() => {
+                                      // Check if this place is in blacklist
+                                      const blacklisted = customLocations.find(loc => 
+                                        loc.name.toLowerCase() === stop.name.toLowerCase() && 
+                                        loc.status === 'blacklist'
+                                      );
+                                      
+                                      if (blacklisted) {
+                                        // Show GREEN undo button - removes from blacklist
+                                        return (
+                                          <button
+                                            onClick={() => {
+                                              deleteCustomLocation(blacklisted.id);
+                                              showToast(`"${stop.name}" חזר לרשימה הרגילה`, 'success');
+                                            }}
+                                            className="text-[9px] px-1 py-0.5 rounded bg-green-500 text-white hover:bg-green-600"
+                                            title="בטל דילוג קבוע"
+                                          >
+                                            ✅
+                                          </button>
+                                        );
+                                      }
+                                      
+                                      // Show permanent skip button (for non-custom places, regardless of isDisabled)
+                                      if (!isCustom) {
+                                        return (
+                                          <button
+                                            onClick={() => skipPlacePermanently(stop)}
+                                            className="text-[9px] px-1 py-0.5 rounded bg-red-500 text-white hover:bg-red-600"
+                                            title="דלג לצמיתות"
+                                          >
+                                            🚫
+                                          </button>
+                                        );
+                                      }
+                                      
+                                      return null;
+                                    })()}
+                                    
+                                    {!isCustom && (
+                                      <button
+                                        onClick={() => addGooglePlaceToCustom(stop)}
+                                        className="text-[9px] px-1 py-0.5 rounded bg-purple-500 text-white hover:bg-purple-600"
+                                        title="הוסף לרשימה שלי"
+                                      >
+                                        +
+                                      </button>
+                                    )}
+                                    
+                                    {isCustom && (
+                                      <button
+                                        onClick={() => {
+                                          const customLoc = customLocations.find(loc => loc.name === stop.name);
+                                          if (customLoc) {
+                                            handleEditLocation(customLoc);
+                                          }
+                                        }}
+                                        className="text-[9px] px-1 py-0.5 rounded bg-blue-500 text-white hover:bg-blue-600"
+                                        title="ערוך"
+                                      >
+                                        ✏️
+                                      </button>
+                                    )}
+                                  </div>
+                                  
+                                  <a
+                                    href={hasValidCoords ? `https://www.google.com/maps?q=${stop.lat},${stop.lng}` : '#'}
+                                    target={hasValidCoords ? "_blank" : undefined}
+                                    rel={hasValidCoords ? "noopener noreferrer" : undefined}
+                                    className="block hover:bg-gray-100 transition pr-2"
+                                    onClick={(e) => {
+                                      if (!hasValidCoords) {
+                                        e.preventDefault();
+                                        showToast('למקום זה אין קואורדינטות. לחץ על ✏️ כדי לערוך.', 'warning');
+                                      }
+                                    }}
+                                  >
+                                    <div className="font-bold text-[11px] flex items-center gap-1" style={{
+                                      color: hasValidCoords ? '#2563eb' : '#dc2626'
+                                    }}>
+                                      {!hasValidCoords && (
+                                        <span title="אין קואורדינטות - לא יכלל במסלול" style={{ fontSize: '11px' }}>
+                                          ❗
+                                        </span>
+                                      )}
+                                      <span>{stop.name}</span>
+                                      {stop.outsideArea && (
+                                        <span className="text-orange-500" title="מקום מחוץ לגבולות האזור" style={{ fontSize: '10px' }}>
+                                          🔺
+                                        </span>
+                                      )}
+                                      {isCustom && (
+                                        <span title="מקום שלי" style={{ fontSize: '11px' }}>🎖️</span>
+                                      )}
+                                      {/* Camera icon for custom locations with image */}
+                                      {isCustom && stop.uploadedImage && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setModalImage(stop.uploadedImage);
+                                            setShowImageModal(true);
+                                          }}
+                                          className="hover:scale-110 transition"
+                                          title="הצג תמונה"
+                                          style={{ fontSize: '11px' }}
+                                        >
+                                          📷
+                                        </button>
+                                      )}
+                                      {/* Interest icons */}
+                                      {stop.interests?.map((int, idx) => {
+                                        const intObj = allInterestOptions.find(opt => opt.id === int);
+                                        return intObj?.icon ? (
+                                          <span 
+                                            key={idx}
+                                            title={intObj.label}
+                                            style={{ fontSize: '11px' }}
+                                          >
+                                            {intObj.icon}
+                                          </span>
+                                        ) : null;
+                                      })}
+                                    </div>
+                                    <div className="text-[10px]" style={{
+                                      color: hasValidCoords ? '#6b7280' : '#991b1b'
+                                    }}>
+                                      {hasValidCoords ? stop.description : '⚠️ חסרות קואורדינטות'}
+                                    </div>
+                                  </a>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                  
+                  {/* Fetch more all button */}
+                  <button
+                    onClick={async () => {
+                      await fetchMoreAll();
+                    }}
+                    className="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold text-sm hover:from-blue-600 hover:to-indigo-600"
+                  >
+                    ➕ מצא עוד מכולם ({formData.fetchMoreCount || 5} מקומות)
+                  </button>
+                </div>
+                
+                <div className="mt-3 space-y-2">
+                  <a
+                    href={(() => {
+                      // Filter active stops with valid coordinates
+                      const activeStops = route.stops.filter((s, i) => {
+                        const isActive = !disabledStops.includes(s.id || i);
+                        const hasValidCoords = s.lat && s.lng && s.lat !== 0 && s.lng !== 0;
+                        return isActive && hasValidCoords;
+                      });
+                      
+                      if (activeStops.length === 0) {
+                        return '#';
+                      }
+                      
+                      // Calculate center
+                      const avgLat = activeStops.reduce((sum, s) => sum + s.lat, 0) / activeStops.length;
+                      const avgLng = activeStops.reduce((sum, s) => sum + s.lng, 0) / activeStops.length;
+                      
+                      // Create search query with all active place names
+                      const query = activeStops.map(s => s.name).join(' OR ');
+                      
+                      // Return search URL with active places
+                      return `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${avgLat},${avgLng},13z`;
+                    })()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => {
+                      const activeStops = route.stops.filter((s, i) => {
+                        const isActive = !disabledStops.includes(s.id || i);
+                        const hasValidCoords = s.lat && s.lng && s.lat !== 0 && s.lng !== 0;
+                        return isActive && hasValidCoords;
+                      });
+                      if (activeStops.length === 0) {
+                        e.preventDefault();
+                        showToast('אין מקומות עם קואורדינטות תקינות', 'warning');
+                      }
+                    }}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      backgroundColor: '#f59e0b',
+                      color: 'white',
+                      textAlign: 'center',
+                      padding: '10px',
+                      borderRadius: '12px',
+                      fontWeight: 'bold',
+                      textDecoration: 'none',
+                      fontSize: '14px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+                      marginBottom: '4px'
+                    }}
+                  >
+                    🗺️ הצג את כל המקומות על המפה
+                  </a>
+                  
+                  
+                  {/* URL limit note */}
+                  <p style={{
+                    fontSize: '10px',
+                    color: '#6b7280',
+                    textAlign: 'center',
+                    marginBottom: '8px',
+                    fontStyle: 'italic'
+                  }}>
+                    מגבלת טלפון: עד ~6 מקומות (250 תווים)
+                  </p>
+                  
+                  {/* Route Type + Button */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {/* Route Type Radio Buttons - Small and Simple */}
+                    <div style={{
+                      display: 'flex',
+                      gap: '16px',
+                      fontSize: '13px',
+                      paddingRight: '4px'
+                    }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                        <input
+                          type="radio"
+                          name="routeType"
+                          checked={routeType === 'circular'}
+                          onChange={() => setRouteType('circular')}
+                          style={{ cursor: 'pointer' }}
+                        />
+                        <span>מעגלי</span>
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                        <input
+                          type="radio"
+                          name="routeType"
+                          checked={routeType === 'linear'}
+                          onChange={() => setRouteType('linear')}
+                          style={{ cursor: 'pointer' }}
+                        />
+                        <span>לינארי</span>
+                      </label>
+                    </div>
+                    
+                    {/* Start Point Input - Only for route calculation */}
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">📍 נקודת התחלה (אופציונלי)</label>
+                      <input
+                        type="text"
+                        value={formData.startPoint}
+                        onChange={(e) => setFormData({...formData, startPoint: e.target.value})}
+                        placeholder="לדוגמה: BTS Asok, שם מלון..."
+                        className="w-full p-2 border border-gray-300 rounded-lg text-xs"
+                        style={{ direction: 'rtl' }}
+                      />
+                      <p style={{
+                        fontSize: '10px',
+                        color: '#6b7280',
+                        marginTop: '4px',
+                        fontStyle: 'italic'
+                      }}>
+                        💡 אם לא תבחר - המסלול יתחיל מהמקום הראשון
+                      </p>
+                    </div>
+                    
+                    {/* Buttons row: Open in Google + Save */}
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
+                      {/* Open in Google Maps Button */}
+                      <button
+                        onClick={() => {
+                          // Build Google Maps URL based on routeType
+                          const activeStops = route.stops.filter((stop, i) => {
+                            const isActive = !disabledStops.includes(stop.id || i);
+                            const hasValidCoords = stop.lat && stop.lng && stop.lat !== 0 && stop.lng !== 0;
+                            return isActive && hasValidCoords;
+                          });
+                          
+                          if (activeStops.length === 0) {
+                            showToast('אין מקומות עם קואורדינטות תקינות', 'warning');
+                            return;
+                          }
+
+                          const origin = `${activeStops[0].lat},${activeStops[0].lng}`;
+                          let destination, waypointsStr, mapUrl;
+
+                          if (activeStops.length === 1) {
+                            // Single stop - just show location
+                            mapUrl = `https://www.google.com/maps/search/?api=1&query=${activeStops[0].lat},${activeStops[0].lng}`;
+                          } else {
+                            // Multiple stops - create route
+                            destination = routeType === 'circular' ? origin : `${activeStops[activeStops.length - 1].lat},${activeStops[activeStops.length - 1].lng}`;
+                            
+                            if (routeType === 'circular' && activeStops.length > 1) {
+                              // Circular: all stops are waypoints
+                              waypointsStr = activeStops.slice(1).map(s => `${s.lat},${s.lng}`).join('|');
+                              mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypointsStr}&travelmode=walking`;
+                            } else if (routeType === 'linear' && activeStops.length > 2) {
+                              // Linear with middle stops
+                              waypointsStr = activeStops.slice(1, -1).map(s => `${s.lat},${s.lng}`).join('|');
+                              mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypointsStr}&travelmode=walking`;
+                            } else {
+                              // Linear with only 2 stops
+                              mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=walking`;
+                            }
+                          }
+
+                          // Open in new tab
+                          window.open(mapUrl, '_blank');
+                        }}
+                        style={{
+                          flex: 1,
+                          backgroundColor: '#22c55e',
+                          color: 'white',
+                          textAlign: 'center',
+                          padding: '10px',
+                          borderRadius: '12px',
+                          fontWeight: 'bold',
+                          fontSize: '14px',
+                          border: 'none',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🗺️ פתח מסלול בגוגל
+                      </button>
+                      
+                      {/* Save Route Button - no background */}
+                      {route.name ? (
+                        <span
+                          style={{
+                            padding: '10px',
+                            fontSize: '18px',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                          title={`נשמר: ${route.name}`}
+                        >
+                          ✅
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setShowSaveDialog(true)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: '10px',
+                            fontSize: '18px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                          title="שמור מסלול"
+                        >
+                          💾
+                        </button>
+                      )}
+                    </div>
+                    
+                    {/* Waypoints limit note */}
+                    <p style={{
+                      fontSize: '10px',
+                      color: '#6b7280',
+                      textAlign: 'center',
+                      marginTop: '4px',
+                      fontStyle: 'italic'
+                    }}>
+                      מגבלת טלפון: עד 25 מקומות
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {currentView === 'route' && route && (
+          <div className="bg-white rounded-xl shadow-lg p-4">
+            <button
+              onClick={() => setCurrentView('form')}
+              style={getButtonStyle(false)}
+              className="mb-4"
+            >
+              ← חזרה לטופס
+            </button>
+
+            {/* Save Route Button */}
+            {!route.name && (
+              <button
+                onClick={() => setShowSaveDialog(true)}
+                className="w-full bg-purple-500 text-white py-3 rounded-lg font-bold hover:bg-purple-600 mb-4"
+              >
+                💾 שמור מסלול זה
+              </button>
+            )}
+
+            {route.name && (
+              <div className="bg-green-50 border-2 border-green-500 p-3 rounded-lg mb-4">
+                <p className="text-green-800 font-medium">📌 {route.name}</p>
+                {route.notes && (
+                  <p className="text-xs text-green-700 mt-1">📝 {route.notes}</p>
+                )}
+                <p className="text-xs text-green-600">נשמר ב-{new Date(route.savedAt).toLocaleDateString('he-IL')}</p>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 mb-2">
+              <h2 className="text-2xl font-bold">{route.areaName} - {route.interestsText || 'כללי'}</h2>
+              <button
+                onClick={() => showHelpFor('route')}
+                className="text-gray-400 hover:text-blue-500 text-sm"
+                title="עזרה"
+              >
+                ❓
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 mb-2">
+              נקודת התחלה: {route.startPoint}
+            </p>
+            
+            {/* Stats - show breakdown of place sources */}
+            {route.stats && (route.stats.custom > 0 || route.stats.fetched > 0) && (
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-lg p-3 mb-4">
+                <div className="text-xs font-bold text-gray-700 mb-2">📊 מקורות המקומות:</div>
+                <div className="flex gap-2 flex-wrap">
+                  {route.stats.custom > 0 && (
+                    <span className="bg-purple-500 text-white text-xs px-2 py-1 rounded-full font-bold">
+                      ⭐ {route.stats.custom} מותאמים אישית
+                    </span>
+                  )}
+                  {route.stats.fetched > 0 && (
+                    <span className={`text-white text-xs px-2 py-1 rounded-full font-bold ${
+                      route.stats.source === 'static' ? 'bg-purple-600' : 'bg-green-600'
+                    }`}>
+                      {route.stats.source === 'static' ? '📚' : '🌐'} {route.stats.fetched} {route.stats.source === 'static' ? 'סטטי' : 'מ-Google API'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Errors display if any */}
+            {route.errors && route.errors.length > 0 && (
+              <div className="bg-red-50 border-2 border-red-400 rounded-lg p-3 mb-4">
+                <div className="flex items-start gap-2">
+                  <span className="text-xl">❌</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-red-800 mb-1">שגיאות בקבלת מקומות</p>
+                    <div className="text-xs text-red-700 space-y-1">
+                      {route.errors.map((err, i) => (
+                        <div key={i}>• {err.interest}: {err.error}</div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-red-600 mt-2">
+                      פרטים מלאים ב-Console (F12) - העתק ושלח לתיקון
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Warning if didn't reach requested max stops */}
+            {route.incomplete && (
+              <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-3 mb-4">
+                <div className="flex items-start gap-2">
+                  <span className="text-xl">⚠️</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-yellow-800 mb-1">
+                      נמצאו {route.incomplete.found} מקומות במקום {route.incomplete.requested} המבוקשים
+                    </p>
+                    <p className="text-xs text-yellow-700">
+                      {formData.interests.length === 1 
+                        ? 'אין מספיק מקומות תואמים בתחום זה באזור הנבחר'
+                        : 'לא נמצאו מספיק מקומות תואמים בחלק מתחומי העניין באזור הנבחר'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3 mb-6">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="font-bold">תחנות ({route.stops.length}):</h3>
+                <button
+                  onClick={() => {
+                    setNewLocation(prev => ({...prev, area: formData.area}));
+                    setShowAddLocationDialog(true);
+                  }}
+                  className="bg-purple-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-600"
+                >
+                  ➕ הוסף מקום
+                </button>
+              </div>
+              {route.stops.map((stop, i) => {
+                const stopId = stop.id || i;
+                const isDisabled = disabledStops.includes(stopId);
+                const hasValidCoords = stop.lat && stop.lng && stop.lat !== 0 && stop.lng !== 0;
+                
+                // Determine source badge
+                let sourceBadge = null;
+                if (stop.custom) {
+                  sourceBadge = { text: '🎖️ שלי', color: 'bg-purple-500', title: 'מקום מותאם אישית' };
+                } else {
+                  // Everything else is from Google Places
+                  sourceBadge = { text: '🔍 Google', color: 'bg-blue-500', title: 'ממקומות Google Places' };
+                }
+                
+                return (
+                  <div key={i} className={`border-r-4 pr-3 py-2 ${isDisabled ? 'border-gray-300 opacity-50' : hasValidCoords ? 'border-orange-500' : 'border-red-500'}`}
+                    style={{ backgroundColor: hasValidCoords ? 'transparent' : '#fef2f2' }}
+                  >
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex gap-2 flex-1">
+                        <div className={`rounded-full w-6 h-6 flex items-center justify-center font-bold text-sm flex-shrink-0 ${isDisabled ? 'bg-gray-400 text-white' : hasValidCoords ? 'bg-orange-500 text-white' : 'bg-red-500 text-white'}`}>
+                          {isDisabled ? '✕' : hasValidCoords ? i + 1 : '❗'}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {!hasValidCoords && (
+                              <span 
+                                title="אין קואורדינטות - לא יכלל במסלול"
+                                style={{ fontSize: '14px', color: '#dc2626' }}
+                              >
+                                ❗
+                              </span>
+                            )}
+                            <a
+                              href={hasValidCoords ? `https://www.google.com/maps?q=${stop.lat},${stop.lng}` : '#'}
+                              target={hasValidCoords ? "_blank" : undefined}
+                              rel={hasValidCoords ? "noopener noreferrer" : undefined}
+                              className={`font-bold text-sm ${isDisabled ? 'line-through text-gray-500' : hasValidCoords ? 'text-blue-600 hover:text-blue-800' : 'text-red-600'}`}
+                              onClick={(e) => {
+                                if (!hasValidCoords) {
+                                  e.preventDefault();
+                                  showToast('למקום זה אין קואורדינטות. ערוך את המקום כדי להוסיף.', 'warning');
+                                }
+                              }}
+                            >
+                              {stop.name}
+                            </a>
+                            {stop.outsideArea && (
+                              <span 
+                                className="text-orange-500" 
+                                title="מקום מחוץ לגבולות האזור"
+                                style={{ fontSize: '14px' }}
+                              >
+                                🔺
+                              </span>
+                            )}
+                            {stop.interests && stop.interests.length > 0 && (
+                              <>
+                                {stop.interests.map((interest, idx) => {
+                                  const interestObj = allInterestOptions.find(opt => opt.id === interest);
+                                  return interestObj?.icon ? (
+                                    <span 
+                                      key={idx}
+                                      title={interestObj.label}
+                                      style={{ fontSize: '16px' }}
+                                    >
+                                      {interestObj.icon}
+                                    </span>
+                                  ) : null;
+                                })}
+                              </>
+                            )}
+                            {stop.custom ? (
+                              <div className="relative group">
+                                <button
+                                  onClick={() => {
+                                    setSelectedLocation(stop);
+                                    setShowLocationDetailModal(true);
+                                  }}
+                                  className={`${sourceBadge.color} text-white text-[10px] px-2 py-0.5 rounded-full font-bold cursor-pointer hover:opacity-80 transition`}
+                                  title="לחץ לפרטים מלאים"
+                                >
+                                  {sourceBadge.text}
+                                </button>
+                                
+                                {/* Hover Tooltip */}
+                                <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-50 w-64">
+                                  <div className="bg-gray-900 text-white p-3 rounded-lg shadow-2xl text-xs">
+                                    {stop.uploadedImage && (
+                                      <img 
+                                        src={stop.uploadedImage} 
+                                        alt={stop.name}
+                                        className="w-full h-24 object-cover rounded mb-2"
+                                      />
+                                    )}
+                                    <div className="font-bold mb-1">{stop.name}</div>
+                                    {stop.description && (
+                                      <div className="text-gray-300 mb-1">{stop.description}</div>
+                                    )}
+                                    {stop.notes && (
+                                      <div className="text-gray-400 italic">💭 {stop.notes}</div>
+                                    )}
+                                    <div className="text-gray-400 mt-2 text-[9px]">👆 לחץ לפרטים מלאים</div>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <span 
+                                className={`${sourceBadge.color} text-white text-[10px] px-2 py-0.5 rounded-full font-bold`}
+                                title={sourceBadge.title}
+                              >
+                                {sourceBadge.text}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs" style={{
+                            color: hasValidCoords ? '#4b5563' : '#991b1b'
+                          }}>
+                            {hasValidCoords ? stop.description : '⚠️ חסרות קואורדינטות - לא יכלל במסלול'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 flex-shrink-0">
+                        {/* Temporary skip button */}
+                        <button
+                          onClick={() => toggleStopActive(i)}
+                          className={`text-xs px-2 py-1 rounded ${isDisabled ? 'bg-yellow-500 text-white' : 'bg-gray-400 text-white'}`}
+                          title={isDisabled ? 'החזר למסלול' : 'דלג זמנית'}
+                        >
+                          {isDisabled ? '⏸️' : '✕'}
+                        </button>
+                        
+                        {(() => {
+                          // Check if this place is in blacklist
+                          const blacklisted = customLocations.find(loc => 
+                            loc.name.toLowerCase() === stop.name.toLowerCase() && 
+                            loc.status === 'blacklist'
+                          );
+                          
+                          if (blacklisted) {
+                            // Show GREEN undo button - removes from blacklist
+                            return (
+                              <button
+                                onClick={() => {
+                                  deleteCustomLocation(blacklisted.id);
+                                  showToast(`"${stop.name}" חזר לרשימה הרגילה`, 'success');
+                                }}
+                                className="text-xs px-2 py-1 rounded bg-green-500 text-white hover:bg-green-600"
+                                title="בטל דילוג קבוע"
+                              >
+                                ✅
+                              </button>
+                            );
+                          }
+                          
+                          // Show permanent skip button (for non-custom places)
+                          if (!isCustom) {
+                            return (
+                              <button
+                                onClick={() => skipPlacePermanently(stop)}
+                                className="text-xs px-2 py-1 rounded bg-red-500 text-white hover:bg-red-600"
+                                title="דלג לצמיתות"
+                              >
+                                🚫
+                              </button>
+                            );
+                          }
+                          
+                          return null;
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="space-y-3 mb-4">
+              <a
+                href={(() => {
+                  // Filter active stops with valid coordinates
+                  const activeStops = route.stops.filter((s, i) => {
+                    const isActive = !disabledStops.includes(s.id || i);
+                    const hasValidCoords = s.lat && s.lng && s.lat !== 0 && s.lng !== 0;
+                    return isActive && hasValidCoords;
+                  });
+                  
+                  if (activeStops.length === 0) {
+                    return '#';
+                  }
+                  
+                  // Calculate center
+                  const avgLat = activeStops.reduce((sum, s) => sum + s.lat, 0) / activeStops.length;
+                  const avgLng = activeStops.reduce((sum, s) => sum + s.lng, 0) / activeStops.length;
+                  
+                  // Create search query with all active place names
+                  const query = activeStops.map(s => s.name).join(' OR ');
+                  
+                  // Return search URL with active places
+                  return `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${avgLat},${avgLng},13z`;
+                })()}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  const activeStops = route.stops.filter((s, i) => {
+                    const isActive = !disabledStops.includes(s.id || i);
+                    const hasValidCoords = s.lat && s.lng && s.lat !== 0 && s.lng !== 0;
+                    return isActive && hasValidCoords;
+                  });
+                  if (activeStops.length === 0) {
+                    e.preventDefault();
+                    showToast('אין מקומות עם קואורדינטות תקינות', 'warning');
+                  }
+                }}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  backgroundColor: '#f59e0b',
+                  color: 'white',
+                  textAlign: 'center',
+                  padding: '10px',
+                  borderRadius: '12px',
+                  fontWeight: 'bold',
+                  textDecoration: 'none',
+                  fontSize: '14px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+                  marginBottom: '4px'
+                }}
+              >
+                🗺️ הצג את כל המקומות על המפה
+              </a>
+              
+              {/* URL limit note */}
+              <p style={{
+                fontSize: '10px',
+                color: '#6b7280',
+                textAlign: 'center',
+                marginBottom: '12px',
+                fontStyle: 'italic'
+              }}>
+                מגבלת טלפון: עד ~6 מקומות (250 תווים)
+              </p>
+
+              {/* Route Type + Button */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {/* Route Type Radio Buttons - Small and Simple */}
+                <div style={{
+                  display: 'flex',
+                  gap: '16px',
+                  fontSize: '13px',
+                  paddingRight: '4px'
+                }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="routeTypeExpanded"
+                      checked={routeType === 'circular'}
+                      onChange={() => setRouteType('circular')}
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <span>מעגלי</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="routeTypeExpanded"
+                      checked={routeType === 'linear'}
+                      onChange={() => setRouteType('linear')}
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <span>לינארי</span>
+                  </label>
+                </div>
+                
+                {/* Calculate Route Button */}
+                <a
+                  href={(() => {
+                    // Build Google Maps URL based on routeType
+                    const activeStops = route.stops.filter((stop, i) => {
+                      const isActive = !disabledStops.includes(stop.id || i);
+                      const hasValidCoords = stop.lat && stop.lng && stop.lat !== 0 && stop.lng !== 0;
+                      return isActive && hasValidCoords;
+                    });
+                    
+                    if (activeStops.length === 0) {
+                      return '#';
+                    }
+
+                    const origin = `${activeStops[0].lat},${activeStops[0].lng}`;
+                    let destination, waypointsStr, mapUrl;
+
+                    if (activeStops.length === 1) {
+                      mapUrl = `https://www.google.com/maps/search/?api=1&query=${activeStops[0].lat},${activeStops[0].lng}`;
+                    } else {
+                      destination = routeType === 'circular' ? origin : `${activeStops[activeStops.length - 1].lat},${activeStops[activeStops.length - 1].lng}`;
+                      
+                      if (routeType === 'circular' && activeStops.length > 1) {
+                        waypointsStr = activeStops.slice(1).map(s => `${s.lat},${s.lng}`).join('|');
+                        mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypointsStr}&travelmode=walking`;
+                      } else if (routeType === 'linear' && activeStops.length > 2) {
+                        waypointsStr = activeStops.slice(1, -1).map(s => `${s.lat},${s.lng}`).join('|');
+                        mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypointsStr}&travelmode=walking`;
+                      } else {
+                        mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=walking`;
+                      }
+                    }
+
+                    return mapUrl;
+                  })()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    width: '100%',
+                    backgroundColor: '#22c55e',
+                    color: 'white',
+                    textAlign: 'center',
+                    padding: '10px',
+                    borderRadius: '12px',
+                    fontWeight: 'bold',
+                    textDecoration: 'none',
+                    fontSize: '14px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+                    display: 'block',
+                    marginBottom: '4px'
+                  }}
+                >
+                  🗺️ פתח מסלול בגוגל
+                </a>
+                
+                {/* Waypoints limit note */}
+                <p style={{
+                  fontSize: '10px',
+                  color: '#6b7280',
+                  textAlign: 'center',
+                  fontStyle: 'italic'
+                }}>
+                  מגבלת טלפון: עד 25 מקומות
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Saved Routes View */}
+        {/* Search View */}
+        {currentView === 'search' && (
+          <div className="bg-white rounded-xl shadow-lg p-4">
+            <h2 className="text-2xl font-bold mb-4">🔍 חיפוש במקומות שלי</h2>
+            
+            <div className="mb-4">
+              <input
+                type="text"
+                placeholder="חפש בשם, תיאור או הערות..."
+                value={searchQuery}
+                className="w-full p-3 border-3 border-gray-300 rounded-xl text-base focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                style={{ textAlign: 'right', direction: 'rtl' }}
+                onChange={(e) => {
+                  const query = e.target.value;
+                  setSearchQuery(query);
+                  
+                  if (!query.trim()) {
+                    setSearchResults([]);
+                    return;
+                  }
+                  
+                  const queryLower = query.toLowerCase();
+                  const results = customLocations.filter(loc => 
+                    loc.name.toLowerCase().includes(queryLower) ||
+                    (loc.description && loc.description.toLowerCase().includes(queryLower)) ||
+                    (loc.notes && loc.notes.toLowerCase().includes(queryLower))
+                  );
+                  setSearchResults(results);
+                }}
+              />
+            </div>
+            
+            {/* Search Results */}
+            {searchQuery && searchResults.length > 0 ? (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600 font-bold">נמצאו {searchResults.length} תוצאות:</p>
+                {searchResults.map(loc => (
+                  <div
+                    key={loc.id}
+                    className="bg-gradient-to-r from-green-50 to-teal-50 border-3 border-green-400 rounded-xl p-4"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold text-green-900 flex items-center gap-2">
+                          <span>{loc.name}</span>
+                          {loc.outsideArea && (
+                            <span 
+                              className="text-orange-500" 
+                              title="מקום מחוץ לגבולות האזור"
+                              style={{ fontSize: '16px' }}
+                            >
+                              🔺
+                            </span>
+                          )}
+                        </h3>
+                        <p className="text-sm text-green-700 mt-1">{loc.description || 'אין תיאור'}</p>
+                        {loc.notes && (
+                          <p className="text-xs text-green-600 mt-1 italic">💭 {loc.notes}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleEditLocation(loc)}
+                        className="bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-bold"
+                      >
+                        ✏️ ערוך
+                      </button>
+                    </div>
+                    
+                    {/* Image Preview */}
+                    {loc.uploadedImage && (
+                      <img 
+                        src={loc.uploadedImage} 
+                        alt={loc.name}
+                        className="w-full max-max-h-32 object-contain rounded-lg mt-2 cursor-pointer border-2 border-green-300"
+                        onClick={() => {
+                          setModalImage(loc.uploadedImage);
+                          setShowImageModal(true);
+                        }}
+                      />
+                    )}
+                    
+                    {/* Interests Tags */}
+                    {loc.interests && loc.interests.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {loc.interests.map(intId => {
+                          const interest = allInterestOptions.find(opt => opt.id === intId);
+                          return interest ? (
+                            <span key={intId} className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">
+                              {interest.icon} {interest.label}
+                            </span>
+                          ) : null;
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : searchQuery && searchResults.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <div className="text-6xl mb-4">🔍</div>
+                <p className="font-bold">לא נמצאו תוצאות עבור "{searchQuery}"</p>
+                <p className="text-sm mt-2">נסה לחפש משהו אחר</p>
+              </div>
+            ) : customLocations.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <div className="text-6xl mb-4">📍</div>
+                <p className="font-bold">עדיין אין מקומות מותאמים אישית</p>
+                <p className="text-sm mt-2">הוסף מקומות כדי לחפש בהם</p>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <div className="text-6xl mb-4">🔍</div>
+                <p className="font-bold">התחל להקליד כדי לחפש</p>
+                <p className="text-sm mt-2">יש לך {customLocations.length} מקומות מותאמים אישית</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {currentView === 'saved' && (
+          <div className="bg-white rounded-xl shadow-lg p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-xl font-bold">מסלולים שמורים</h2>
+              <button
+                onClick={() => showHelpFor('saved')}
+                className="text-gray-400 hover:text-blue-500 text-sm"
+                title="עזרה"
+              >
+                ❓
+              </button>
+            </div>
+            
+            {savedRoutes.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">🗺️</div>
+                <p className="text-gray-600 mb-4">עדיין אין מסלולים שמורים</p>
+                <button
+                  onClick={() => setCurrentView('form')}
+                  className="bg-orange-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-600"
+                >
+                  צור מסלול חדש
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {savedRoutes.map(savedRoute => (
+                  <div key={savedRoute.id} className="border-2 border-gray-200 rounded-lg p-4 hover:border-orange-300 transition">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold text-gray-800">{savedRoute.name}</h3>
+                        <p className="text-sm text-gray-600">{savedRoute.areaName} • {savedRoute.interestsText || 'כללי'}</p>
+                        {savedRoute.notes && (
+                          <p className="text-xs text-gray-500 mt-1 italic">📝 {savedRoute.notes}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">
+                          {savedRoute.stops.length} תחנות • 
+                          נשמר: {new Date(savedRoute.savedAt).toLocaleDateString('he-IL')}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => deleteRoute(savedRoute.id)}
+                        className="text-red-500 hover:text-red-700 text-sm ml-2"
+                      >
+                        🗑️ מחק
+                      </button>
+                    </div>
+                    
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={() => loadSavedRoute(savedRoute)}
+                        className="flex-1 bg-blue-500 text-white py-2 rounded-lg font-medium hover:bg-blue-600"
+                      >
+                        📍 פתח מסלול
+                      </button>
+                      <a
+                        href={savedRoute.mapUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 bg-green-500 text-white text-center py-2 rounded-lg font-medium hover:bg-green-600"
+                      >
+                        🗺️ Google Maps
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* My Content View */}
+        {/* My Content View - Compact Design */}
+        {currentView === 'myContent' && (
+          <div className="bg-white rounded-xl shadow-lg p-3">
+            <div className="flex items-center gap-2 mb-3">
+              <h2 className="text-lg font-bold">התוכן שלי</h2>
+              <button
+                onClick={() => showHelpFor('myContent')}
+                className="text-gray-400 hover:text-blue-500 text-sm"
+                title="עזרה"
+              >
+                ❓
+              </button>
+            </div>
+            
+            {/* Custom Locations Section - Split by status */}
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-base font-bold">המקומות שלי ({customLocations.length})</h3>
+                <button
+                  onClick={() => setShowAddLocationDialog(true)}
+                  className="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-emerald-600"
+                >
+                  ➕ הוסף מקום
+                </button>
+              </div>
+              
+              {customLocations.length === 0 ? (
+                <div className="text-center py-6 bg-gray-50 rounded-lg">
+                  <div className="text-3xl mb-2">📍</div>
+                  <p className="text-gray-600 text-sm">עדיין אין מקומות מותאמים אישית</p>
+                  <p className="text-xs text-gray-500 mt-1">לחץ "הוסף מקום" כדי ליצור</p>
+                </div>
+              ) : (
+                <>
+                  {/* Active Locations */}
+                  {(() => {
+                    const activeLocations = customLocations.filter(loc => loc.status !== 'blacklist');
+                    
+                    return activeLocations.length > 0 && (
+                      <div className="mb-3">
+                        <h4 className="text-sm font-bold text-green-700 mb-2 flex items-center gap-1">
+                          <span>✅ מקומות כלולים ({activeLocations.length})</span>
+                        </h4>
+                        <div className="space-y-1 max-h-60 overflow-y-auto">
+                          {activeLocations.map(loc => (
+                            <div
+                              key={loc.id}
+                              className="flex items-center justify-between gap-2 border border-emerald-300 rounded p-1.5 bg-emerald-50 hover:bg-emerald-100"
+                            >
+                              {/* Name and interest icons */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1">
+                                  <span className="font-medium text-sm truncate">{loc.name}</span>
+                                  {loc.inProgress && (
+                                    <span className="text-orange-600" title="בעבודה - החלט אם לשמור או למחוק" style={{ fontSize: '14px' }}>🛠️</span>
+                                  )}
+                                  {loc.outsideArea && (
+                                    <span className="text-orange-500 text-xs" title="מחוץ לגבולות האזור">🔺</span>
+                                  )}
+                                  {loc.missingCoordinates && (
+                                    <span className="text-red-500 text-xs" title="אין מיקום - לא ניתן להציג במפה">⚠️</span>
+                                  )}
+                                  {loc.interests?.map((int, idx) => {
+                                    const interestObj = allInterestOptions.find(opt => opt.id === int);
+                                    return interestObj?.icon ? (
+                                      <span 
+                                        key={idx}
+                                        title={interestObj.label}
+                                        style={{ fontSize: '13px' }}
+                                      >
+                                        {interestObj.icon}
+                                      </span>
+                                    ) : null;
+                                  })}
+                                </div>
+                                {/* Coordinates display */}
+                                {loc.lat && loc.lng && (
+                                  <div className="text-[10px] text-gray-500 mt-0.5">
+                                    📍 {loc.lat.toFixed(5)}, {loc.lng.toFixed(5)}
+                                  </div>
+                                )}
+                                {(!loc.lat || !loc.lng) && (
+                                  <div className="text-[10px] text-red-500 mt-0.5">
+                                    ⚠️ אין קואורדינטות
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Action buttons */}
+                              <div className="flex gap-0.5">
+                                <button
+                                  onClick={() => toggleLocationStatus(loc.id)}
+                                  className="text-xs px-1 py-0.5 rounded bg-red-500 text-white hover:bg-red-600"
+                                  title="העבר להסתר (דלג תמיד)"
+                                >
+                                  🚫
+                                </button>
+                                <button
+                                  onClick={() => handleEditLocation(loc)}
+                                  className="text-xs px-1 py-0.5 rounded hover:bg-blue-100"
+                                  title="ערוך מקום"
+                                >
+                                  ✏️
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    showConfirm(`למחוק את "${loc.name}"?`, () => {
+                                      deleteCustomLocation(loc.id);
+                                    });
+                                  }}
+                                  className="text-xs px-1 py-0.5 rounded hover:bg-red-100"
+                                  title="מחק מקום"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  
+                  {/* Blacklisted Locations - Collapsible */}
+                  {(() => {
+                    const blacklistedLocations = customLocations.filter(loc => loc.status === 'blacklist');
+                    
+                    return blacklistedLocations.length > 0 && (
+                      <div className="border-2 border-red-300 rounded-lg p-2 bg-red-50">
+                        <button
+                          onClick={() => setShowBlacklistLocations(!showBlacklistLocations)}
+                          className="w-full flex items-center justify-between text-sm font-bold text-red-700 hover:text-red-900"
+                        >
+                          <span className="flex items-center gap-1">
+                            <span>{showBlacklistLocations ? '▼' : '◀'}</span>
+                            <span>🚫 מקומות שמדלגים עליהם ({blacklistedLocations.length})</span>
+                          </span>
+                          <span className="text-[10px] text-red-600">
+                            {showBlacklistLocations ? 'הסתר' : 'הצג'}
+                          </span>
+                        </button>
+                        
+                        {showBlacklistLocations && (
+                          <div className="space-y-1 mt-2 max-h-60 overflow-y-auto">
+                            {blacklistedLocations.map(loc => (
+                              <div
+                                key={loc.id}
+                                className="flex items-center justify-between gap-2 border border-red-300 rounded p-1.5 bg-white hover:bg-red-50"
+                              >
+                                {/* Name and interest icons */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1">
+                                    <span className="font-medium text-sm truncate">{loc.name}</span>
+                                    {loc.outsideArea && (
+                                      <span className="text-orange-500 text-xs" title="מחוץ לגבולות האזור">🔺</span>
+                                    )}
+                                    {loc.interests?.map((int, idx) => {
+                                      const interestObj = allInterestOptions.find(opt => opt.id === int);
+                                      return interestObj?.icon ? (
+                                        <span 
+                                          key={idx}
+                                          title={interestObj.label}
+                                          style={{ fontSize: '13px' }}
+                                        >
+                                          {interestObj.icon}
+                                        </span>
+                                      ) : null;
+                                    })}
+                                  </div>
+                                  {/* Coordinates display */}
+                                  {loc.lat && loc.lng && (
+                                    <div className="text-[10px] text-gray-500 mt-0.5">
+                                      📍 {loc.lat.toFixed(5)}, {loc.lng.toFixed(5)}
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                {/* Action buttons */}
+                                <div className="flex gap-0.5">
+                                  <button
+                                    onClick={() => toggleLocationStatus(loc.id)}
+                                    className="text-xs px-1 py-0.5 rounded bg-green-500 text-white hover:bg-green-600"
+                                    title="החזר לכלול"
+                                  >
+                                    ✅
+                                  </button>
+                                  <button
+                                    onClick={() => handleEditLocation(loc)}
+                                    className="text-xs px-1 py-0.5 rounded hover:bg-blue-100"
+                                    title="ערוך מקום"
+                                  >
+                                    ✏️
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      showConfirm(`למחוק את "${loc.name}"?`, () => {
+                                        deleteCustomLocation(loc.id);
+                                      });
+                                    }}
+                                    className="text-xs px-1 py-0.5 rounded hover:bg-red-100"
+                                    title="מחק מקום"
+                                  >
+                                    🗑️
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
+            </div>
+
+            {/* Custom Interests Section */}
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-base font-bold">תחומי עניין מותאמים ({customInterests.length})</h3>
+                <button
+                  onClick={() => setShowAddInterestDialog(true)}
+                  className="bg-purple-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-purple-600"
+                >
+                  ➕ הוסף תחום
+                </button>
+              </div>
+              
+              {customInterests.length === 0 ? (
+                <div className="text-center py-6 bg-gray-50 rounded-lg">
+                  <div className="text-3xl mb-2">🎯</div>
+                  <p className="text-gray-600 text-sm">עדיין אין תחומי עניין מותאמים</p>
+                  <p className="text-xs text-gray-500 mt-1">לחץ "הוסף תחום" כדי ליצור</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {customInterests.map(interest => (
+                    <div
+                      key={interest.id}
+                      className="border-2 border-purple-400 rounded-lg p-2 bg-purple-50"
+                    >
+                      <div className="flex items-start justify-between gap-1">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-lg">{interest.icon}</div>
+                          <div className="font-bold text-sm truncate">{interest.name}</div>
+                          <div className="text-xs text-gray-600">
+                            מבוסס: {interestOptions.find(i => i.id === interest.baseCategory)?.label}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            showConfirm(`למחוק את "${interest.label}"?`, () => {
+                              deleteCustomInterest(interest.id);
+                            });
+                          }}
+                          className="text-red-600 text-xs px-1 hover:bg-red-50 rounded"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* Uncovered Interests Section */}
+            <div className="mb-4">
+              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-orange-400 rounded-xl p-3">
+                <h3 className="text-base font-bold text-gray-800 mb-1">ℹ️ תחומי עניין שלא נכללים</h3>
+                <p className="text-xs text-gray-600 mb-2">
+                  המערכת ממוקדת בתיירות וטיולים. התחומים הבאים <strong>לא נכללים</strong>:
+                </p>
+                
+                <div className="grid grid-cols-2 gap-1.5">
+                  {uncoveredInterests.map((interest, i) => (
+                    <div key={i} className="bg-white rounded-lg p-2 border border-orange-200">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-lg">{interest.icon}</span>
+                        <span className="text-xs font-medium text-gray-700">{interest.name}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Settings View - Compact Design */}
+        {currentView === 'settings' && (
+          <div className="bg-white rounded-xl shadow-lg p-3">
+            <div className="flex items-center gap-2 mb-3">
+              <h2 className="text-lg font-bold">הגדרות</h2>
+              <button
+                onClick={() => showHelpFor('settings')}
+                className="text-gray-400 hover:text-blue-500 text-sm"
+                title="עזרה"
+              >
+                ❓
+              </button>
+            </div>
+            
+            {/* Max Stops Setting */}
+            <div className="mb-3">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-400 rounded-lg p-2">
+                <h3 className="text-sm font-bold text-gray-800 mb-1">📍 מספר מקומות במסלול</h3>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={formData.maxStops}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 10;
+                    setFormData({...formData, maxStops: Math.min(100, Math.max(1, val))});
+                  }}
+                  className="w-20 p-1 border-2 border-blue-300 rounded text-center font-bold text-sm"
+                  placeholder="10"
+                />
+                <span className="text-[10px] text-gray-500 mr-2">(1-100)</span>
+              </div>
+            </div>
+            
+            {/* Fetch More Count Setting - NEW */}
+            <div className="mb-3">
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-lg p-2">
+                <h3 className="text-sm font-bold text-gray-800 mb-1">➕ מקומות נוספים ב"מצא עוד"</h3>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={formData.fetchMoreCount || 5}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 5;
+                    setFormData({...formData, fetchMoreCount: Math.min(100, Math.max(1, val))});
+                  }}
+                  className="w-20 p-1 border-2 border-green-300 rounded text-center font-bold text-sm"
+                  placeholder="5"
+                />
+                <span className="text-[10px] text-gray-500 mr-2">(1-100)</span>
+              </div>
+            </div>
+            
+            {/* Data Source Setting */}
+            <div className="mb-4">
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-400 rounded-xl p-3">
+                <h3 className="text-base font-bold text-gray-800 mb-1">🔄 מקור נתונים</h3>
+                <p className="text-xs text-gray-600 mb-2">
+                  מאיפה לקחת מקומות עבור המסלול?
+                </p>
+                
+                <div className="space-y-2">
+                  <label className="flex items-start gap-2 p-2 bg-white rounded-lg border-2 border-purple-200 cursor-pointer hover:bg-purple-50">
+                    <input
+                      type="radio"
+                      name="dataSource"
+                      value="static"
+                      checked={formData.dataSource === 'static'}
+                      onChange={(e) => setFormData({...formData, dataSource: e.target.value})}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1">
+                      <div className="font-bold text-sm">📚 סטטי (מקומי)</div>
+                      <div className="text-xs text-gray-600">רשימה קבועה + localStorage (רק שלי)</div>
+                    </div>
+                  </label>
+                  
+                  <label className="flex items-start gap-2 p-2 bg-white rounded-lg border-2 border-purple-200 cursor-pointer hover:bg-purple-50">
+                    <input
+                      type="radio"
+                      name="dataSource"
+                      value="dynamic"
+                      checked={formData.dataSource === 'dynamic'}
+                      onChange={(e) => setFormData({...formData, dataSource: e.target.value})}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1">
+                      <div className="font-bold text-sm">🌐 דינמי (משותף)</div>
+                      <div className="text-xs text-gray-600">
+                        {isFirebaseAvailable ? 'Google Places + Firebase (כולם רואים!)' : 'Google Places + Firebase (לא זמין ב-Claude)'}
+                      </div>
+                    </div>
+                  </label>
+                </div>
+                
+                {/* Status indicator */}
+                <div className="mt-2 p-2 bg-white rounded-lg border border-purple-200">
+                  <div className="text-xs text-gray-700">
+                    <strong>מצב נוכחי:</strong>
+                    {formData.dataSource === 'static' ? (
+                      <span className="text-blue-600"> 💻 מקומי (localStorage)</span>
+                    ) : isFirebaseAvailable ? (
+                      <span className="text-green-600"> 🔥 Firebase (משותף!)</span>
+                    ) : (
+                      <span className="text-orange-600"> 💻 מקומי (Firebase לא זמין)</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Import/Export Section */}
+            
+            {/* Admin Device Management */}
+            <div className="mb-4">
+              <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-400 rounded-xl p-3">
+                <h3 className="text-base font-bold text-gray-800 mb-1">👑 ניהול Admin</h3>
+                <p className="text-xs text-gray-600 mb-2">
+                  רשום מכשירים נוספים כ-Admin (לא ירשמו בלוג)
+                </p>
+                
+                <div className="text-xs bg-white rounded-lg p-2 border border-red-200 mb-2">
+                  <strong>מכשיר נוכחי:</strong> {localStorage.getItem('bangkok_user_id')?.slice(-12) || 'N/A'}
+                  <br />
+                  <strong>סטטוס:</strong> {isCurrentUserAdmin ? 
+                    <span className="text-green-600 font-bold"> ✅ Admin</span> : 
+                    <span className="text-red-600 font-bold"> ❌ לא Admin</span>
+                  }
+                </div>
+                
+                {/* Register this device as admin */}
+                {!isCurrentUserAdmin && isFirebaseAvailable && database && (
+                  <button
+                    onClick={() => {
+                      const code = prompt('הזן קוד Admin (שאלו את ה-Admin):');
+                      if (code === 'bangkok2026') {
+                        const userId = localStorage.getItem('bangkok_user_id');
+                        database.ref(`settings/adminDevices/${userId}`).set(true)
+                          .then(() => {
+                            setIsCurrentUserAdmin(true);
+                            localStorage.setItem('bangkok_is_admin', 'true');
+                            showToast('מכשיר זה נרשם כ-Admin!', 'success');
+                          })
+                          .catch(err => showToast('שגיאה', 'error'));
+                      } else if (code !== null) {
+                        showToast('קוד שגוי', 'error');
+                      }
+                    }}
+                    className="w-full bg-red-500 text-white py-2 rounded-lg font-bold text-sm hover:bg-red-600"
+                  >
+                    🔑 רשום מכשיר זה כ-Admin
+                  </button>
+                )}
+                
+                {isCurrentUserAdmin && (
+                  <div className="space-y-2">
+                    {/* Access Log Button */}
+                    <button
+                      onClick={() => {
+                        markLogsAsSeen();
+                        setShowAccessLog(true);
+                      }}
+                      className="w-full bg-blue-500 text-white py-2 rounded-lg font-bold text-sm hover:bg-blue-600 flex items-center justify-center gap-2"
+                    >
+                      📋 צפה בלוג כניסות
+                      {hasNewEntries && <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full">חדש!</span>}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="mb-4">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-400 rounded-xl p-3">
+                <h3 className="text-base font-bold text-gray-800 mb-1">💾 ייבוא וייצוא</h3>
+                <p className="text-xs text-gray-600 mb-2">
+                  שמור והעבר נתונים בין מכשירים
+                </p>
+                
+                <div className="space-y-2">
+                  {/* Export Button */}
+                  <button
+                    onClick={() => {
+                      try {
+                        const data = {
+                          customInterests: customInterests,
+                          customLocations: customLocations,
+                          savedRoutes: savedRoutes,
+                          exportDate: new Date().toISOString(),
+                          version: '2.0'
+                        };
+                        
+                        const dataStr = JSON.stringify(data, null, 2);
+                        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                        const url = URL.createObjectURL(dataBlob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        const dateStr = new Date().toISOString().split('T')[0];
+                        link.download = `bangkok-data-${dateStr}.json`;
+                        link.click();
+                        URL.revokeObjectURL(url);
+                        
+                        showToast(`הקובץ הורד! (${customInterests.length} תחומים, ${customLocations.length} מקומות, ${savedRoutes.length} מסלולים)`, 'success');
+                      } catch (error) {
+                        console.error('[EXPORT] Error:', error);
+                        showToast('שגיאה בייצוא', 'error');
+                      }
+                    }}
+                    className="w-full bg-blue-500 text-white py-2 px-3 rounded-lg font-bold hover:bg-blue-600 transition text-sm flex items-center justify-center gap-2"
+                  >
+                    <span>📤 ייצא</span>
+                    <span className="text-xs bg-blue-600 px-2 py-0.5 rounded">
+                      {customInterests.length + customLocations.length + savedRoutes.length}
+                    </span>
+                  </button>
+                  
+                  {/* Import Button */}
+                  <div>
+                    <input
+                      type="file"
+                      accept=".json"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          try {
+                            const data = JSON.parse(event.target.result);
+                            
+                            if (!data.customInterests || !data.customLocations) {
+                              showToast('קובץ לא תקין', 'error');
+                              return;
+                            }
+                            
+                            setImportedData(data);
+                            setShowImportDialog(true);
+                          } catch (error) {
+                            console.error('[IMPORT] Error:', error);
+                            showToast('שגיאה בקריאת הקובץ', 'error');
+                          }
+                        };
+                        reader.readAsText(file);
+                        e.target.value = '';
+                      }}
+                      id="importData"
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="importData"
+                      className="block w-full bg-green-500 text-white py-2 px-3 rounded-lg font-bold hover:bg-green-600 transition text-sm text-center cursor-pointer"
+                    >
+                      📥 ייבא מקובץ
+                    </label>
+                  </div>
+                  
+                  {/* Info Box */}
+                  <div className="bg-blue-100 border border-blue-300 rounded-lg p-2 text-[10px]">
+                    <p className="text-blue-900 font-bold mb-1">💡 שימושים:</p>
+                    <ul className="text-blue-800 space-y-0.5 mr-3">
+                      <li>• העברה בין Claude ל-GitHub</li>
+                      <li>• גיבוי נתונים</li>
+                      <li>• שיתוף עם חברים</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Share App Section */}
+            <div className="mt-3">
+              <div className="bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-400 rounded-lg p-3">
+                <h3 className="text-sm font-bold text-gray-800 mb-2">📤 שתף את האפליקציה</h3>
+                <p className="text-xs text-gray-600 mb-3">
+                  אהבת את האפליקציה? שתף עם חברים!
+                </p>
+                
+                <button
+                  onClick={() => {
+                    const shareData = {
+                      title: 'Bangkok Explorer 🗺️',
+                      text: 'אפליקציה חכמה לתכנון טיולים בבנגקוק! מצא מקומות מעניינים ובנה מסלול מותאם אישית 🌏',
+                      url: window.location.href
+                    };
+                    
+                    // Try native share API (mobile)
+                    if (navigator.share) {
+                      navigator.share(shareData)
+                        .then(() => showToast('תודה על השיתוף!', 'success'))
+                        .catch((err) => {
+                          if (err.name !== 'AbortError') {
+                            console.error('Share error:', err);
+                          }
+                        });
+                    } else {
+                      // Fallback - reliable copy method
+                      try {
+                        const textArea = document.createElement('textarea');
+                        textArea.value = window.location.href;
+                        textArea.style.position = 'fixed';
+                        textArea.style.left = '-999999px';
+                        textArea.style.top = '-999999px';
+                        document.body.appendChild(textArea);
+                        textArea.focus();
+                        textArea.select();
+                        
+                        const successful = document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                        
+                        if (successful) {
+                          showToast('הקישור הועתק ללוח!', 'success');
+                        } else {
+                          // Show toast with URL
+                          showToast('העתק: ' + window.location.href, 'info');
+                        }
+                      } catch (err) {
+                        console.error('Copy error:', err);
+                        // Show toast with URL
+                        showToast('העתק: ' + window.location.href, 'info');
+                      }
+                    }
+                  }}
+                  className="w-full bg-orange-500 text-white py-2.5 px-4 rounded-lg font-bold hover:bg-orange-600 transition text-sm flex items-center justify-center gap-2"
+                >
+                  <span>📤</span>
+                  <span>שתף עם חברים</span>
+                </button>
+              </div>
+            </div>
+            
+            {/* Copyright Footer - Discreet */}
+            <div className="mt-4 pt-3 border-t border-gray-200 text-center">
+              <p className="text-[10px] text-gray-400">
+                © 2026 Eitan Fisher | Bangkok Explorer v1.0
+              </p>
+              
+              {/* Admin Access Log Button - Always visible, changes color */}
+              {formData.dataSource === 'dynamic' && (
+                <div className="mt-2">
+                  <button
+                    onClick={() => {
+                      setShowAccessLog(true);
+                      markLogsAsSeen();
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${
+                      hasNewEntries 
+                        ? 'bg-red-500 text-white animate-pulse shadow-lg' 
+                        : 'bg-gray-400 text-white hover:bg-gray-500 shadow-md'
+                    }`}
+                  >
+                    🔒 לוג כניסות
+                    {hasNewEntries && (
+                      <span className="mr-1">🔔</span>
+                    )}
+                  </button>
+                  
+                  {/* Admin Status */}
+                  <div className="text-[9px] text-gray-400 mt-1 flex items-center justify-center gap-2">
+                    {accessLogs.length > 0 ? (
+                      <span>👑 Admin Mode - {accessLogs.length} כניסות</span>
+                    ) : (
+                      <span>אין כניסות עדיין</span>
+                    )}
+                    
+                    {/* Clear Log Button */}
+                    {accessLogs.length > 0 && (
+                      <button
+                        onClick={() => {
+                          showConfirm('למחוק את כל לוג הכניסות? פעולה זו בלתי הפיכה.', () => {
+                            database.ref('accessLog').remove();
+                            localStorage.setItem('bangkok_last_seen', Date.now().toString());
+                            setAccessLogs([]);
+                            setHasNewEntries(false);
+                            showToast('הלוג נוקה', 'success');
+                          });
+                        }}
+                        className="text-red-500 hover:text-red-700 text-lg p-1"
+                        title="מחק לוג כניסות"
+                      >
+                        🗑️
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {/* Save Dialog */}

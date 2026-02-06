@@ -64,9 +64,916 @@
     <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <!-- Firebase SDK - dynamic loading for CSP compatibility -->
+    <script>
+    (function() {
+      ['firebase-app-compat.js','firebase-database-compat.js'].forEach(function(lib) {
+        var s = document.createElement('script');
+        s.src = 'https://www.gstatic.com/firebasejs/9.22.0/' + lib;
+        s.onerror = function() { console.warn('[FIREBASE] Blocked: ' + lib); };
+        document.head.appendChild(s);
+      });
+    })();
+    </script>
+    
+    <!-- Inlined JS modules -->
+    <script>
+// ============================================================================
+// Bangkok Explorer - Configuration & Constants
+// Copyright © 2026 Eitan Fisher. All Rights Reserved.
+// ============================================================================
+
+window.BKK = window.BKK || {};
+
+// Firebase Configuration
+window.BKK.firebaseConfig = {
+  apiKey: "AIzaSyCAH_2fk_plk6Dg5dlCCfaRWKL3Nmc6V6g",
+  authDomain: "bangkok-explorer.firebaseapp.com",
+  databaseURL: "https://bangkok-explorer-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "bangkok-explorer",
+  storageBucket: "bangkok-explorer.firebasestorage.app",
+  messagingSenderId: "139083217994",
+  appId: "1:139083217994:web:48fc6a45028c91d177bab3",
+  measurementId: "G-QVGD0RKEHP"
+};
+
+// Google Places API Configuration
+window.BKK.GOOGLE_PLACES_API_KEY = 'AIzaSyD0F0TYKuWXVqibhj-sH-DaElDtLL8hMwM';
+window.BKK.GOOGLE_PLACES_API_URL = 'https://places.googleapis.com/v1/places:searchNearby';
+
+// Interest Options (base categories)
+window.BKK.interestOptions = [
+  { id: 'temples', label: 'מקדשים', icon: '🛕' },
+  { id: 'food', label: 'אוכל', icon: '🍜' },
+  { id: 'graffiti', label: 'גרפיטי', icon: '🎨' },
+  { id: 'artisans', label: 'מלאכה', icon: '🔨' },
+  { id: 'galleries', label: 'גלריות', icon: '🖼️' },
+  { id: 'architecture', label: 'ארכיטקטורה', icon: '🏛️' },
+  { id: 'canals', label: 'תעלות', icon: '🚤' },
+  { id: 'cafes', label: 'קפה', icon: '☕' },
+  { id: 'markets', label: 'שווקים', icon: '🏪' },
+  { id: 'nightlife', label: 'לילה', icon: '🌃' },
+  { id: 'parks', label: 'פארקים', icon: '🌳' },
+  { id: 'rooftop', label: 'גגות', icon: '🌆' },
+  { id: 'entertainment', label: 'בידור', icon: '🎭' },
+  { id: 'other', label: 'אחר', icon: '📍' }
+];
+
+// Map interests to Google Places API categories
+window.BKK.interestToGooglePlaces = {
+  temples: ['hindu_temple', 'church', 'mosque', 'synagogue'],
+  food: ['restaurant', 'meal_takeaway'],
+  graffiti: ['art_gallery'],
+  artisans: ['store', 'art_gallery'],
+  galleries: ['art_gallery', 'museum'],
+  architecture: ['historical_landmark'],
+  canals: ['boat_tour_agency', 'marina'],
+  cafes: ['cafe', 'coffee_shop'],
+  markets: ['market', 'shopping_mall'],
+  nightlife: ['bar', 'night_club'],
+  parks: ['park', 'national_park'],
+  rooftop: ['bar', 'restaurant'],
+  entertainment: ['movie_theater', 'amusement_park', 'performing_arts_theater'],
+  other: ['tourist_attraction']
+};
+
+// Interests NOT covered by the system
+window.BKK.uncoveredInterests = [
+  { icon: '💆', name: 'עיסוי וספא', examples: 'Thai massage, wellness centers, spa' },
+  { icon: '🏋️', name: 'כושר וספורט', examples: 'Gyms, yoga studios, Muay Thai, fitness' },
+  { icon: '🛍️', name: 'קניות מיוחדות', examples: 'Boutiques, jewelry, fashion stores' },
+  { icon: '🎓', name: 'לימוד וחוויות', examples: 'Cooking classes, meditation, workshops' },
+  { icon: '🏥', name: 'בריאות ורפואה', examples: 'Clinics, pharmacies, health services' },
+  { icon: '🏨', name: 'אירוח', examples: 'Hotels, hostels, guesthouses' },
+  { icon: '🚗', name: 'תחבורה', examples: 'Car rental, bike rental, transportation' },
+  { icon: '💼', name: 'עסקים', examples: 'Coworking, offices, business centers' }
+];
+
+// Tooltip content for each interest
+window.BKK.interestTooltips = {
+  temples: 'מקדשים בודהיסטיים והינדיים',
+  food: 'מסעדות ואוכל רחוב',
+  graffiti: 'אומנות רחוב וגרפיטי',
+  artisans: 'בתי מלאכה ואומנים',
+  galleries: 'גלריות ומוזיאונים',
+  architecture: 'בניינים היסטוריים',
+  canals: 'שייטים בתעלות ובנהר',
+  cafes: 'בתי קפה',
+  markets: 'שווקים ובזארים',
+  nightlife: 'ברים ומועדוני לילה',
+  parks: 'גנים ופארקים',
+  rooftop: 'ברים ומסעדות על גגות',
+  entertainment: 'קולנוע, תיאטרון, מופעים',
+  other: 'מקומות נוספים'
+};
+
+// Area options
+window.BKK.areaOptions = [
+  { id: 'sukhumvit', label: 'סוקומווית', labelEn: 'Sukhumvit', icon: '🏙️' },
+  { id: 'old-town', label: 'העיר העתיקה', labelEn: 'Old Town', icon: '🏰' },
+  { id: 'chinatown', label: 'צ\'יינה טאון', labelEn: 'Chinatown', icon: '🏮' },
+  { id: 'thonglor', label: 'תונגלור', labelEn: 'Thonglor', icon: '☕' },
+  { id: 'ari', label: 'ארי', labelEn: 'Ari', icon: '🎨' },
+  { id: 'riverside', label: 'ריברסייד', labelEn: 'Riverside', icon: '🌊' }
+];
+
+// Area coordinates (center points + radius)
+window.BKK.areaCoordinates = {
+  'sukhumvit': { lat: 13.7370, lng: 100.5610, radius: 2500 },
+  'old-town': { lat: 13.7500, lng: 100.4914, radius: 2000 },
+  'chinatown': { lat: 13.7408, lng: 100.5050, radius: 1500 },
+  'thonglor': { lat: 13.7320, lng: 100.5830, radius: 2000 },
+  'ari': { lat: 13.7790, lng: 100.5410, radius: 2000 },
+  'riverside': { lat: 13.7270, lng: 100.4965, radius: 2000 }
+};
+
+// Help content for all views
+window.BKK.helpContent = {
+  main: {
+    title: 'תכנון מסלול',
+    content: `**מה זה Bangkok Explorer?**
+אפליקציה לתכנון מסלולי טיול בבנגקוק. בחר תחומי עניין ואזור, והמערכת תבנה לך מסלול מותאם.
+
+**איך להתחיל:**
+• בחר **איזור** - האזור בבנגקוק שמעניין אותך
+• בחר **תחומי עניין** - לחץ על האייקונים (מקדשים, אוכל, קניות...)
+• לחץ **"מצא נקודות עניין"** - הכמות מוצגת בסוגריים (ניתן לשנות בהגדרות)
+
+**סוגי מסלול:**
+• 🔄 **מעגלי** - מסלול שחוזר לנקודת ההתחלה
+• ➡️ **ליניארי** - מסלול בקו ישר מנקודה לנקודה
+
+**טיפ:**
+לטיול גמיש בלי סדר מוגדר - בחר לאן ללכת בעצמך מתוך הרשימה, או השתמש ב"הצג נקודות על המפה".`
+  },
+  placesListing: {
+    title: 'רשימת המקומות',
+    content: `**איך נבחרו המקומות?**
+1. קודם - המקומות שהוספת בעצמך
+2. אחר כך - מקומות מ-Google לפי דירוג גבוה
+
+**כמות המקומות לכל תחום:**
+מחושבת לפי: סה"כ מקומות (מההגדרות) חלקי מספר תחומי העניין שבחרת.
+
+**כפתורים בכל מקום:**
+• ✕ **אפור** - דלג זמנית (הופך ל-⏸️ צהוב כשמושהה)
+• ⏸️ **צהוב** - החזר למסלול (לחיצה מבטלת השהיה)
+• 🚫 **אדום** - דלג לצמיתות (לא יופיע יותר)
+• ✅ **ירוק** - בטל דילוג קבוע
+• + **סגול** - הוסף לרשימה שלי
+• ✏️ **כחול** - ערוך (רק למקומות שלי)
+
+**כפתורים למטה:**
+• 💾 **סגול** - שמור מסלול (שם + הערות)
+• 🗺️ **ירוק** - פתח את המסלול ב-Google Maps
+
+**"+ עוד" ליד כל תחום:**
+מוסיף מקומות נוספים מאותו סוג.
+
+**לחיצה על שם המקום** פותחת אותו ב-Google Maps.`
+  },
+  route: {
+    title: 'תוצאות המסלול',
+    content: `**לוגיקת המקומות:**
+המערכת מביאה קודם את המקומות שלך (מותאמים אישית), ואחר כך משלימה עם מקומות מ-Google לפי דירוג גבוה.
+
+**כפתורים בכל מקום:**
+• 🗺️ **מפה** - פתיחה ב-Google Maps
+• ✏️ **עריכה** - עריכת פרטי המקום
+• 🚫 **דילוג** - הסרה זמנית מהמסלול הנוכחי
+• 🔙 **החזרה** - החזרת מקום שדולג
+• לחיצה על השם - פרטים מלאים
+
+**כפתורים כלליים:**
+• **"פתח ב-Google Maps"** - פתיחת המסלול המחושב במפות
+• **"מצא עוד"** - הוספת מקומות נוספים לתחום מסוים
+• **"שמור מסלול"** - שמירה לשימוש עתידי
+• **"מסלול חדש"** - התחלה מחדש
+
+**סימונים:**
+• ⭐ - מקום מותאם אישית (שלך)
+• 🛠️ - מקום בתהליך עדכון
+• ⚠️ - חסרות קואורדינטות
+• 🚫 - מקום שדולג (זמנית במסלול זה)`
+  },
+  myContent: {
+    title: 'התוכן שלי',
+    content: `**מה יש כאן:**
+ניהול המקומות ותחומי העניין שהוספת בעצמך.
+
+**מקומות מותאמים אישית:**
+• לחץ **"+ הוסף מקום"** להוספת מקום חדש
+• לחץ על מקום קיים לצפייה בפרטים
+• ✏️ לעריכה, 🗑️ למחיקה
+
+**תחומי עניין:**
+• לחץ **"+ הוסף תחום"** ליצירת קטגוריה חדשה
+• בחר אייקון ושם
+• תחומים מותאמים יופיעו בבחירת תחומי עניין
+
+**סטטוס מקום:**
+• ✅ **פעיל** - יופיע במסלולים
+• 🚫 **רשימה שחורה** - לא יופיע לעולם
+
+**טיפ:** מקומות שלך מקבלים עדיפות על פני מקומות מ-Google!`
+  },
+  saved: {
+    title: 'מסלולים שמורים',
+    content: `**מה יש כאן:**
+כל המסלולים ששמרת לשימוש עתידי.
+
+**שמירת מסלול:**
+• לחץ "💾 שמור מסלול" במסך המסלול
+• תן שם ייחודי (חובה)
+• הוסף הערות אם רוצה
+
+**פעולות:**
+• לחץ על מסלול לטעינה מחדש
+• 🗑️ למחיקת מסלול
+
+**טיפ:**
+מסלולים נכללים בייצוא/ייבוא בהגדרות!`
+  },
+  settings: {
+    title: 'הגדרות',
+    content: `**הגדרות המערכת:**
+
+**מקור נתונים:**
+• **דינמי** - נתונים משותפים (Firebase) - מומלץ
+• **סטטי** - נתונים מקומיים בלבד (לפיתוח)
+
+**ייבוא/ייצוא:**
+• **ייצוא** - שומר את כל המקומות והתחומים שלך לקובץ JSON
+• **ייבוא** - מוסיף מקומות ותחומים מקובץ
+
+**איך עובד הייבוא:**
+• כפילויות (לפי שם) ידולגו אוטומטית
+• תחומים חסרים ייווצרו אוטומטית
+• שום דבר לא יימחק - רק הוספה
+
+**Admin (למנהלים):**
+• צפייה בלוג כניסות
+• ניהול מכשירים מורשים`
+  },
+  addLocation: {
+    title: 'הוספת/עריכת מקום',
+    content: `**שדות חובה:**
+• **שם** - שם המקום
+• **תחום עניין** - לפחות אחד
+
+**שדות נוספים:**
+• **איזור** - לסינון לפי אזור בבנגקוק
+• **תמונה** - העלאה מהמכשיר או קישור
+• **כתובת** - טקסט חופשי
+• **קישור Maps** - העתק מ-Google Maps
+• **הערות** - מידע נוסף לעצמך
+
+**מה זה קואורדינטות?**
+מיקום מדויק על המפה (קו רוחב + קו אורך).
+בלי קואורדינטות - המקום לא יופיע במסלול ב-Google Maps!
+
+**איך להשיג קואורדינטות:**
+• 🔤 **שם** - חיפוש אוטומטי לפי שם המקום
+• 🏠 **כתובת** - חיפוש לפי הכתובת שהזנת
+• 🔗 **קישור** - חילוץ מקישור Google Maps
+• 📍 **מיקום** - GPS - המיקום הנוכחי שלך
+• 🗺️ **בדוק** - פתיחה במפה לאימות
+
+**טיפ לקישור Maps:**
+1. פתח Google Maps ומצא את המקום
+2. לחץ על המקום ואז "שתף"
+3. העתק את הקישור והדבק בשדה "קישור Maps"
+4. לחץ 🔗 לחילוץ הקואורדינטות
+
+**כפתורים:**
+• **הוסף/עדכן** - שומר ונשאר פתוח
+• **סגור** - שומר וסוגר
+• **X** - סוגר בלי לשמור`
+  },
+  addInterest: {
+    title: 'הוספת תחום עניין',
+    content: `**מה זה תחום עניין מותאם?**
+תת-תחום חדש שאתה יוצר, מבוסס על תחום קיים במערכת.
+
+**שדות:**
+• **שם התחום** - השם שיוצג (לדוגמה: "בתי קולנוע")
+• **אייקון** - אימוג'י שייצג את התחום
+• **תחום בסיס** - התחום הקיים שאליו יתווסף התחום החדש כתת-תחום
+
+**איך זה עובד?**
+ב"מצא מקומות", כשתבחר את התחום החדש, המערכת תחפש בגוגל מקומות מתחום הבסיס שכוללים את התחום החדש.
+
+**דוגמה:**
+תחום חדש: "בתי קולנוע" 🎬
+תחום בסיס: "בידור" 🎭
+→ המערכת תחפש מקומות בידור שהם בתי קולנוע
+
+**כפתורים:**
+• **הוסף** - שומר ונשאר פתוח להוספה נוספת
+• **סגור** - שומר וסוגר
+• **X** - סוגר בלי לשמור`
+  }
+};
+
+console.log('[CONFIG] Loaded successfully');
+
+    </script>
+    <script>
+// ============================================================================
+// Bangkok Explorer - Static Data Manager
+// Copyright © 2026 Eitan Fisher. All Rights Reserved.
+// Curated locations for offline/static mode
+// ============================================================================
+
+window.BKK = window.BKK || {};
+
+const staticLocationsData = {
+  sukhumvit: {
+    graffiti: [
+      { name: 'Sukhumvit Soi 11 Street Art', lat: 13.7450, lng: 100.5535, description: 'גרפיטי ובילוי', duration: 25 },
+      { name: 'Phrom Phong Art Walk', lat: 13.7305, lng: 100.5700, description: 'אומנות רחוב ליד BTS', duration: 30 },
+      { name: 'Soi 23 Graffiti Wall', lat: 13.7410, lng: 100.5640, description: 'קיר גרפיטי', duration: 25 }
+    ],
+    galleries: [
+      { name: 'H Gallery', lat: 13.7290, lng: 100.5715, description: 'גלריה עכשווית', duration: 45 },
+      { name: 'Number 1 Gallery', lat: 13.7420, lng: 100.5565, description: 'אומנות מקומית', duration: 30 },
+      { name: 'Thavibu Gallery', lat: 13.7365, lng: 100.5625, description: 'אומנות אסיאתית', duration: 40 }
+    ],
+    artisans: [
+      { name: 'Jim Thompson House', lat: 13.7464, lng: 100.5347, description: 'בית משי ואדריכלות', duration: 60 },
+      { name: 'Local Crafts Soi 33', lat: 13.7355, lng: 100.5680, description: 'מלאכה תאילנדית', duration: 40 }
+    ],
+    cafes: [
+      { name: 'Rocket Coffeebar Soi 12', lat: 13.7425, lng: 100.5575, description: 'קפה מינימליסטי', duration: 40 },
+      { name: 'Roast Coffee Asok', lat: 13.7375, lng: 100.5605, description: 'קפה איכותי ליד BTS', duration: 35 },
+      { name: 'Roots Coffee Soi 49', lat: 13.7295, lng: 100.5760, description: 'קפה בוטיק', duration: 30 },
+      { name: 'EmQuartier Cafes', lat: 13.7310, lng: 100.5695, description: 'קפה בקניון מודרני', duration: 40 }
+    ],
+    architecture: [
+      { name: 'Terminal 21 Asoke', lat: 13.7380, lng: 100.5600, description: 'קניון בעיצוב ערים', duration: 60 },
+      { name: 'EmQuartier Mall', lat: 13.7310, lng: 100.5695, description: 'קניון מודרני יוקרתי', duration: 50 },
+      { name: 'Benjakitti Park', lat: 13.7300, lng: 100.5645, description: 'פארק ואגם גדול', duration: 45 },
+      { name: 'Jim Thompson House', lat: 13.7464, lng: 100.5347, description: 'בית משי היסטורי', duration: 60 }
+    ],
+    food: [
+      { name: 'Sukhumvit Soi 38 Night Market', lat: 13.7345, lng: 100.5725, description: 'שוק אוכל רחוב מפורסם', duration: 60 },
+      { name: 'Terminal 21 Food Court', lat: 13.7380, lng: 100.5600, description: 'מתחם אוכל בקניון', duration: 45 },
+      { name: 'Nana Plaza Restaurants', lat: 13.7415, lng: 100.5550, description: 'מסעדות מגוונות', duration: 50 }
+    ],
+    markets: [
+      { name: 'Khlong Toei Market', lat: 13.7230, lng: 100.5840, description: 'שוק סיטונאי ואוכל', duration: 50 },
+      { name: 'Sukhumvit Plaza Market', lat: 13.7390, lng: 100.5585, description: 'שוק מקומי', duration: 40 },
+      { name: 'Terminal 21 Shopping', lat: 13.7380, lng: 100.5600, description: 'קניון עם שווקים', duration: 50 },
+      { name: 'Sukhumvit Soi 38 Night Market', lat: 13.7345, lng: 100.5725, description: 'שוק אוכל ומוצרים', duration: 60 }
+    ],
+    nightlife: [
+      { name: 'Sukhumvit Soi 11 Bars', lat: 13.7450, lng: 100.5535, description: 'רחוב ברים ומועדונים', duration: 90 },
+      { name: 'Nana Plaza Entertainment', lat: 13.7415, lng: 100.5550, description: 'אזור בילוי ומסעדות', duration: 90 },
+      { name: 'Asok Nightlife Area', lat: 13.7370, lng: 100.5610, description: 'בילוי ליד BTS', duration: 80 }
+    ],
+    parks: [
+      { name: 'Benjakitti Park', lat: 13.7300, lng: 100.5645, description: 'פארק עירוני גדול', duration: 45 }
+    ],
+    entertainment: [
+      { name: 'Terminal 21 Cineplex', lat: 13.7380, lng: 100.5600, description: 'קולנוע בקניון', duration: 150 },
+      { name: 'EmQuartier Cineplex', lat: 13.7310, lng: 100.5695, description: 'קולנוע יוקרתי', duration: 150 },
+      { name: 'Saxophone Pub & Restaurant', lat: 13.7405, lng: 100.5545, description: 'מועדון ג\'אז חי', duration: 120 },
+      { name: 'Escape Hunt Bangkok', lat: 13.7310, lng: 100.5695, description: 'חדר בריחה', duration: 90 }
+    ]
+  },
+  'old-town': {
+    temples: [
+      { name: 'Wat Pho', lat: 13.7465, lng: 100.4927, description: 'בודהה השוכב', duration: 90 },
+      { name: 'Grand Palace', lat: 13.7500, lng: 100.4914, description: 'הארמון המלכותי', duration: 120 },
+      { name: 'Wat Saket (Golden Mount)', lat: 13.7539, lng: 100.5064, description: 'הר הזהב', duration: 60 },
+      { name: 'Wat Suthat', lat: 13.7513, lng: 100.5006, description: 'מקדש גדול', duration: 45 }
+    ],
+    architecture: [
+      { name: 'Wat Arun', lat: 13.7437, lng: 100.4888, description: 'מקדש השחר', duration: 60 },
+      { name: 'Democracy Monument', lat: 13.7566, lng: 100.5015, description: 'אנדרטת דמוקרטיה', duration: 20 },
+      { name: 'Giant Swing', lat: 13.7512, lng: 100.5014, description: 'נדנדה ענקית', duration: 15 }
+    ],
+    canals: [
+      { name: 'Khlong Saen Saeb Canal Boat', lat: 13.7590, lng: 100.5017, description: 'סירת תעלה', duration: 30 },
+      { name: 'Longtail Boat Tour', lat: 13.7520, lng: 100.4950, description: 'סיור בתעלות', duration: 90 }
+    ],
+    markets: [
+      { name: 'Pak Khlong Talat', lat: 13.7413, lng: 100.4959, description: 'שוק פרחים 24 שעות', duration: 45 },
+      { name: 'Amulet Market', lat: 13.7480, lng: 100.4938, description: 'שוק קמיעות', duration: 30 }
+    ],
+    food: [
+      { name: 'Khao San Road', lat: 13.7590, lng: 100.4978, description: 'רחוב תרמילאים', duration: 90 },
+      { name: 'Tha Tien Market', lat: 13.7450, lng: 100.4920, description: 'שוק אוכל מקומי', duration: 40 }
+    ],
+    entertainment: [
+      { name: 'National Theatre', lat: 13.7540, lng: 100.5025, description: 'תיאטרון לאומי - מופעים תאילנדיים', duration: 120 },
+      { name: 'Rattanakosin Exhibition Hall', lat: 13.7513, lng: 100.4988, description: 'אולם תערוכות', duration: 60 }
+    ]
+  },
+  chinatown: {
+    food: [
+      { name: 'Yaowarat Road', lat: 13.7408, lng: 100.5133, description: 'רחוב האוכל המפורסם', duration: 90 },
+      { name: 'T&K Seafood', lat: 13.7392, lng: 100.5078, description: 'פירות ים מפורסם', duration: 60 },
+      { name: 'Nai Ek Roll Noodles', lat: 13.7420, lng: 100.5110, description: 'נודלס גלילה', duration: 30 },
+      { name: 'Chinatown Odeon Circle', lat: 13.7403, lng: 100.5152, description: 'מעגל אוכל', duration: 50 }
+    ],
+    markets: [
+      { name: 'Sampeng Lane', lat: 13.7422, lng: 100.5102, description: 'סמטת סיטונאות', duration: 60 },
+      { name: 'Yaowarat Market', lat: 13.7405, lng: 100.5115, description: 'שוק סיני', duration: 50 },
+      { name: 'Nakhon Kasem (Thieves Market)', lat: 13.7445, lng: 100.5098, description: 'שוק גנבים', duration: 45 }
+    ],
+    temples: [
+      { name: 'Wat Traimit', lat: 13.7403, lng: 100.5152, description: 'בודהה זהב 5.5 טון', duration: 45 },
+      { name: 'Wat Mangkon Kamalawat', lat: 13.7431, lng: 100.5123, description: 'מקדש סיני עתיק', duration: 40 }
+    ],
+    architecture: [
+      { name: 'Yaowarat Chinatown Gate', lat: 13.7403, lng: 100.5152, description: 'שער צ\'יינה טאון', duration: 15 },
+      { name: 'Old Shophouses', lat: 13.7410, lng: 100.5120, description: 'בתי חנות עתיקים', duration: 30 }
+    ],
+    entertainment: [
+      { name: 'Chinatown Heritage Center', lat: 13.7422, lng: 100.5102, description: 'מרכז מורשת', duration: 60 }
+    ]
+  },
+  thonglor: {
+    galleries: [
+      { name: 'ARDEL Gallery', lat: 13.7284, lng: 100.5801, description: 'אומנות עכשווית', duration: 50 },
+      { name: '100 Tonson Gallery', lat: 13.7326, lng: 100.5795, description: 'גלריה בוטיק', duration: 40 },
+      { name: 'Bangkok CityCity Gallery', lat: 13.7312, lng: 100.5789, description: 'אומנות מקומית', duration: 45 }
+    ],
+    cafes: [
+      { name: 'Casa Lapin x49', lat: 13.7325, lng: 100.5814, description: 'קפה יפני-סקנדינבי', duration: 50 },
+      { name: 'Everyday Karmakamet', lat: 13.7312, lng: 100.5797, description: 'קפה ובשמים', duration: 45 },
+      { name: 'Roots Coffee Roaster', lat: 13.7329, lng: 100.5821, description: 'קפה מקומי', duration: 40 },
+      { name: 'Ceresia Coffee', lat: 13.7318, lng: 100.5805, description: 'קפה איכותי', duration: 35 }
+    ],
+    food: [
+      { name: 'Thonglor Soi 13', lat: 13.7323, lng: 100.5795, description: 'מסעדות בוטיק', duration: 60 },
+      { name: 'J Avenue Food Hall', lat: 13.7315, lng: 100.5806, description: 'מתחם אוכל', duration: 50 }
+    ],
+    nightlife: [
+      { name: 'Thonglor Soi 10', lat: 13.7318, lng: 100.5810, description: 'ברים ומועדונים', duration: 90 },
+      { name: 'Arena 10', lat: 13.7320, lng: 100.5812, description: 'מועדון', duration: 80 }
+    ],
+    markets: [
+      { name: 'W Market Ekkamai', lat: 13.7206, lng: 100.5891, description: 'שוק לילה וינטג\'', duration: 60 }
+    ],
+    entertainment: [
+      { name: 'Major Cineplex Ekkamai', lat: 13.7195, lng: 100.5850, description: 'קולנוע גדול', duration: 150 },
+      { name: 'The Commons Jazz Bar', lat: 13.7300, lng: 100.5743, description: 'בר ג\'אז אינטימי', duration: 120 }
+    ]
+  },
+  ari: {
+    graffiti: [
+      { name: 'Ari Street Art', lat: 13.7788, lng: 100.5445, description: 'גרפיטי בסמטאות', duration: 30 }
+    ],
+    galleries: [
+      { name: 'Speedy Grandma', lat: 13.7774, lng: 100.5423, description: 'גלריה קטנה', duration: 35 },
+      { name: 'The Reading Room', lat: 13.7780, lng: 100.5435, description: 'ספרייה וגלריה', duration: 40 }
+    ],
+    cafes: [
+      { name: 'Audrey Cafe', lat: 13.7781, lng: 100.5419, description: 'קפה ורוד אודרי הפבורן', duration: 50 },
+      { name: 'Macaroni Club', lat: 13.7803, lng: 100.5461, description: 'קפה איטלקי רטרו', duration: 60 },
+      { name: 'Brave Roasters', lat: 13.7795, lng: 100.5441, description: 'קפה מקומי איכותי', duration: 40 },
+      { name: 'Stendhal Syndrome', lat: 13.7785, lng: 100.5430, description: 'קפה אמנותי', duration: 45 }
+    ],
+    artisans: [
+      { name: 'YELO House', lat: 13.7792, lng: 100.5432, description: 'בית בעלי מלאכה', duration: 45 },
+      { name: 'Play Pot', lat: 13.7787, lng: 100.5438, description: 'קרמיקה', duration: 50 }
+    ],
+    food: [
+      { name: 'Ari Night Market', lat: 13.7785, lng: 100.5437, description: 'שוק אוכל לילה', duration: 60 },
+      { name: 'Ari Soi 1', lat: 13.7790, lng: 100.5440, description: 'מסעדות', duration: 50 }
+    ],
+    parks: [
+      { name: 'Chatuchak Park', lat: 13.8034, lng: 100.5523, description: 'פארק גדול', duration: 40 }
+    ],
+    entertainment: [
+      { name: 'Iron Fairies Bar', lat: 13.7790, lng: 100.5445, description: 'בר אלטרנטיבי', duration: 90 }
+    ]
+  },
+  riverside: {
+    canals: [
+      { name: 'Chao Phraya River Cruise', lat: 13.7248, lng: 100.5084, description: 'שייט ארוחת ערב', duration: 120 },
+      { name: 'Chao Phraya Express Boat', lat: 13.7272, lng: 100.5085, description: 'סירת תחבורה', duration: 30 },
+      { name: 'Khlong Bangkok Yai Tour', lat: 13.7380, lng: 100.4895, description: 'תעלה גדולה', duration: 60 }
+    ],
+    rooftop: [
+      { name: 'Sky Bar Lebua', lat: 13.7227, lng: 100.5089, description: 'בר גג Hangover 2', duration: 90 },
+      { name: 'Above Eleven', lat: 13.7245, lng: 100.5256, description: 'בר גג פרואני', duration: 80 },
+      { name: 'The Deck by Arun Residence', lat: 13.7430, lng: 100.4895, description: 'מסעדת גג מול Wat Arun', duration: 70 }
+    ],
+    architecture: [
+      { name: 'Asiatique Riverfront', lat: 13.7051, lng: 100.5091, description: 'שוק ריברסייד ענק', duration: 120 },
+      { name: 'Mandarin Oriental', lat: 13.7237, lng: 100.5145, description: 'מלון היסטורי 1876', duration: 30 },
+      { name: 'ICONSIAM', lat: 13.7268, lng: 100.5101, description: 'קניון על הנהר', duration: 90 },
+      { name: 'Warehouse 30', lat: 13.7305, lng: 100.5024, description: 'מחסן אומנות Talat Noi', duration: 50 }
+    ],
+    temples: [
+      { name: 'Wat Arun from River', lat: 13.7437, lng: 100.4888, description: 'מקדש השחר מהנהר', duration: 60 },
+      { name: 'Wat Kalayanamit', lat: 13.7351, lng: 100.4900, description: 'מקדש על הנהר', duration: 40 }
+    ],
+    graffiti: [
+      { name: 'Talat Noi Street Art', lat: 13.7305, lng: 100.5024, description: 'אומנות רחוב בשכונה סינית', duration: 40 }
+    ],
+    entertainment: [
+      { name: 'Asiatique Sky Theater', lat: 13.7045, lng: 100.5076, description: 'תיאטרון מופעים', duration: 90 },
+      { name: 'Calypso Cabaret', lat: 13.7048, lng: 100.5078, description: 'מופע קברט', duration: 90 },
+      { name: 'ICONSIAM ICON Cineplex', lat: 13.7268, lng: 100.5101, description: 'קולנוע על הנהר', duration: 150 }
+    ]
+  }
+};
+
+// Public API for StaticDataManager
+window.BKK.StaticDataManager = {
+  // Get locations for specific area and interests
+  getLocations: (area, interests) => {
+    console.log('[STATIC] Getting locations:', { area, interests });
+    const areaData = staticLocationsData[area] || staticLocationsData.sukhumvit;
+    let stops = [];
+    
+    interests.forEach(interest => {
+      // Skip custom interests (they start with 'custom_')
+      if (interest.startsWith('custom_')) {
+        console.log('[STATIC] Skipping custom interest:', interest);
+        return;
+      }
+      
+      if (areaData[interest]) {
+        const locationsWithInterest = areaData[interest].map(loc => ({
+          ...loc,
+          interests: [interest]
+        }));
+        stops = [...stops, ...locationsWithInterest];
+      } else {
+        console.log('[STATIC] No data for interest:', interest);
+      }
+    });
+    
+    // Remove duplicates
+    const seen = new Set();
+    const unique = stops.filter(stop => {
+      const key = `${stop.lat},${stop.lng}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    
+    console.log('[STATIC] Found places:', unique.length);
+    return unique;
+  },
+  
+  // Check if static data is available
+  hasData: () => {
+    return Object.keys(staticLocationsData).length > 0;
+  },
+  
+  // Get all areas
+  getAreas: () => {
+    return Object.keys(staticLocationsData);
+  }
+};
+
+console.log('[STATIC DATA] Loaded successfully -', Object.keys(staticLocationsData).length, 'areas');
+
+    </script>
+    <script>
+// ============================================================================
+// Bangkok Explorer - Utility Functions
+// Copyright © 2026 Eitan Fisher. All Rights Reserved.
+// Pure functions - no React state dependency
+// ============================================================================
+
+window.BKK = window.BKK || {};
+
+// ============================================================================
+// GEOLOCATION & COORDINATES
+// ============================================================================
+
+/**
+ * Check if a location is within an area's boundaries using Haversine formula
+ * @returns {{ valid: boolean, distance: number, distanceKm: string }}
+ */
+window.BKK.checkLocationInArea = (lat, lng, areaId) => {
+  const area = window.BKK.areaCoordinates[areaId];
+  if (!area || !lat || !lng) return { valid: true, distance: 0 };
+  
+  const R = 6371e3; // Earth radius in meters
+  const lat1Rad = lat * Math.PI / 180;
+  const lat2Rad = area.lat * Math.PI / 180;
+  const deltaLat = (area.lat - lat) * Math.PI / 180;
+  const deltaLng = (area.lng - lng) * Math.PI / 180;
+  
+  const a = Math.sin(deltaLat/2) * Math.sin(deltaLat/2) +
+            Math.cos(lat1Rad) * Math.cos(lat2Rad) *
+            Math.sin(deltaLng/2) * Math.sin(deltaLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const distance = R * c;
+  
+  return { 
+    valid: distance <= area.radius, 
+    distance: Math.round(distance),
+    distanceKm: (distance / 1000).toFixed(1)
+  };
+};
+
+/**
+ * Extract coordinates from Google Maps URL (various formats)
+ * @returns {{ lat: number, lng: number } | null}
+ */
+window.BKK.extractCoordsFromUrl = (url) => {
+  if (!url || !url.trim()) return null;
+
+  let lat = null, lng = null;
+  let match;
+  
+  // Format 1: ?q=13.7465,100.4927
+  match = url.match(/[?&]q=([-\d.]+),([-\d.]+)/);
+  if (match) { lat = parseFloat(match[1]); lng = parseFloat(match[2]); }
+  
+  // Format 2: @13.7465,100.4927,17z
+  if (!lat) {
+    match = url.match(/@([-\d.]+),([-\d.]+)/);
+    if (match) { lat = parseFloat(match[1]); lng = parseFloat(match[2]); }
+  }
+  
+  // Format 3: &ll=13.7465,100.4927
+  if (!lat) {
+    match = url.match(/[?&]ll=([-\d.]+),([-\d.]+)/);
+    if (match) { lat = parseFloat(match[1]); lng = parseFloat(match[2]); }
+  }
+  
+  // Format 4: Shortened URLs (goo.gl)
+  if (!lat && (url.includes('goo.gl') || url.includes('maps.app'))) {
+    return { lat: null, lng: null, shortened: true };
+  }
+  
+  // Format 5: Raw coordinates: 13.7465,100.4927
+  if (!lat) {
+    match = url.match(/^([-\d.]+)\s*,\s*([-\d.]+)$/);
+    if (match) { lat = parseFloat(match[1]); lng = parseFloat(match[2]); }
+  }
+  
+  if (lat !== null && lng !== null) {
+    return { lat, lng };
+  }
+  return null;
+};
+
+/**
+ * Geocode address using Google Places Text Search API
+ * @returns {{ lat, lng, address, displayName } | null}
+ */
+window.BKK.geocodeAddress = async (address) => {
+  if (!address || !address.trim()) return null;
+
+  const searchQuery = address.toLowerCase().includes('bangkok') 
+    ? address 
+    : `${address}, Bangkok, Thailand`;
+  
+  const response = await fetch(
+    'https://places.googleapis.com/v1/places:searchText',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': window.BKK.GOOGLE_PLACES_API_KEY,
+        'X-Goog-FieldMask': 'places.displayName,places.location,places.formattedAddress'
+      },
+      body: JSON.stringify({ textQuery: searchQuery, maxResultCount: 1 })
+    }
+  );
+  
+  const data = await response.json();
+  
+  if (data.places && data.places.length > 0) {
+    const place = data.places[0];
+    return {
+      lat: place.location.latitude,
+      lng: place.location.longitude,
+      address: place.formattedAddress || place.displayName?.text || searchQuery,
+      displayName: place.displayName?.text || ''
+    };
+  }
+  return null;
+};
+
+/**
+ * Geocode by place name
+ * @returns {{ lat, lng, address, displayName } | null}
+ */
+window.BKK.geocodeByName = async (name) => {
+  if (!name || !name.trim()) return null;
+
+  const searchQuery = name.toLowerCase().includes('bangkok') 
+    ? name 
+    : `${name}, Bangkok, Thailand`;
+  
+  const response = await fetch(
+    'https://places.googleapis.com/v1/places:searchText',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': window.BKK.GOOGLE_PLACES_API_KEY,
+        'X-Goog-FieldMask': 'places.displayName,places.location,places.formattedAddress'
+      },
+      body: JSON.stringify({ textQuery: searchQuery, maxResultCount: 1 })
+    }
+  );
+  
+  const data = await response.json();
+  
+  if (data.places && data.places.length > 0) {
+    const place = data.places[0];
+    return {
+      lat: place.location.latitude,
+      lng: place.location.longitude,
+      address: place.formattedAddress || '',
+      displayName: place.displayName?.text || name
+    };
+  }
+  return null;
+};
+
+/**
+ * Reverse geocode: get address from coordinates
+ * @returns {string} formatted address
+ */
+window.BKK.reverseGeocode = async (lat, lng) => {
+  try {
+    const response = await fetch(
+      'https://places.googleapis.com/v1/places:searchText',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': window.BKK.GOOGLE_PLACES_API_KEY,
+          'X-Goog-FieldMask': 'places.formattedAddress'
+        },
+        body: JSON.stringify({ textQuery: `${lat},${lng}`, maxResultCount: 1 })
+      }
+    );
+    
+    const data = await response.json();
+    if (data.places && data.places.length > 0) {
+      return data.places[0].formattedAddress || '';
+    }
+    return '';
+  } catch (error) {
+    console.error('[REVERSE GEOCODE] Error:', error);
+    return '';
+  }
+};
+
+// ============================================================================
+// IMAGE HANDLING
+// ============================================================================
+
+/**
+ * Compress image file to target size
+ * @returns {Promise<string>} base64 compressed image
+ */
+window.BKK.compressImage = (file, maxSizeKB = 200) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        const maxDimension = 800;
+        if (width > height && width > maxDimension) {
+          height = (height / width) * maxDimension;
+          width = maxDimension;
+        } else if (height > maxDimension) {
+          width = (width / height) * maxDimension;
+          height = maxDimension;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        let quality = 0.8;
+        let compressed = canvas.toDataURL('image/jpeg', quality);
+        
+        while (compressed.length > maxSizeKB * 1024 * 1.37 && quality > 0.3) {
+          quality -= 0.1;
+          compressed = canvas.toDataURL('image/jpeg', quality);
+        }
+        
+        console.log('[IMAGE] Compressed:', {
+          original: file.size,
+          compressed: Math.round(compressed.length / 1024),
+          quality
+        });
+        
+        resolve(compressed);
+      };
+      img.src = e.target.result;
+    };
+    
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
+
+// ============================================================================
+// UI HELPERS
+// ============================================================================
+
+/**
+ * Consistent button style generator
+ */
+window.BKK.getButtonStyle = (isActive = false, variant = 'primary') => {
+  const baseStyle = {
+    border: isActive ? '5px solid #f97316' : '3px solid #d1d5db',
+    backgroundColor: isActive ? '#fed7aa' : '#ffffff',
+    boxShadow: isActive ? '0 10px 15px -3px rgba(0, 0, 0, 0.3)' : 'none',
+    padding: '12px 16px',
+    borderRadius: '12px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    transition: 'all 0.2s'
+  };
+  
+  if (variant === 'danger') {
+    return {
+      ...baseStyle,
+      border: '3px solid #ef4444',
+      backgroundColor: isActive ? '#fecaca' : '#ffffff',
+      color: '#dc2626'
+    };
+  }
+  
+  if (variant === 'success') {
+    return {
+      ...baseStyle,
+      border: '3px solid #10b981',
+      backgroundColor: isActive ? '#d1fae5' : '#ffffff',
+      color: '#059669'
+    };
+  }
+  
+  return baseStyle;
+};
+
+/**
+ * Build Google Maps directions URL from stops
+ */
+window.BKK.buildMapsUrl = (stops, circular = false) => {
+  if (!stops || stops.length === 0) return '';
+  
+  const validStops = stops.filter(s => s.lat && s.lng && s.lat !== 0 && s.lng !== 0);
+  if (validStops.length === 0) return '';
+  
+  let waypoints = validStops.map(s => `${s.lat},${s.lng}`);
+  
+  if (circular && validStops.length > 1) {
+    waypoints.push(waypoints[0]);
+  }
+  
+  const origin = waypoints[0];
+  const destination = waypoints[waypoints.length - 1];
+  const middlePoints = waypoints.slice(1, -1).join('|');
+  
+  let mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+  if (middlePoints) {
+    mapUrl += `&waypoints=${middlePoints}`;
+  }
+  mapUrl += '&travelmode=walking';
+  
+  return mapUrl;
+};
+
+/**
+ * Parse user agent for readable browser/OS info
+ */
+window.BKK.parseUserAgent = (ua) => {
+  let browser = 'Unknown', os = 'Unknown';
+  if (ua.includes('SamsungBrowser')) browser = 'Samsung';
+  else if (ua.includes('Chrome') && !ua.includes('Edg')) browser = 'Chrome';
+  else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari';
+  else if (ua.includes('Firefox')) browser = 'Firefox';
+  else if (ua.includes('Edg')) browser = 'Edge';
+  if (ua.includes('iPhone')) os = 'iPhone';
+  else if (ua.includes('iPad')) os = 'iPad';
+  else if (ua.includes('Android')) os = 'Android';
+  else if (ua.includes('Windows')) os = 'Windows';
+  else if (ua.includes('Mac OS')) os = 'Mac';
+  else if (ua.includes('Linux')) os = 'Linux';
+  return { browser, os };
+};
+
+console.log('[UTILS] Loaded successfully');
+
+    </script>
+
     
     <script>
       tailwind.config = {
@@ -87,17 +994,8 @@
     <script type="text/babel">
 const { useState, useEffect } = React;
 
-// Firebase Configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyCAH_2fk_plk6Dg5dlCCfaRWKL3Nmc6V6g",
-  authDomain: "bangkok-explorer.firebaseapp.com",
-  databaseURL: "https://bangkok-explorer-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "bangkok-explorer",
-  storageBucket: "bangkok-explorer.firebasestorage.app",
-  messagingSenderId: "139083217994",
-  appId: "1:139083217994:web:48fc6a45028c91d177bab3",
-  measurementId: "G-QVGD0RKEHP"
-};
+// Firebase Configuration - loaded from js/config.js
+const firebaseConfig = window.BKK.firebaseConfig;
 
 // Initialize Firebase (only if available)
 let firebaseApp = null;
@@ -118,9 +1016,9 @@ try {
   console.log('[FIREBASE] Falling back to localStorage');
 }
 
-// Google Places API Configuration
-const GOOGLE_PLACES_API_KEY = 'AIzaSyD0F0TYKuWXVqibhj-sH-DaElDtLL8hMwM';
-const GOOGLE_PLACES_API_URL = 'https://places.googleapis.com/v1/places:searchNearby';
+// Google Places API - loaded from js/config.js
+const GOOGLE_PLACES_API_KEY = window.BKK.GOOGLE_PLACES_API_KEY;
+const GOOGLE_PLACES_API_URL = window.BKK.GOOGLE_PLACES_API_URL;
 
 const BangkokExplorer = () => {
   // Load saved preferences
@@ -211,192 +1109,8 @@ const BangkokExplorer = () => {
   const [showHelp, setShowHelp] = useState(false);
   const [helpContext, setHelpContext] = useState('main');
   
-  const helpContent = {
-    main: {
-      title: 'תכנון מסלול',
-      content: `**מה זה Bangkok Explorer?**
-אפליקציה לתכנון מסלולי טיול בבנגקוק. בחר תחומי עניין ואזור, והמערכת תבנה לך מסלול מותאם.
-
-**איך להתחיל:**
-• בחר **איזור** - האזור בבנגקוק שמעניין אותך
-• בחר **תחומי עניין** - לחץ על האייקונים (מקדשים, אוכל, קניות...)
-• לחץ **"מצא נקודות עניין"** - הכמות מוצגת בסוגריים (ניתן לשנות בהגדרות)
-
-**סוגי מסלול:**
-• 🔄 **מעגלי** - מסלול שחוזר לנקודת ההתחלה
-• ➡️ **ליניארי** - מסלול בקו ישר מנקודה לנקודה
-
-**טיפ:**
-לטיול גמיש בלי סדר מוגדר - בחר לאן ללכת בעצמך מתוך הרשימה, או השתמש ב"הצג נקודות על המפה".`
-    },
-    placesListing: {
-      title: 'רשימת המקומות',
-      content: `**איך נבחרו המקומות?**
-1. קודם - המקומות שהוספת בעצמך
-2. אחר כך - מקומות מ-Google לפי דירוג גבוה
-
-**כמות המקומות לכל תחום:**
-מחושבת לפי: סה"כ מקומות (מההגדרות) חלקי מספר תחומי העניין שבחרת.
-
-**כפתורים בכל מקום:**
-• ✕ **אפור** - דלג זמנית (הופך ל-⏸️ צהוב כשמושהה)
-• ⏸️ **צהוב** - החזר למסלול (לחיצה מבטלת השהיה)
-• 🚫 **אדום** - דלג לצמיתות (לא יופיע יותר)
-• ✅ **ירוק** - בטל דילוג קבוע
-• + **סגול** - הוסף לרשימה שלי
-• ✏️ **כחול** - ערוך (רק למקומות שלי)
-
-**כפתורים למטה:**
-• 💾 **סגול** - שמור מסלול (שם + הערות)
-• 🗺️ **ירוק** - פתח את המסלול ב-Google Maps
-
-**"+ עוד" ליד כל תחום:**
-מוסיף מקומות נוספים מאותו סוג.
-
-**לחיצה על שם המקום** פותחת אותו ב-Google Maps.`
-    },
-    route: {
-      title: 'תוצאות המסלול',
-      content: `**לוגיקת המקומות:**
-המערכת מביאה קודם את המקומות שלך (מותאמים אישית), ואחר כך משלימה עם מקומות מ-Google לפי דירוג גבוה.
-
-**כפתורים בכל מקום:**
-• 🗺️ **מפה** - פתיחה ב-Google Maps
-• ✏️ **עריכה** - עריכת פרטי המקום
-• 🚫 **דילוג** - הסרה זמנית מהמסלול הנוכחי
-• 🔙 **החזרה** - החזרת מקום שדולג
-• לחיצה על השם - פרטים מלאים
-
-**כפתורים כלליים:**
-• **"פתח ב-Google Maps"** - פתיחת המסלול המחושב במפות
-• **"מצא עוד"** - הוספת מקומות נוספים לתחום מסוים
-• **"שמור מסלול"** - שמירה לשימוש עתידי
-• **"מסלול חדש"** - התחלה מחדש
-
-**סימונים:**
-• ⭐ - מקום מותאם אישית (שלך)
-• 🛠️ - מקום בתהליך עדכון
-• ⚠️ - חסרות קואורדינטות
-• 🚫 - מקום שדולג (זמנית במסלול זה)`
-    },
-    myContent: {
-      title: 'התוכן שלי',
-      content: `**מה יש כאן:**
-ניהול המקומות ותחומי העניין שהוספת בעצמך.
-
-**מקומות מותאמים אישית:**
-• לחץ **"+ הוסף מקום"** להוספת מקום חדש
-• לחץ על מקום קיים לצפייה בפרטים
-• ✏️ לעריכה, 🗑️ למחיקה
-
-**תחומי עניין:**
-• לחץ **"+ הוסף תחום"** ליצירת קטגוריה חדשה
-• בחר אייקון ושם
-• תחומים מותאמים יופיעו בבחירת תחומי עניין
-
-**סטטוס מקום:**
-• ✅ **פעיל** - יופיע במסלולים
-• 🚫 **רשימה שחורה** - לא יופיע לעולם
-
-**טיפ:** מקומות שלך מקבלים עדיפות על פני מקומות מ-Google!`
-    },
-    saved: {
-      title: 'מסלולים שמורים',
-      content: `**מה יש כאן:**
-כל המסלולים ששמרת לשימוש עתידי.
-
-**שמירת מסלול:**
-• לחץ "💾 שמור מסלול" במסך המסלול
-• תן שם ייחודי (חובה)
-• הוסף הערות אם רוצה
-
-**פעולות:**
-• לחץ על מסלול לטעינה מחדש
-• 🗑️ למחיקת מסלול
-
-**טיפ:**
-מסלולים נכללים בייצוא/ייבוא בהגדרות!`
-    },
-    settings: {
-      title: 'הגדרות',
-      content: `**הגדרות המערכת:**
-
-**מקור נתונים:**
-• **דינמי** - נתונים משותפים (Firebase) - מומלץ
-• **סטטי** - נתונים מקומיים בלבד (לפיתוח)
-
-**ייבוא/ייצוא:**
-• **ייצוא** - שומר את כל המקומות והתחומים שלך לקובץ JSON
-• **ייבוא** - מוסיף מקומות ותחומים מקובץ
-
-**איך עובד הייבוא:**
-• כפילויות (לפי שם) ידולגו אוטומטית
-• תחומים חסרים ייווצרו אוטומטית
-• שום דבר לא יימחק - רק הוספה
-
-**Admin (למנהלים):**
-• צפייה בלוג כניסות
-• ניהול מכשירים מורשים`
-    },
-    addLocation: {
-      title: 'הוספת/עריכת מקום',
-      content: `**שדות חובה:**
-• **שם** - שם המקום
-• **תחום עניין** - לפחות אחד
-
-**שדות נוספים:**
-• **איזור** - לסינון לפי אזור בבנגקוק
-• **תמונה** - העלאה מהמכשיר או קישור
-• **כתובת** - טקסט חופשי
-• **קישור Maps** - העתק מ-Google Maps
-• **הערות** - מידע נוסף לעצמך
-
-**מה זה קואורדינטות?**
-מיקום מדויק על המפה (קו רוחב + קו אורך).
-בלי קואורדינטות - המקום לא יופיע במסלול ב-Google Maps!
-
-**איך להשיג קואורדינטות:**
-• 🔤 **שם** - חיפוש אוטומטי לפי שם המקום
-• 🏠 **כתובת** - חיפוש לפי הכתובת שהזנת
-• 🔗 **קישור** - חילוץ מקישור Google Maps
-• 📍 **מיקום** - GPS - המיקום הנוכחי שלך
-• 🗺️ **בדוק** - פתיחה במפה לאימות
-
-**טיפ לקישור Maps:**
-1. פתח Google Maps ומצא את המקום
-2. לחץ על המקום ואז "שתף"
-3. העתק את הקישור והדבק בשדה "קישור Maps"
-4. לחץ 🔗 לחילוץ הקואורדינטות
-
-**כפתורים:**
-• **הוסף/עדכן** - שומר ונשאר פתוח
-• **סגור** - שומר וסוגר
-• **X** - סוגר בלי לשמור`
-    },
-    addInterest: {
-      title: 'הוספת תחום עניין',
-      content: `**מה זה תחום עניין מותאם?**
-תת-תחום חדש שאתה יוצר, מבוסס על תחום קיים במערכת.
-
-**שדות:**
-• **שם התחום** - השם שיוצג (לדוגמה: "בתי קולנוע")
-• **אייקון** - אימוג'י שייצג את התחום
-• **תחום בסיס** - התחום הקיים שאליו יתווסף התחום החדש כתת-תחום
-
-**איך זה עובד?**
-ב"מצא מקומות", כשתבחר את התחום החדש, המערכת תחפש בגוגל מקומות מתחום הבסיס שכוללים את התחום החדש.
-
-**דוגמה:**
-תחום חדש: "בתי קולנוע" 🎬
-תחום בסיס: "בידור" 🎭
-→ המערכת תחפש מקומות בידור שהם בתי קולנוע
-
-**כפתורים:**
-• **הוסף** - שומר ונשאר פתוח להוספה נוספת
-• **סגור** - שומר וסוגר
-• **X** - סוגר בלי לשמור`
-    }
-  };
+  // Help content - loaded from js/config.js
+  const helpContent = window.BKK.helpContent;
 
   const showHelpFor = (context) => {
     setHelpContext(context);
@@ -559,24 +1273,7 @@ const BangkokExplorer = () => {
           } else {
             localStorage.setItem('bangkok_last_log_time', Date.now().toString());
             
-            // Parse user agent for readable info
-            const parseUA = (ua) => {
-              let browser = 'Unknown', os = 'Unknown';
-              if (ua.includes('SamsungBrowser')) browser = 'Samsung';
-              else if (ua.includes('Chrome') && !ua.includes('Edg')) browser = 'Chrome';
-              else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari';
-              else if (ua.includes('Firefox')) browser = 'Firefox';
-              else if (ua.includes('Edg')) browser = 'Edge';
-              if (ua.includes('iPhone')) os = 'iPhone';
-              else if (ua.includes('iPad')) os = 'iPad';
-              else if (ua.includes('Android')) os = 'Android';
-              else if (ua.includes('Windows')) os = 'Windows';
-              else if (ua.includes('Mac OS')) os = 'Mac';
-              else if (ua.includes('Linux')) os = 'Linux';
-              return { browser, os };
-            };
-            
-            const { browser, os } = parseUA(navigator.userAgent);
+            const { browser, os } = window.BKK.parseUserAgent(navigator.userAgent);
             
             const accessEntry = {
               userId, timestamp: Date.now(), date: new Date().toISOString(),
@@ -648,109 +1345,30 @@ const BangkokExplorer = () => {
     setHasNewEntries(false);
   };
 
-  const interestOptions = [
-    { id: 'temples', label: 'מקדשים', icon: '🛕' },
-    { id: 'food', label: 'אוכל', icon: '🍜' },
-    { id: 'graffiti', label: 'גרפיטי', icon: '🎨' },
-    { id: 'artisans', label: 'מלאכה', icon: '🔨' },
-    { id: 'galleries', label: 'גלריות', icon: '🖼️' },
-    { id: 'architecture', label: 'ארכיטקטורה', icon: '🏛️' },
-    { id: 'canals', label: 'תעלות', icon: '🚤' },
-    { id: 'cafes', label: 'קפה', icon: '☕' },
-    { id: 'markets', label: 'שווקים', icon: '🏪' },
-    { id: 'nightlife', label: 'לילה', icon: '🌃' },
-    { id: 'parks', label: 'פארקים', icon: '🌳' },
-    { id: 'rooftop', label: 'גגות', icon: '🌆' },
-    { id: 'entertainment', label: 'בידור', icon: '🎭' },
-    { id: 'other', label: 'אחר', icon: '📍' }
-  ];
+  // Config - loaded from js/config.js
+  const interestOptions = window.BKK.interestOptions;
 
-  // Map our interests to Google Places categories
-  const interestToGooglePlaces = {
-    temples: ['hindu_temple', 'church', 'mosque', 'synagogue'],
-    food: ['restaurant', 'meal_takeaway'],
-    graffiti: ['art_gallery'],
-    artisans: ['store', 'art_gallery'],
-    galleries: ['art_gallery', 'museum'],
-    architecture: ['historical_landmark'],
-    canals: ['boat_tour_agency', 'marina'],
-    cafes: ['cafe', 'coffee_shop'],
-    markets: ['market', 'shopping_mall'],
-    nightlife: ['bar', 'night_club'],
-    parks: ['park', 'national_park'],
-    rooftop: ['bar', 'restaurant'],
-    entertainment: ['movie_theater', 'amusement_park', 'performing_arts_theater'],
-    other: ['tourist_attraction']
-  };
+  const interestToGooglePlaces = window.BKK.interestToGooglePlaces;
 
-  // Interests NOT covered by the system - for informational purposes in settings
-  const uncoveredInterests = [
-    { icon: '💆', name: 'עיסוי וספא', examples: 'Thai massage, wellness centers, spa' },
-    { icon: '🏋️', name: 'כושר וספורט', examples: 'Gyms, yoga studios, Muay Thai, fitness' },
-    { icon: '🛍️', name: 'קניות מיוחדות', examples: 'Boutiques, jewelry, fashion stores' },
-    { icon: '🎓', name: 'לימוד וחוויות', examples: 'Cooking classes, meditation, workshops' },
-    { icon: '🏥', name: 'בריאות ורפואה', examples: 'Clinics, pharmacies, health services' },
-    { icon: '🏨', name: 'אירוח', examples: 'Hotels, hostels, guesthouses' },
-    { icon: '🚗', name: 'תחבורה', examples: 'Car rental, bike rental, transportation' },
-    { icon: '💼', name: 'עסקים', examples: 'Coworking, offices, business centers' }
-  ];
+  const uncoveredInterests = window.BKK.uncoveredInterests;
 
-  // Tooltip content - simple explanations for each interest
-  const interestTooltips = {
-    temples: 'מקדשים בודהיסטיים והינדיים',
-    food: 'מסעדות ואוכל רחוב',
-    graffiti: 'אומנות רחוב וגרפיטי',
-    artisans: 'בתי מלאכה ואומנים',
-    galleries: 'גלריות ומוזיאונים',
-    architecture: 'בניינים היסטוריים',
-    canals: 'שייטים בתעלות ובנהר',
-    cafes: 'בתי קפה',
-    markets: 'שווקים ובזארים',
-    nightlife: 'ברים ומועדוני לילה',
-    parks: 'גנים ופארקים',
-    rooftop: 'ברים ומסעדות על גגות',
-    entertainment: 'קולנוע, תיאטרון, מופעים',
-    other: 'מקומות נוספים'
-  };
+  const interestTooltips = window.BKK.interestTooltips;
 
-  // Area coordinates (center points)
-  const areaCoordinates = {
-    'sukhumvit': { lat: 13.7370, lng: 100.5610, radius: 2500 }, // 2.5km radius
-    'old-town': { lat: 13.7500, lng: 100.4914, radius: 2000 },
-    'chinatown': { lat: 13.7408, lng: 100.5050, radius: 1500 },
-    'thonglor': { lat: 13.7320, lng: 100.5830, radius: 2000 },
-    'ari': { lat: 13.7790, lng: 100.5410, radius: 2000 },
-    'riverside': { lat: 13.7270, lng: 100.4965, radius: 2000 }
-  };
+  const areaCoordinates = window.BKK.areaCoordinates;
   
-  // Check if location is within area boundaries
-  const checkLocationInArea = (lat, lng, areaId) => {
-    const area = areaCoordinates[areaId];
-    if (!area || !lat || !lng) return { valid: true, distance: 0 };
-    
-    // Calculate distance using Haversine formula
-    const R = 6371e3; // Earth radius in meters
-    const lat1Rad = lat * Math.PI / 180;
-    const lat2Rad = area.lat * Math.PI / 180;
-    const deltaLat = (area.lat - lat) * Math.PI / 180;
-    const deltaLng = (area.lng - lng) * Math.PI / 180;
-    
-    const a = Math.sin(deltaLat/2) * Math.sin(deltaLat/2) +
-              Math.cos(lat1Rad) * Math.cos(lat2Rad) *
-              Math.sin(deltaLng/2) * Math.sin(deltaLng/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    const distance = R * c; // Distance in meters
-    
-    const isValid = distance <= area.radius;
-    
-    return { 
-      valid: isValid, 
-      distance: Math.round(distance),
-      distanceKm: (distance / 1000).toFixed(1)
-    };
-  };
+  // Utility functions - loaded from js/utils.js
+  const checkLocationInArea = window.BKK.checkLocationInArea;
+  const getButtonStyle = window.BKK.getButtonStyle;
 
   // Fetch places from Google Places API
+
+  // === APP LOGIC (from app-logic.js) ===
+// ============================================================================
+// Bangkok Explorer - Application Logic
+// Business logic: API calls, route generation, CRUD, import/export
+// This code runs INSIDE the BangkokExplorer component (has access to state)
+// ============================================================================
+
   const fetchGooglePlaces = async (area, interests) => {
     const center = areaCoordinates[area];
     if (!center) {
@@ -927,342 +1545,16 @@ const BangkokExplorer = () => {
     }
   }, [showEditLocationDialog, editingLocation]);
 
-  const areaOptions = [
-    { id: 'sukhumvit', label: 'סוקומווית', labelEn: 'Sukhumvit', icon: '🏙️' },
-    { id: 'old-town', label: 'העיר העתיקה', labelEn: 'Old Town', icon: '🏰' },
-    { id: 'chinatown', label: 'צ\'יינה טאון', labelEn: 'Chinatown', icon: '🏮' },
-    { id: 'thonglor', label: 'תונגלור', labelEn: 'Thonglor', icon: '☕' },
-    { id: 'ari', label: 'ארי', labelEn: 'Ari', icon: '🎨' },
-    { id: 'riverside', label: 'ריברסייד', labelEn: 'Riverside', icon: '🌊' }
-  ];
+  const areaOptions = window.BKK.areaOptions;
 
 
-  // ============================================================================
-  // STATIC DATA MANAGER - Separate component for static curated locations
-  // Used when dataSource === 'static' (for debugging in Claude Artifacts)
-  // ============================================================================
-  
-  const StaticDataManager = (() => {
-  const staticLocationsData = {
-    sukhumvit: {
-      // Sukhumvit: אזור Asok, Nana, Phrom Phong
-      graffiti: [
-        { name: 'Sukhumvit Soi 11 Street Art', lat: 13.7450, lng: 100.5535, description: 'גרפיטי ובילוי', duration: 25 },
-        { name: 'Phrom Phong Art Walk', lat: 13.7305, lng: 100.5700, description: 'אומנות רחוב ליד BTS', duration: 30 },
-        { name: 'Soi 23 Graffiti Wall', lat: 13.7410, lng: 100.5640, description: 'קיר גרפיטי', duration: 25 }
-      ],
-      galleries: [
-        { name: 'H Gallery', lat: 13.7290, lng: 100.5715, description: 'גלריה עכשווית', duration: 45 },
-        { name: 'Number 1 Gallery', lat: 13.7420, lng: 100.5565, description: 'אומנות מקומית', duration: 30 },
-        { name: 'Thavibu Gallery', lat: 13.7365, lng: 100.5625, description: 'אומנות אסיאתית', duration: 40 }
-      ],
-      artisans: [
-        { name: 'Jim Thompson House', lat: 13.7464, lng: 100.5347, description: 'בית משי ואדריכלות', duration: 60 },
-        { name: 'Local Crafts Soi 33', lat: 13.7355, lng: 100.5680, description: 'מלאכה תאילנדית', duration: 40 }
-      ],
-      cafes: [
-        { name: 'Rocket Coffeebar Soi 12', lat: 13.7425, lng: 100.5575, description: 'קפה מינימליסטי', duration: 40 },
-        { name: 'Roast Coffee Asok', lat: 13.7375, lng: 100.5605, description: 'קפה איכותי ליד BTS', duration: 35 },
-        { name: 'Roots Coffee Soi 49', lat: 13.7295, lng: 100.5760, description: 'קפה בוטיק', duration: 30 },
-        { name: 'EmQuartier Cafes', lat: 13.7310, lng: 100.5695, description: 'קפה בקניון מודרני', duration: 40 }
-      ],
-      architecture: [
-        { name: 'Terminal 21 Asoke', lat: 13.7380, lng: 100.5600, description: 'קניון בעיצוב ערים', duration: 60 },
-        { name: 'EmQuartier Mall', lat: 13.7310, lng: 100.5695, description: 'קניון מודרני יוקרתי', duration: 50 },
-        { name: 'Benjakitti Park', lat: 13.7300, lng: 100.5645, description: 'פארק ואגם גדול', duration: 45 },
-        { name: 'Jim Thompson House', lat: 13.7464, lng: 100.5347, description: 'בית משי היסטורי', duration: 60 }
-      ],
-      food: [
-        { name: 'Sukhumvit Soi 38 Night Market', lat: 13.7345, lng: 100.5725, description: 'שוק אוכל רחוב מפורסם', duration: 60 },
-        { name: 'Terminal 21 Food Court', lat: 13.7380, lng: 100.5600, description: 'מתחם אוכל בקניון', duration: 45 },
-        { name: 'Nana Plaza Restaurants', lat: 13.7415, lng: 100.5550, description: 'מסעדות מגוונות', duration: 50 }
-      ],
-      markets: [
-        { name: 'Khlong Toei Market', lat: 13.7230, lng: 100.5840, description: 'שוק סיטונאי ואוכל', duration: 50 },
-        { name: 'Sukhumvit Plaza Market', lat: 13.7390, lng: 100.5585, description: 'שוק מקומי', duration: 40 },
-        { name: 'Terminal 21 Shopping', lat: 13.7380, lng: 100.5600, description: 'קניון עם שווקים', duration: 50 },
-        { name: 'Sukhumvit Soi 38 Night Market', lat: 13.7345, lng: 100.5725, description: 'שוק אוכל ומוצרים', duration: 60 }
-      ],
-      nightlife: [
-        { name: 'Sukhumvit Soi 11 Bars', lat: 13.7450, lng: 100.5535, description: 'רחוב ברים ומועדונים', duration: 90 },
-        { name: 'Nana Plaza Entertainment', lat: 13.7415, lng: 100.5550, description: 'אזור בילוי ומסעדות', duration: 90 },
-        { name: 'Asok Nightlife Area', lat: 13.7370, lng: 100.5610, description: 'בילוי ליד BTS', duration: 80 }
-      ],
-      parks: [
-        { name: 'Benjakitti Park', lat: 13.7300, lng: 100.5645, description: 'פארק עירוני גדול', duration: 45 }
-      ],
-      entertainment: [
-        { name: 'Terminal 21 Cineplex', lat: 13.7380, lng: 100.5600, description: 'קולנוע בקניון', duration: 150 },
-        { name: 'EmQuartier Cineplex', lat: 13.7310, lng: 100.5695, description: 'קולנוע יוקרתי', duration: 150 },
-        { name: 'Saxophone Pub & Restaurant', lat: 13.7405, lng: 100.5545, description: 'מועדון ג\'אז חי', duration: 120 },
-        { name: 'Escape Hunt Bangkok', lat: 13.7310, lng: 100.5695, description: 'חדר בריחה', duration: 90 }
-      ]
-    },
-    'old-town': {
-      // Old Town: Rattanakosin - הארמון, ואט פו, קאוסאן
-      temples: [
-        { name: 'Wat Pho', lat: 13.7465, lng: 100.4927, description: 'בודהה השוכב', duration: 90 },
-        { name: 'Grand Palace', lat: 13.7500, lng: 100.4914, description: 'הארמון המלכותי', duration: 120 },
-        { name: 'Wat Saket (Golden Mount)', lat: 13.7539, lng: 100.5064, description: 'הר הזהב', duration: 60 },
-        { name: 'Wat Suthat', lat: 13.7513, lng: 100.5006, description: 'מקדש גדול', duration: 45 }
-      ],
-      architecture: [
-        { name: 'Wat Arun', lat: 13.7437, lng: 100.4888, description: 'מקדש השחר', duration: 60 },
-        { name: 'Democracy Monument', lat: 13.7566, lng: 100.5015, description: 'אנדרטת דמוקרטיה', duration: 20 },
-        { name: 'Giant Swing', lat: 13.7512, lng: 100.5014, description: 'נדנדה ענקית', duration: 15 }
-      ],
-      canals: [
-        { name: 'Khlong Saen Saeb Canal Boat', lat: 13.7590, lng: 100.5017, description: 'סירת תעלה', duration: 30 },
-        { name: 'Longtail Boat Tour', lat: 13.7520, lng: 100.4950, description: 'סיור בתעלות', duration: 90 }
-      ],
-      markets: [
-        { name: 'Pak Khlong Talat', lat: 13.7413, lng: 100.4959, description: 'שוק פרחים 24 שעות', duration: 45 },
-        { name: 'Amulet Market', lat: 13.7480, lng: 100.4938, description: 'שוק קמיעות', duration: 30 }
-      ],
-      food: [
-        { name: 'Khao San Road', lat: 13.7590, lng: 100.4978, description: 'רחוב תרמילאים', duration: 90 },
-        { name: 'Tha Tien Market', lat: 13.7450, lng: 100.4920, description: 'שוק אוכל מקומי', duration: 40 }
-      ],
-      entertainment: [
-        { name: 'National Theatre', lat: 13.7540, lng: 100.5025, description: 'תיאטרון לאומי - מופעים תאילנדיים', duration: 120 },
-        { name: 'Rattanakosin Exhibition Hall', lat: 13.7513, lng: 100.4988, description: 'אולם תערוכות', duration: 60 }
-      ]
-    },
-    chinatown: {
-      // Chinatown: Yaowarat, Sampeng
-      food: [
-        { name: 'Yaowarat Road', lat: 13.7408, lng: 100.5133, description: 'רחוב האוכל המפורסם', duration: 90 },
-        { name: 'T&K Seafood', lat: 13.7392, lng: 100.5078, description: 'פירות ים מפורסם', duration: 60 },
-        { name: 'Nai Ek Roll Noodles', lat: 13.7420, lng: 100.5110, description: 'נודלס גלילה', duration: 30 },
-        { name: 'Chinatown Odeon Circle', lat: 13.7403, lng: 100.5152, description: 'מעגל אוכל', duration: 50 }
-      ],
-      markets: [
-        { name: 'Sampeng Lane', lat: 13.7422, lng: 100.5102, description: 'סמטת סיטונאות', duration: 60 },
-        { name: 'Yaowarat Market', lat: 13.7405, lng: 100.5115, description: 'שוק סיני', duration: 50 },
-        { name: 'Nakhon Kasem (Thieves Market)', lat: 13.7445, lng: 100.5098, description: 'שוק גנבים', duration: 45 }
-      ],
-      temples: [
-        { name: 'Wat Traimit', lat: 13.7403, lng: 100.5152, description: 'בודהה זהב 5.5 טון', duration: 45 },
-        { name: 'Wat Mangkon Kamalawat', lat: 13.7431, lng: 100.5123, description: 'מקדש סיני עתיק', duration: 40 }
-      ],
-      architecture: [
-        { name: 'Yaowarat Chinatown Gate', lat: 13.7403, lng: 100.5152, description: 'שער צ\'יינה טאון', duration: 15 },
-        { name: 'Old Shophouses', lat: 13.7410, lng: 100.5120, description: 'בתי חנות עתיקים', duration: 30 }
-      ],
-      entertainment: [
-        { name: 'Chinatown Heritage Center', lat: 13.7422, lng: 100.5102, description: 'מרכז מורשת', duration: 60 }
-      ]
-    },
-    thonglor: {
-      // Thonglor/Ekkamai: Sukhumvit Soi 55 area
-      galleries: [
-        { name: 'ARDEL Gallery', lat: 13.7284, lng: 100.5801, description: 'אומנות עכשווית', duration: 50 },
-        { name: '100 Tonson Gallery', lat: 13.7326, lng: 100.5795, description: 'גלריה בוטיק', duration: 40 },
-        { name: 'Bangkok CityCity Gallery', lat: 13.7312, lng: 100.5789, description: 'אומנות מקומית', duration: 45 }
-      ],
-      cafes: [
-        { name: 'Casa Lapin x49', lat: 13.7325, lng: 100.5814, description: 'קפה יפני-סקנדינבי', duration: 50 },
-        { name: 'Everyday Karmakamet', lat: 13.7312, lng: 100.5797, description: 'קפה ובשמים', duration: 45 },
-        { name: 'Roots Coffee Roaster', lat: 13.7329, lng: 100.5821, description: 'קפה מקומי', duration: 40 },
-        { name: 'Ceresia Coffee', lat: 13.7318, lng: 100.5805, description: 'קפה איכותי', duration: 35 }
-      ],
-      food: [
-        { name: 'Thonglor Soi 13', lat: 13.7323, lng: 100.5795, description: 'מסעדות בוטיק', duration: 60 },
-        { name: 'J Avenue Food Hall', lat: 13.7315, lng: 100.5806, description: 'מתחם אוכל', duration: 50 }
-      ],
-      nightlife: [
-        { name: 'Thonglor Soi 10', lat: 13.7318, lng: 100.5810, description: 'ברים ומועדונים', duration: 90 },
-        { name: 'Arena 10', lat: 13.7320, lng: 100.5812, description: 'מועדון', duration: 80 }
-      ],
-      markets: [
-        { name: 'W Market Ekkamai', lat: 13.7206, lng: 100.5891, description: 'שוק לילה וינטג\'', duration: 60 }
-      ],
-      entertainment: [
-        { name: 'Major Cineplex Ekkamai', lat: 13.7195, lng: 100.5850, description: 'קולנוע גדול', duration: 150 },
-        { name: 'The Commons Jazz Bar', lat: 13.7300, lng: 100.5743, description: 'בר ג\'אז אינטימי', duration: 120 }
-      ]
-    },
-    ari: {
-      // Ari: BTS Ari area, Phahonyothin Soi 7
-      graffiti: [
-        { name: 'Ari Street Art', lat: 13.7788, lng: 100.5445, description: 'גרפיטי בסמטאות', duration: 30 }
-      ],
-      galleries: [
-        { name: 'Speedy Grandma', lat: 13.7774, lng: 100.5423, description: 'גלריה קטנה', duration: 35 },
-        { name: 'The Reading Room', lat: 13.7780, lng: 100.5435, description: 'ספרייה וגלריה', duration: 40 }
-      ],
-      cafes: [
-        { name: 'Audrey Cafe', lat: 13.7781, lng: 100.5419, description: 'קפה ורוד אודרי הפבורן', duration: 50 },
-        { name: 'Macaroni Club', lat: 13.7803, lng: 100.5461, description: 'קפה איטלקי רטרו', duration: 60 },
-        { name: 'Brave Roasters', lat: 13.7795, lng: 100.5441, description: 'קפה מקומי איכותי', duration: 40 },
-        { name: 'Stendhal Syndrome', lat: 13.7785, lng: 100.5430, description: 'קפה אמנותי', duration: 45 }
-      ],
-      artisans: [
-        { name: 'YELO House', lat: 13.7792, lng: 100.5432, description: 'בית בעלי מלאכה', duration: 45 },
-        { name: 'Play Pot', lat: 13.7787, lng: 100.5438, description: 'קרמיקה', duration: 50 }
-      ],
-      food: [
-        { name: 'Ari Night Market', lat: 13.7785, lng: 100.5437, description: 'שוק אוכל לילה', duration: 60 },
-        { name: 'Ari Soi 1', lat: 13.7790, lng: 100.5440, description: 'מסעדות', duration: 50 }
-      ],
-      parks: [
-        { name: 'Chatuchak Park', lat: 13.8034, lng: 100.5523, description: 'פארק גדול', duration: 40 }
-      ],
-      entertainment: [
-        { name: 'Iron Fairies Bar', lat: 13.7790, lng: 100.5445, description: 'בר אלטרנטיבי', duration: 90 }
-      ]
-    },
-    riverside: {
-      // Riverside: לאורך נהר Chao Phraya
-      canals: [
-        { name: 'Chao Phraya River Cruise', lat: 13.7248, lng: 100.5084, description: 'שייט ארוחת ערב', duration: 120 },
-        { name: 'Chao Phraya Express Boat', lat: 13.7272, lng: 100.5085, description: 'סירת תחבורה', duration: 30 },
-        { name: 'Khlong Bangkok Yai Tour', lat: 13.7380, lng: 100.4895, description: 'תעלה גדולה', duration: 60 }
-      ],
-      rooftop: [
-        { name: 'Sky Bar Lebua', lat: 13.7227, lng: 100.5089, description: 'בר גג Hangover 2', duration: 90 },
-        { name: 'Above Eleven', lat: 13.7245, lng: 100.5256, description: 'בר גג פרואני', duration: 80 },
-        { name: 'The Deck by Arun Residence', lat: 13.7430, lng: 100.4895, description: 'מסעדת גג מול Wat Arun', duration: 70 }
-      ],
-      architecture: [
-        { name: 'Asiatique Riverfront', lat: 13.7051, lng: 100.5091, description: 'שוק ריברסייד ענק', duration: 120 },
-        { name: 'Mandarin Oriental', lat: 13.7237, lng: 100.5145, description: 'מלון היסטורי 1876', duration: 30 },
-        { name: 'ICONSIAM', lat: 13.7268, lng: 100.5101, description: 'קניון על הנהר', duration: 90 },
-        { name: 'Warehouse 30', lat: 13.7305, lng: 100.5024, description: 'מחסן אומנות Talat Noi', duration: 50 }
-      ],
-      temples: [
-        { name: 'Wat Arun from River', lat: 13.7437, lng: 100.4888, description: 'מקדש השחר מהנהר', duration: 60 },
-        { name: 'Wat Kalayanamit', lat: 13.7351, lng: 100.4900, description: 'מקדש על הנהר', duration: 40 }
-      ],
-      graffiti: [
-        { name: 'Talat Noi Street Art', lat: 13.7305, lng: 100.5024, description: 'אומנות רחוב בשכונה סינית', duration: 40 }
-      ],
-      entertainment: [
-        { name: 'Asiatique Sky Theater', lat: 13.7045, lng: 100.5076, description: 'תיאטרון מופעים', duration: 90 },
-        { name: 'Calypso Cabaret', lat: 13.7048, lng: 100.5078, description: 'מופע קברט', duration: 90 },
-        { name: 'ICONSIAM ICON Cineplex', lat: 13.7268, lng: 100.5101, description: 'קולנוע על הנהר', duration: 150 }
-      ]
-    }
-  };
-    
-    // Public API for StaticDataManager
-    return {
-      // Get locations for specific area and interests
-      getLocations: (area, interests) => {
-        console.log('[STATIC] Getting locations:', { area, interests });
-        const areaData = staticLocationsData[area] || staticLocationsData.sukhumvit;
-        let stops = [];
-        
-        interests.forEach(interest => {
-          // Skip custom interests (they start with 'custom_')
-          if (interest.startsWith('custom_')) {
-            console.log('[STATIC] Skipping custom interest:', interest);
-            return;
-          }
-          
-          if (areaData[interest]) {
-            // Add interests field to each location
-            const locationsWithInterest = areaData[interest].map(loc => ({
-              ...loc,
-              interests: [interest]  // Add interests field
-            }));
-            stops = [...stops, ...locationsWithInterest];
-          } else {
-            console.log('[STATIC] No data for interest:', interest);
-          }
-        });
-        
-        // Remove duplicates
-        const seen = new Set();
-        const unique = stops.filter(stop => {
-          const key = `${stop.lat},${stop.lng}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-        
-        console.log('[STATIC] Found places:', unique.length);
-        return unique;
-      },
-      
-      // Check if static data is available
-      hasData: () => {
-        return Object.keys(staticLocationsData).length > 0;
-      },
-      
-      // Get all areas
-      getAreas: () => {
-        return Object.keys(staticLocationsData);
-      }
-    };
-  })();
-
-  const allLocations = {
-    sukhumvit: {},
-    'old-town': {},
-    chinatown: {},
-    thonglor: {},
-    ari: {},
-    riverside: {}
-  };
+  // Static Data Manager - loaded from js/static-data.js
+  const StaticDataManager = window.BKK.StaticDataManager;
 
 
-  // ============================================================================
-  // IMAGE HANDLING - Compression and utilities
-  // ============================================================================
-  
-  const compressImage = (file, maxSizeKB = 200) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          
-          // Calculate new dimensions to keep under maxSizeKB
-          const maxDimension = 800;
-          if (width > height && width > maxDimension) {
-            height = (height / width) * maxDimension;
-            width = maxDimension;
-          } else if (height > maxDimension) {
-            width = (width / height) * maxDimension;
-            height = maxDimension;
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-          
-          // Start with quality 0.8 and reduce if needed
-          let quality = 0.8;
-          let compressed = canvas.toDataURL('image/jpeg', quality);
-          
-          // If still too large, reduce quality
-          while (compressed.length > maxSizeKB * 1024 * 1.37 && quality > 0.3) {
-            quality -= 0.1;
-            compressed = canvas.toDataURL('image/jpeg', quality);
-          }
-          
-          console.log('[IMAGE] Compressed:', {
-            original: file.size,
-            compressed: Math.round(compressed.length / 1024),
-            quality
-          });
-          
-          resolve(compressed);
-        };
-        img.src = e.target.result;
-      };
-      
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
+
+  // Image handling - loaded from js/utils.js
+  const compressImage = window.BKK.compressImage;
   
   const handleImageUpload = async (event) => {
     const file = event.target.files[0];
@@ -1291,43 +1583,7 @@ const BangkokExplorer = () => {
     }));
   };
 
-  // ============================================================================
-  // CONSISTENT BUTTON STYLES - Used throughout the app
-  // ============================================================================
-  
-  const getButtonStyle = (isActive = false, variant = 'primary') => {
-    const baseStyle = {
-      border: isActive ? '5px solid #f97316' : '3px solid #d1d5db',
-      backgroundColor: isActive ? '#fed7aa' : '#ffffff',
-      boxShadow: isActive ? '0 10px 15px -3px rgba(0, 0, 0, 0.3)' : 'none',
-      padding: '12px 16px',
-      borderRadius: '12px',
-      fontWeight: 'bold',
-      cursor: 'pointer',
-      transition: 'all 0.2s'
-    };
-    
-    // Variants for different button types
-    if (variant === 'danger') {
-      return {
-        ...baseStyle,
-        border: '3px solid #ef4444',
-        backgroundColor: isActive ? '#fecaca' : '#ffffff',
-        color: '#dc2626'
-      };
-    }
-    
-    if (variant === 'success') {
-      return {
-        ...baseStyle,
-        border: '3px solid #10b981',
-        backgroundColor: isActive ? '#d1fae5' : '#ffffff',
-        color: '#059669'
-      };
-    }
-    
-    return baseStyle;
-  };
+  // Button styles - loaded from js/utils.js (via getButtonStyle reference above)
 
   const getStopsForInterests = () => {
     // Now we only collect CUSTOM locations - Google Places will be fetched in generateRoute
@@ -2899,6 +3155,7 @@ const BangkokExplorer = () => {
     setRoute({...route, mapUrl});
   };
 
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-pink-50" dir="rtl">
       <div className="bg-gradient-to-r from-orange-500 to-pink-500 text-white p-4 shadow-lg">
@@ -2954,6 +3211,14 @@ const BangkokExplorer = () => {
         </div>
 
         {/* Form View */}
+
+        {/* === VIEWS (from views.js) === */}
+// ============================================================================
+// Bangkok Explorer - Views (JSX)
+// Main screens: Form, Route, Search, Saved, MyContent, Settings
+// This JSX runs INSIDE the BangkokExplorer component return statement
+// ============================================================================
+
         {currentView === 'form' && (
           <div className="bg-white rounded-xl shadow-lg p-3 space-y-3">
             <div className="flex items-center justify-center gap-2">
@@ -4879,6 +5144,16 @@ const BangkokExplorer = () => {
           </div>
         )}
         {/* Save Dialog */}
+
+
+        {/* === DIALOGS (from dialogs.js) === */}
+// ============================================================================
+// Bangkok Explorer - Dialogs & Modals (JSX)
+// Save, Add/Edit Location, Add Interest, Import, Detail, Image, 
+// Access Log, Confirm, Help, Toast
+// This JSX runs INSIDE the BangkokExplorer component return statement
+// ============================================================================
+
         {showSaveDialog && (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2">
             <div className="bg-white rounded-xl w-full max-w-md shadow-2xl">
@@ -5997,6 +6272,8 @@ const BangkokExplorer = () => {
           </div>
         </div>
       )}
+
+
     </div>
   );
 };
@@ -6005,4 +6282,3 @@ ReactDOM.createRoot(document.getElementById('root')).render(<BangkokExplorer />)
     </script>
 </body>
 </html>
-v1.3 - [Bangkok Explorer]
