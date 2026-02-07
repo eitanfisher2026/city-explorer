@@ -5,7 +5,7 @@
 window.BKK = window.BKK || {};
 
 // App Version
-window.BKK.VERSION = '2.1.1';
+window.BKK.VERSION = '2.2.0';
 
 // Firebase Configuration
 window.BKK.firebaseConfig = {
