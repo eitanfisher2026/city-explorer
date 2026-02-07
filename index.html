@@ -865,7 +865,7 @@ const BangkokExplorer = () => {
   // Admin System - Password based
   const [adminPassword, setAdminPassword] = useState('');
   const [adminUsers, setAdminUsers] = useState([]);
-  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(true);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   
@@ -2966,7 +2966,8 @@ const BangkokExplorer = () => {
           </button>
           <button
             onClick={() => {
-              if (isUnlocked) {
+              // If no password set OR already unlocked, go to settings
+              if (isUnlocked || !adminPassword) {
                 setCurrentView('settings');
               } else {
                 setShowPasswordDialog(true);
@@ -2976,7 +2977,7 @@ const BangkokExplorer = () => {
               currentView === 'settings' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            <div className="truncate">{isUnlocked ? '🔓' : '🔒'} הגדרות</div>
+            <div className="truncate">{(isUnlocked || !adminPassword) ? '🔓' : '🔒'} הגדרות</div>
           </button>
         </div>
 
@@ -6084,7 +6085,7 @@ const BangkokExplorer = () => {
             <div className="p-4 space-y-4">
               <p className="text-sm text-gray-600 text-center">הזן סיסמה לפתיחת ההגדרות</p>
               <input
-                type="password"
+                type="text"
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
                 placeholder="סיסמה"
