@@ -587,21 +587,34 @@
                       </label>
                     </div>
                     
-                    {/* Start Point Input - Only for route calculation */}
+                    {/* Start Point Input with GPS button */}
                     <div>
                       <label className="text-xs text-gray-600 mb-1 block">📍 נקודת התחלה (אופציונלי)</label>
-                      <input
-                        type="text"
-                        value={formData.startPoint}
-                        onChange={(e) => setFormData({...formData, startPoint: e.target.value})}
-                        placeholder="לדוגמה: BTS Asok, שם מלון..."
-                        className="w-full p-2 border border-gray-300 rounded-lg text-xs"
-                        style={{ direction: 'rtl' }}
-                      />
+                      <div className="flex gap-1.5">
+                        <input
+                          type="text"
+                          value={formData.startPoint}
+                          onChange={(e) => {
+                            setFormData({...formData, startPoint: e.target.value});
+                            setStartPointCoords(null); // Clear coords on manual edit
+                          }}
+                          placeholder="לדוגמה: BTS Asok, שם מלון..."
+                          className="flex-1 p-1.5 border border-gray-300 rounded-lg text-xs"
+                          style={{ direction: 'rtl' }}
+                        />
+                        <button
+                          onClick={getMyLocation}
+                          disabled={isLocating}
+                          className={`px-2 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap ${isLocating ? 'bg-gray-300 text-gray-500' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+                          title="השתמש במיקום הנוכחי"
+                        >
+                          {isLocating ? '⏳' : '📍'} נוכחי
+                        </button>
+                      </div>
                       <p style={{
                         fontSize: '10px',
                         color: '#6b7280',
-                        marginTop: '4px',
+                        marginTop: '3px',
                         fontStyle: 'italic'
                       }}>
                         💡 אם לא תבחר - המסלול יתחיל מהמקום הראשון
@@ -625,28 +638,32 @@
                             return;
                           }
 
-                          const origin = `${activeStops[0].lat},${activeStops[0].lng}`;
+                          // Use startPointCoords as origin if available, otherwise first stop
+                          const hasStartPoint = startPointCoords && startPointCoords.lat && startPointCoords.lng;
+                          const origin = hasStartPoint 
+                            ? `${startPointCoords.lat},${startPointCoords.lng}`
+                            : `${activeStops[0].lat},${activeStops[0].lng}`;
+                          // If using startPoint, all stops are waypoints; otherwise first stop is origin
+                          const stopsForRoute = hasStartPoint ? activeStops : activeStops.slice(1);
                           let destination, waypointsStr, mapUrl;
 
-                          if (activeStops.length === 1) {
-                            // Single stop - just show location
+                          if (activeStops.length === 1 && !hasStartPoint) {
+                            // Single stop, no start point - just show location
                             mapUrl = `https://www.google.com/maps/search/?api=1&query=${activeStops[0].lat},${activeStops[0].lng}`;
                           } else {
-                            // Multiple stops - create route
-                            destination = routeType === 'circular' ? origin : `${activeStops[activeStops.length - 1].lat},${activeStops[activeStops.length - 1].lng}`;
-                            
-                            if (routeType === 'circular' && activeStops.length > 1) {
-                              // Circular: all stops are waypoints
-                              waypointsStr = activeStops.slice(1).map(s => `${s.lat},${s.lng}`).join('|');
-                              mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypointsStr}&travelmode=walking`;
-                            } else if (routeType === 'linear' && activeStops.length > 2) {
-                              // Linear with middle stops
-                              waypointsStr = activeStops.slice(1, -1).map(s => `${s.lat},${s.lng}`).join('|');
-                              mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypointsStr}&travelmode=walking`;
+                            // Multiple stops or has start point - create route
+                            if (routeType === 'circular') {
+                              destination = origin; // Return to start
+                              waypointsStr = (hasStartPoint ? activeStops : activeStops.slice(1)).map(s => `${s.lat},${s.lng}`).join('|');
                             } else {
-                              // Linear with only 2 stops
-                              mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=walking`;
+                              destination = `${activeStops[activeStops.length - 1].lat},${activeStops[activeStops.length - 1].lng}`;
+                              const middleStops = hasStartPoint ? activeStops.slice(0, -1) : activeStops.slice(1, -1);
+                              waypointsStr = middleStops.map(s => `${s.lat},${s.lng}`).join('|');
                             }
+                            
+                            mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+                            if (waypointsStr) mapUrl += `&waypoints=${waypointsStr}`;
+                            mapUrl += '&travelmode=walking';
                           }
 
                           // Open in new tab
@@ -1136,23 +1153,28 @@
                       return '#';
                     }
 
-                    const origin = `${activeStops[0].lat},${activeStops[0].lng}`;
+                    // Use startPointCoords as origin if available
+                    const hasStartPoint = startPointCoords && startPointCoords.lat && startPointCoords.lng;
+                    const origin = hasStartPoint 
+                      ? `${startPointCoords.lat},${startPointCoords.lng}`
+                      : `${activeStops[0].lat},${activeStops[0].lng}`;
                     let destination, waypointsStr, mapUrl;
 
-                    if (activeStops.length === 1) {
+                    if (activeStops.length === 1 && !hasStartPoint) {
                       mapUrl = `https://www.google.com/maps/search/?api=1&query=${activeStops[0].lat},${activeStops[0].lng}`;
                     } else {
-                      destination = routeType === 'circular' ? origin : `${activeStops[activeStops.length - 1].lat},${activeStops[activeStops.length - 1].lng}`;
-                      
-                      if (routeType === 'circular' && activeStops.length > 1) {
-                        waypointsStr = activeStops.slice(1).map(s => `${s.lat},${s.lng}`).join('|');
-                        mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypointsStr}&travelmode=walking`;
-                      } else if (routeType === 'linear' && activeStops.length > 2) {
-                        waypointsStr = activeStops.slice(1, -1).map(s => `${s.lat},${s.lng}`).join('|');
-                        mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypointsStr}&travelmode=walking`;
+                      if (routeType === 'circular') {
+                        destination = origin;
+                        waypointsStr = (hasStartPoint ? activeStops : activeStops.slice(1)).map(s => `${s.lat},${s.lng}`).join('|');
                       } else {
-                        mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=walking`;
+                        destination = `${activeStops[activeStops.length - 1].lat},${activeStops[activeStops.length - 1].lng}`;
+                        const middleStops = hasStartPoint ? activeStops.slice(0, -1) : activeStops.slice(1, -1);
+                        waypointsStr = middleStops.map(s => `${s.lat},${s.lng}`).join('|');
                       }
+                      
+                      mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+                      if (waypointsStr) mapUrl += `&waypoints=${waypointsStr}`;
+                      mapUrl += '&travelmode=walking';
                     }
 
                     return mapUrl;

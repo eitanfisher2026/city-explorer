@@ -102,6 +102,8 @@
   const [debugLogs, setDebugLogs] = useState([]);
   const [debugPanelOpen, setDebugPanelOpen] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [startPointCoords, setStartPointCoords] = useState(null); // { lat, lng }
+  const [isLocating, setIsLocating] = useState(false);
   
   // Admin System - Password based
   const [adminPassword, setAdminPassword] = useState('');
@@ -140,9 +142,56 @@
   // Toast notification helper
   const showToast = (message, type = 'success') => {
     setToastMessage({ message, type });
-    // Longer messages get more time (min 1.5s, max 4s)
     const duration = Math.min(4000, Math.max(1500, message.length * 50));
     setTimeout(() => setToastMessage(null), duration);
+  };
+
+  // Get current GPS location and reverse geocode to address
+  const getMyLocation = () => {
+    if (!navigator.geolocation) {
+      showToast('הדפדפן לא תומך באיתור מיקום', 'error');
+      return;
+    }
+    
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude: lat, longitude: lng } = position.coords;
+        setStartPointCoords({ lat, lng });
+        console.log('[GPS] Got location:', lat, lng);
+        
+        // Try to get address via reverse geocode
+        try {
+          const address = await window.BKK.reverseGeocode(lat, lng);
+          if (address) {
+            setFormData(prev => ({ ...prev, startPoint: address }));
+            showToast('📍 מיקום נוכחי נקלט!', 'success');
+          } else {
+            // Fallback to coordinates
+            setFormData(prev => ({ ...prev, startPoint: `${lat.toFixed(6)}, ${lng.toFixed(6)}` }));
+            showToast('📍 מיקום נקלט (לא נמצאה כתובת)', 'success');
+          }
+        } catch (err) {
+          // Fallback to coordinates
+          setFormData(prev => ({ ...prev, startPoint: `${lat.toFixed(6)}, ${lng.toFixed(6)}` }));
+          showToast('📍 מיקום נקלט', 'success');
+        }
+        
+        setIsLocating(false);
+      },
+      (error) => {
+        setIsLocating(false);
+        console.error('[GPS] Error:', error);
+        if (error.code === 1) {
+          showToast('אין הרשאת מיקום - אנא אשר גישה למיקום', 'error');
+        } else if (error.code === 2) {
+          showToast('לא ניתן לאתר מיקום', 'error');
+        } else {
+          showToast('שגיאה באיתור מיקום', 'error');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
   };
 
   // Load saved routes from localStorage (still local)
@@ -1310,6 +1359,7 @@
         duration: formData.hours, // Keep for backward compatibility but not displayed
         circular: routeType === 'circular',
         startPoint: formData.startPoint || 'התחלה מהמקום הראשון ברשימה',
+        startPointCoords: startPointCoords || null,
         stops: uniqueStops,
         preferences: { ...formData },
         stats: {
@@ -1536,7 +1586,8 @@
   const loadSavedRoute = (savedRoute) => {
     setRoute(savedRoute);
     setFormData(savedRoute.preferences);
-    setCurrentView('form'); // Go to form view to show places list
+    setStartPointCoords(savedRoute.startPointCoords || null);
+    setCurrentView('form');
   };
 
   // NOTE: addCustomInterest logic is now inline in the dialog footer (see Add Interest Dialog)
