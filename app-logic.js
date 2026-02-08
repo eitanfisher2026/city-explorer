@@ -726,15 +726,17 @@
     // Filter out invalid interests (those without search config)
     const validInterests = interests.filter(id => isInterestValid(id));
     if (validInterests.length === 0) {
-      addDebugLog('API', 'No valid interests to search for (all missing config)');
-      console.warn('[DYNAMIC] No valid interests - all are missing search config');
+      const names = interests.map(id => allInterestOptions.find(o => o.id === id)?.label || id).join(', ');
+      addDebugLog('API', `No valid config for: ${names}`);
+      console.warn('[DYNAMIC] No valid interests - all are missing search config:', names);
       return [];
     }
     
     if (validInterests.length < interests.length) {
       const skipped = interests.filter(id => !isInterestValid(id));
-      addDebugLog('API', `Skipped ${skipped.length} invalid interests: ${skipped.join(', ')}`);
-      console.warn('[DYNAMIC] Skipped invalid interests:', skipped);
+      const skippedNames = skipped.map(id => allInterestOptions.find(o => o.id === id)?.label || id).join(', ');
+      addDebugLog('API', `Skipped interests without config: ${skippedNames}`);
+      console.warn('[DYNAMIC] Skipped invalid interests:', skippedNames);
     }
 
     try {
