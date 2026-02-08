@@ -808,10 +808,8 @@
       // Check if this was a text search
       const isTextSearch = !!textSearchQuery;
       
-      // For text search: extract query words for relevance filtering
-      const textSearchWords = isTextSearch 
-        ? textSearchQuery.toLowerCase().split(/\s+/).filter(w => w.length > 2)
-        : [];
+      // For text search: use the full query phrase for relevance filtering
+      const textSearchPhrase = isTextSearch ? textSearchQuery.toLowerCase().trim() : '';
       
       // Filter and transform Google Places data
       let typeFilteredCount = 0;
@@ -837,20 +835,15 @@
           }
           
           // Filter 2: For text search - relevance check
-          // Place name must contain at least one word from the search query
-          // OR place types must include art_gallery/museum (for art-related searches)
-          if (isTextSearch && textSearchWords.length > 0) {
-            const nameHasQueryWord = textSearchWords.some(word => placeName.includes(word));
-            const hasArtType = placeTypesFromGoogle.some(t => 
-              ['art_gallery', 'museum', 'painter', 'art_studio'].includes(t)
-            );
+          // Place name must contain the FULL search phrase (e.g. "street art")
+          if (isTextSearch && textSearchPhrase) {
+            const nameHasPhrase = placeName.includes(textSearchPhrase);
             
-            if (!nameHasQueryWord && !hasArtType) {
+            if (!nameHasPhrase) {
               relevanceFilteredCount++;
               console.log('[DYNAMIC] ❌ Filtered out (text search irrelevant):', {
                 name: place.displayName?.text,
-                types: placeTypesFromGoogle,
-                searchWords: textSearchWords
+                searchPhrase: textSearchPhrase
               });
               return false;
             }
