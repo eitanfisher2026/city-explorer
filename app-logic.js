@@ -832,7 +832,7 @@
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType'
+            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours'
           },
           body: JSON.stringify({
             textQuery: searchQuery,
@@ -874,7 +874,7 @@
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType'
+            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours'
           },
           body: JSON.stringify({
             includedTypes: placeTypes.slice(0, 10),
@@ -919,7 +919,7 @@
                 headers: {
                   'Content-Type': 'application/json',
                   'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-                  'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType'
+                  'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours'
                 },
                 body: JSON.stringify({
                   includedTypes: [singleType],
@@ -961,6 +961,11 @@
             const places = data.places.map(place => {
               const name = place.displayName?.text || 'Unknown';
               const placeTypesFromGoogle = place.types || [];
+              const openingHours = place.currentOpeningHours;
+              const todayIndex = new Date().getDay();
+              const googleDayIndex = todayIndex === 0 ? 6 : todayIndex - 1;
+              const todayHours = openingHours?.weekdayDescriptions?.[googleDayIndex] || '';
+              const hoursOnly = todayHours.includes(':') ? todayHours.substring(todayHours.indexOf(':') + 1).trim() : todayHours;
               return {
                 name,
                 description: place.formattedAddress || '',
@@ -973,6 +978,8 @@
                 interests: validInterests,
                 googleTypes: placeTypesFromGoogle,
                 primaryType: place.primaryType || null,
+                openNow: openingHours?.openNow ?? null,
+                todayHours: hoursOnly || '',
                 custom: false
               };
             }).filter(place => place.lat !== 0 && place.lng !== 0);
@@ -1067,20 +1074,32 @@
           
           return true;
         })
-        .map((place, index) => ({
-          name: place.displayName?.text || 'Unknown Place',
-          lat: place.location?.latitude || center.lat,
-          lng: place.location?.longitude || center.lng,
-          description: `⭐ ${place.rating?.toFixed(1) || 'N/A'} (${place.userRatingCount || 0} ביקורות)`,
-          duration: 45,
-          googlePlace: true,
-          rating: place.rating || 0,
-          ratingCount: place.userRatingCount || 0,
-          googleTypes: place.types || [],
-          primaryType: place.primaryType || '',
-          address: place.formattedAddress || '',
-          interests: interests
-        }));
+        .map((place, index) => {
+          // Extract today's opening hours
+          const openingHours = place.currentOpeningHours;
+          const todayIndex = new Date().getDay(); // 0=Sun, need to map to weekdayDescriptions (0=Mon in Google)
+          const googleDayIndex = todayIndex === 0 ? 6 : todayIndex - 1; // Convert: Sun=6, Mon=0, Tue=1...
+          const todayHours = openingHours?.weekdayDescriptions?.[googleDayIndex] || '';
+          // Remove day name prefix (e.g. "Monday: 9:00 AM – 5:00 PM" -> "9:00 AM – 5:00 PM")
+          const hoursOnly = todayHours.includes(':') ? todayHours.substring(todayHours.indexOf(':') + 1).trim() : todayHours;
+          
+          return {
+            name: place.displayName?.text || 'Unknown Place',
+            lat: place.location?.latitude || center.lat,
+            lng: place.location?.longitude || center.lng,
+            description: `⭐ ${place.rating?.toFixed(1) || 'N/A'} (${place.userRatingCount || 0} ביקורות)`,
+            duration: 45,
+            googlePlace: true,
+            rating: place.rating || 0,
+            ratingCount: place.userRatingCount || 0,
+            googleTypes: place.types || [],
+            primaryType: place.primaryType || '',
+            address: place.formattedAddress || '',
+            openNow: openingHours?.openNow ?? null,
+            todayHours: hoursOnly || '',
+            interests: interests
+          };
+        });
       
       console.log('[DYNAMIC] Filtering summary:', {
         received: data.places.length,
@@ -1130,7 +1149,7 @@
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-          'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.primaryTypeDisplayName'
+          'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.primaryTypeDisplayName,places.currentOpeningHours'
         },
         body: JSON.stringify({
           textQuery: searchQuery,

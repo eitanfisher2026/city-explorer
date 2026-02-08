@@ -471,6 +471,11 @@
                                     }}>
                                       {hasValidCoords ? stop.description : '⚠️ חסרות קואורדינטות'}
                                     </div>
+                                    {stop.todayHours && (
+                                      <div className="text-[9px]" style={{ color: stop.openNow ? '#059669' : '#dc2626' }}>
+                                        🕐 {stop.openNow ? 'פתוח' : 'סגור'} · {stop.todayHours}
+                                      </div>
+                                    )}
                                   </a>
                                 </div>
                               );
@@ -984,6 +989,11 @@
                                     {stop.description && (
                                       <div className="text-gray-300 mb-1">{stop.description}</div>
                                     )}
+                                    {stop.todayHours && (
+                                      <div className="mb-1" style={{ color: stop.openNow ? '#34d399' : '#f87171' }}>
+                                        🕐 {stop.openNow ? 'פתוח' : 'סגור'} · {stop.todayHours}
+                                      </div>
+                                    )}
                                     {stop.notes && (
                                       <div className="text-gray-400 italic">💭 {stop.notes}</div>
                                     )}
@@ -1005,6 +1015,11 @@
                           }}>
                             {hasValidCoords ? stop.description : '⚠️ חסרות קואורדינטות - לא יכלל במסלול'}
                           </p>
+                          {stop.todayHours && (
+                            <p className="text-[10px]" style={{ color: stop.openNow ? '#059669' : '#dc2626' }}>
+                              🕐 {stop.openNow ? 'פתוח' : 'סגור'} · {stop.todayHours}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
