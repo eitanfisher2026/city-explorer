@@ -38,7 +38,8 @@
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [customLocations, setCustomLocations] = useState([]);
   const [showAddLocationDialog, setShowAddLocationDialog] = useState(false);
-  const [showBlacklistLocations, setShowBlacklistLocations] = useState(false); // collapsed by default
+  const [showBlacklistLocations, setShowBlacklistLocations] = useState(false);
+  const [placesGroupBy, setPlacesGroupBy] = useState('interest'); // 'interest' or 'area'
   const [newLocation, setNewLocation] = useState({
     name: '',
     description: '',
@@ -194,7 +195,31 @@
     );
   };
 
-  // Load saved routes from localStorage (still local)
+  // Geocode typed start point address to coordinates
+  const validateStartPoint = async () => {
+    const text = formData.startPoint?.trim();
+    if (!text) {
+      showToast('הזן כתובת או שם מקום', 'warning');
+      return;
+    }
+    
+    setIsLocating(true);
+    try {
+      const result = await window.BKK.geocodeAddress(text);
+      if (result) {
+        setStartPointCoords({ lat: result.lat, lng: result.lng });
+        setFormData(prev => ({ ...prev, startPoint: result.address || result.displayName || text }));
+        showToast(`✅ כתובת אומתה: ${result.displayName || result.address}`, 'success');
+        console.log('[START_POINT] Geocoded:', text, '->', result);
+      } else {
+        showToast('לא נמצאה כתובת תואמת', 'warning');
+      }
+    } catch (err) {
+      console.error('[START_POINT] Geocode error:', err);
+      showToast('שגיאה בחיפוש כתובת', 'error');
+    }
+    setIsLocating(false);
+  };
   useEffect(() => {
     try {
       const saved = localStorage.getItem('bangkok_saved_routes');
@@ -1772,7 +1797,8 @@
       address: loc.address || '',
       uploadedImage: loc.uploadedImage || null,
       imageUrls: loc.imageUrls || [],
-      inProgress: loc.inProgress || false
+      inProgress: loc.inProgress || false,
+      locked: loc.locked || false
     };
     
     console.log('[EDIT] Form data prepared:', JSON.stringify(editFormData, null, 2));
@@ -2253,8 +2279,9 @@
       missingCoordinates: !hasCoordinates, // Flag for missing coordinates
       duration: 45,
       custom: true,
-      status: 'active', // 'active', 'blacklist', or 'review'
-      inProgress: false, // Show 🛠️ badge when true
+      status: 'active',
+      inProgress: newLocation.inProgress || false,
+      locked: newLocation.locked || false,
       addedAt: new Date().toISOString()
     };
     

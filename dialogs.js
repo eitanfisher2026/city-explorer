@@ -405,9 +405,27 @@
                   />
                 </div>
 
-              </div>
-              
-              {/* Footer - Compact */}
+                {/* Status toggles */}
+                <div className="flex gap-3 px-4 py-2 bg-gray-50 border-t border-gray-100">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newLocation.inProgress || false}
+                      onChange={(e) => setNewLocation({...newLocation, inProgress: e.target.checked})}
+                      className="rounded"
+                    />
+                    <span className="text-xs">🛠️ בעבודה</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newLocation.locked || false}
+                      onChange={(e) => setNewLocation({...newLocation, locked: e.target.checked})}
+                      className="rounded"
+                    />
+                    <span className="text-xs">🔒 נעול</span>
+                  </label>
+                </div>
               <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: 'rtl' }}>
                 <button
                   onClick={() => {
@@ -1428,13 +1446,20 @@
                 <h3 className="text-base font-bold">
                   {editingInterestConfig.icon} {editingInterestConfig.label} - הגדרות חיפוש
                 </h3>
-                <button
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => showHelpFor('interestConfig')}
+                    className="bg-white text-blue-600 hover:bg-blue-50 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold"
+                    title="עזרה"
+                  >?</button>
+                  <button
                   onClick={() => {
                     setShowInterestConfigDialog(false);
                     setEditingInterestConfig(null);
                   }}
                   className="text-white hover:text-gray-200"
                 >✕</button>
+                </div>
               </div>
             </div>
             <div className="p-4 space-y-4" style={{ direction: 'ltr' }}>

@@ -218,6 +218,13 @@
               >
                 {isGenerating ? 'מחפש...' : `🔍 מצא נקודות עניין (${formData.maxStops} מקומות)`}
               </button>
+              <button
+                onClick={() => showHelpFor('searchLogic')}
+                className="bg-white text-blue-600 hover:bg-blue-50 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold shadow border border-blue-200"
+                title="איך המערכת מוצאת מקומות?"
+              >
+                ?
+              </button>
             </div>
             
             {formData.interests.length === 0 && (
@@ -587,38 +594,53 @@
                       </label>
                     </div>
                     
-                    {/* Start Point Input with GPS button */}
+                    {/* Start Point Input with GPS + validate buttons */}
                     <div>
                       <label className="text-xs text-gray-600 mb-1 block">📍 נקודת התחלה (אופציונלי)</label>
-                      <div className="flex gap-1.5">
+                      <div className="flex gap-1">
                         <input
                           type="text"
                           value={formData.startPoint}
                           onChange={(e) => {
                             setFormData({...formData, startPoint: e.target.value});
-                            setStartPointCoords(null); // Clear coords on manual edit
+                            setStartPointCoords(null);
                           }}
                           placeholder="לדוגמה: BTS Asok, שם מלון..."
                           className="flex-1 p-1.5 border border-gray-300 rounded-lg text-xs"
                           style={{ direction: 'rtl' }}
                         />
                         <button
+                          onClick={validateStartPoint}
+                          disabled={isLocating || !formData.startPoint?.trim()}
+                          className={`px-1.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap ${
+                            isLocating || !formData.startPoint?.trim() ? 'bg-gray-300 text-gray-500' : 'bg-green-500 text-white hover:bg-green-600'
+                          }`}
+                          title="אמת כתובת"
+                        >
+                          🔍
+                        </button>
+                        <button
                           onClick={getMyLocation}
                           disabled={isLocating}
-                          className={`px-2 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap ${isLocating ? 'bg-gray-300 text-gray-500' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
-                          title="השתמש במיקום הנוכחי"
+                          className={`px-1.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap ${isLocating ? 'bg-gray-300 text-gray-500' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+                          title="מיקום נוכחי"
                         >
-                          {isLocating ? '⏳' : '📍'} נוכחי
+                          {isLocating ? '⏳' : '📍'}
                         </button>
                       </div>
-                      <p style={{
-                        fontSize: '10px',
-                        color: '#6b7280',
-                        marginTop: '3px',
-                        fontStyle: 'italic'
-                      }}>
-                        💡 אם לא תבחר - המסלול יתחיל מהמקום הראשון
-                      </p>
+                      {startPointCoords ? (
+                        <p style={{ fontSize: '10px', color: '#16a34a', marginTop: '3px', fontWeight: 'bold' }}>
+                          ✅ נקודת התחלה נקלטה ({startPointCoords.lat.toFixed(4)}, {startPointCoords.lng.toFixed(4)})
+                        </p>
+                      ) : formData.startPoint?.trim() ? (
+                        <p style={{ fontSize: '10px', color: '#d97706', marginTop: '3px' }}>
+                          ⚠️ לחץ 🔍 לאימות הכתובת כדי שתשמש כנקודת התחלה במפה
+                        </p>
+                      ) : (
+                        <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '3px', fontStyle: 'italic' }}>
+                          💡 אם לא תבחר - המסלול יתחיל מהמקום הראשון
+                        </p>
+                      )}
                     </div>
                     
                     {/* Buttons row: Open in Google + Save */}
@@ -1449,6 +1471,21 @@
               <div className="flex justify-between items-center mb-2">
                 <h3 className="text-base font-bold">מקומות ({customLocations.length})</h3>
                 <div className="flex items-center gap-2">
+                  {/* Group by toggle */}
+                  <div className="flex bg-gray-200 rounded-lg p-0.5">
+                    <button
+                      onClick={() => setPlacesGroupBy('interest')}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${placesGroupBy === 'interest' ? 'bg-white shadow text-purple-700' : 'text-gray-500'}`}
+                    >
+                      לפי תחום
+                    </button>
+                    <button
+                      onClick={() => setPlacesGroupBy('area')}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${placesGroupBy === 'area' ? 'bg-white shadow text-purple-700' : 'text-gray-500'}`}
+                    >
+                      לפי איזור
+                    </button>
+                  </div>
                   <button
                     onClick={() => setCurrentView('search')}
                     className="text-blue-500 hover:text-blue-700 text-xl"
@@ -1473,101 +1510,143 @@
                 </div>
               ) : (
                 <>
-                  {/* Active Locations */}
+                  {/* Active Locations - Grouped */}
                   {(() => {
                     const activeLocations = customLocations.filter(loc => loc.status !== 'blacklist');
+                    if (activeLocations.length === 0) return null;
                     
-                    return activeLocations.length > 0 && (
+                    // Group locations
+                    const groups = {};
+                    const ungrouped = [];
+                    
+                    activeLocations.forEach(loc => {
+                      if (placesGroupBy === 'interest') {
+                        const interests = loc.interests || [];
+                        if (interests.length === 0) {
+                          ungrouped.push(loc);
+                        } else {
+                          interests.forEach(int => {
+                            if (!groups[int]) groups[int] = [];
+                            groups[int].push(loc);
+                          });
+                        }
+                      } else {
+                        // Group by area
+                        const area = loc.area || 'unknown';
+                        if (!groups[area]) groups[area] = [];
+                        groups[area].push(loc);
+                      }
+                    });
+                    
+                    // Sort groups
+                    const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
+                      if (placesGroupBy === 'interest') {
+                        const aObj = allInterestOptions.find(o => o.id === a);
+                        const bObj = allInterestOptions.find(o => o.id === b);
+                        return (aObj?.label || a).localeCompare(bObj?.label || b, 'he');
+                      } else {
+                        const aObj = areaOptions.find(o => o.id === a);
+                        const bObj = areaOptions.find(o => o.id === b);
+                        return (aObj?.label || a).localeCompare(bObj?.label || b, 'he');
+                      }
+                    });
+                    
+                    // Sort locations within each group by the secondary dimension
+                    const sortWithin = (locs) => {
+                      return [...locs].sort((a, b) => {
+                        if (placesGroupBy === 'interest') {
+                          // Sort by area within interest group
+                          const aArea = areaOptions.find(o => o.id === a.area)?.label || '';
+                          const bArea = areaOptions.find(o => o.id === b.area)?.label || '';
+                          return aArea.localeCompare(bArea, 'he') || a.name.localeCompare(b.name, 'he');
+                        } else {
+                          // Sort by interest within area group
+                          const aInt = (a.interests?.[0]) || '';
+                          const bInt = (b.interests?.[0]) || '';
+                          return aInt.localeCompare(bInt) || a.name.localeCompare(b.name, 'he');
+                        }
+                      });
+                    };
+                    
+                    // Render a single location row
+                    const renderLocationRow = (loc) => (
+                      <div
+                        key={loc.id}
+                        className="flex items-center justify-between gap-2 border border-emerald-300 rounded p-1.5 bg-emerald-50 hover:bg-emerald-100"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="font-medium text-sm truncate">{loc.name}</span>
+                            {loc.locked && <span title="נעול" style={{ fontSize: '12px' }}>🔒</span>}
+                            {loc.inProgress && <span className="text-orange-600" title="בעבודה" style={{ fontSize: '14px' }}>🛠️</span>}
+                            {loc.outsideArea && <span className="text-orange-500 text-xs" title="מחוץ לגבולות">🔺</span>}
+                            {loc.missingCoordinates && <span className="text-red-500 text-xs" title="אין מיקום">⚠️</span>}
+                            {placesGroupBy === 'area' && loc.interests?.map((int, idx) => {
+                              const obj = allInterestOptions.find(o => o.id === int);
+                              return obj?.icon ? <span key={idx} title={obj.label} style={{ fontSize: '13px' }}>{obj.icon}</span> : null;
+                            })}
+                            {placesGroupBy === 'interest' && loc.area && (
+                              <span className="text-[10px] bg-gray-200 text-gray-600 px-1 rounded">{areaOptions.find(a => a.id === loc.area)?.label || loc.area}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-0.5">
+                          <button onClick={() => { setSelectedLocation(loc); setGooglePlaceInfo(null); setShowLocationDetailModal(true); }}
+                            className="text-xs px-1 py-0.5 rounded bg-indigo-500 text-white hover:bg-indigo-600" title="פרטים">🔍</button>
+                          <button onClick={() => toggleLocationStatus(loc.id)}
+                            className="text-xs px-1 py-0.5 rounded bg-red-500 text-white hover:bg-red-600" title="דלג תמיד">🚫</button>
+                          <button onClick={() => handleEditLocation(loc)}
+                            className={`text-xs px-1 py-0.5 rounded hover:bg-blue-100 ${loc.locked && !isUnlocked ? 'opacity-30 cursor-not-allowed' : ''}`}
+                            title={loc.locked && !isUnlocked ? 'נעול - דרוש סיסמה' : 'ערוך'}
+                            disabled={loc.locked && !isUnlocked}>✏️</button>
+                          <button onClick={() => { if (loc.locked && !isUnlocked) { showToast('מקום נעול - דרוש סיסמה אדמין', 'warning'); return; } showConfirm(`למחוק את "${loc.name}"?`, () => deleteCustomLocation(loc.id)); }}
+                            className={`text-xs px-1 py-0.5 rounded hover:bg-red-100 ${loc.locked && !isUnlocked ? 'opacity-30' : ''}`}
+                            title={loc.locked && !isUnlocked ? 'נעול' : 'מחק'}>🗑️</button>
+                        </div>
+                      </div>
+                    );
+                    
+                    return (
                       <div className="mb-3">
-                        <h4 className="text-sm font-bold text-green-700 mb-2 flex items-center gap-1">
-                          <span>✅ מקומות כלולים ({activeLocations.length})</span>
+                        <h4 className="text-sm font-bold text-green-700 mb-2">
+                          ✅ מקומות כלולים ({activeLocations.length})
                         </h4>
-                        <div className="space-y-1 max-h-[50vh] overflow-y-auto">
-                          {activeLocations.map(loc => (
-                            <div
-                              key={loc.id}
-                              className="flex items-center justify-between gap-2 border border-emerald-300 rounded p-1.5 bg-emerald-50 hover:bg-emerald-100"
-                            >
-                              {/* Name and interest icons */}
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1">
-                                  <span className="font-medium text-sm truncate">{loc.name}</span>
-                                  {loc.inProgress && (
-                                    <span className="text-orange-600" title="בעבודה - החלט אם לשמור או למחוק" style={{ fontSize: '14px' }}>🛠️</span>
-                                  )}
-                                  {loc.outsideArea && (
-                                    <span className="text-orange-500 text-xs" title="מחוץ לגבולות האזור">🔺</span>
-                                  )}
-                                  {loc.missingCoordinates && (
-                                    <span className="text-red-500 text-xs" title="אין מיקום - לא ניתן להציג במפה">⚠️</span>
-                                  )}
-                                  {loc.interests?.map((int, idx) => {
-                                    const interestObj = allInterestOptions.find(opt => opt.id === int);
-                                    return interestObj?.icon ? (
-                                      <span 
-                                        key={idx}
-                                        title={interestObj.label}
-                                        style={{ fontSize: '13px' }}
-                                      >
-                                        {interestObj.icon}
-                                      </span>
-                                    ) : null;
-                                  })}
+                        <div className="space-y-2 max-h-[55vh] overflow-y-auto">
+                          {sortedGroupKeys.map(key => {
+                            const locs = sortWithin(groups[key]);
+                            let groupLabel, groupIcon;
+                            if (placesGroupBy === 'interest') {
+                              const obj = allInterestOptions.find(o => o.id === key);
+                              groupLabel = obj?.label || key;
+                              groupIcon = obj?.icon || '🏷️';
+                            } else {
+                              const obj = areaOptions.find(o => o.id === key);
+                              groupLabel = obj?.label || key;
+                              groupIcon = '📍';
+                            }
+                            return (
+                              <div key={key} className="border border-gray-200 rounded-lg overflow-hidden">
+                                <div className="bg-gray-100 px-2 py-1 flex items-center gap-1 text-xs font-bold text-gray-700">
+                                  <span>{groupIcon}</span>
+                                  <span>{groupLabel}</span>
+                                  <span className="text-gray-400 font-normal">({locs.length})</span>
                                 </div>
-                                {/* Coordinates display */}
-                                {loc.lat && loc.lng && (
-                                  <div className="text-[10px] text-gray-500 mt-0.5">
-                                    📍 {loc.lat.toFixed(5)}, {loc.lng.toFixed(5)}
-                                  </div>
-                                )}
-                                {(!loc.lat || !loc.lng) && (
-                                  <div className="text-[10px] text-red-500 mt-0.5">
-                                    ⚠️ אין קואורדינטות
-                                  </div>
-                                )}
+                                <div className="space-y-0.5 p-1">
+                                  {locs.map(renderLocationRow)}
+                                </div>
                               </div>
-                              
-                              {/* Action buttons */}
-                              <div className="flex gap-0.5">
-                                <button
-                                  onClick={() => {
-                                    setSelectedLocation(loc);
-                                    setGooglePlaceInfo(null);
-                                    setShowLocationDetailModal(true);
-                                  }}
-                                  className="text-xs px-1 py-0.5 rounded bg-indigo-500 text-white hover:bg-indigo-600"
-                                  title="פרטים + בדיקת Google"
-                                >
-                                  🔍
-                                </button>
-                                <button
-                                  onClick={() => toggleLocationStatus(loc.id)}
-                                  className="text-xs px-1 py-0.5 rounded bg-red-500 text-white hover:bg-red-600"
-                                  title="העבר להסתר (דלג תמיד)"
-                                >
-                                  🚫
-                                </button>
-                                <button
-                                  onClick={() => handleEditLocation(loc)}
-                                  className="text-xs px-1 py-0.5 rounded hover:bg-blue-100"
-                                  title="ערוך מקום"
-                                >
-                                  ✏️
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    showConfirm(`למחוק את "${loc.name}"?`, () => {
-                                      deleteCustomLocation(loc.id);
-                                    });
-                                  }}
-                                  className="text-xs px-1 py-0.5 rounded hover:bg-red-100"
-                                  title="מחק מקום"
-                                >
-                                  🗑️
-                                </button>
+                            );
+                          })}
+                          {ungrouped.length > 0 && (
+                            <div className="border border-gray-200 rounded-lg overflow-hidden">
+                              <div className="bg-gray-100 px-2 py-1 text-xs font-bold text-gray-500">
+                                ללא תחום ({ungrouped.length})
+                              </div>
+                              <div className="space-y-0.5 p-1">
+                                {sortWithin(ungrouped).map(renderLocationRow)}
                               </div>
                             </div>
-                          ))}
+                          )}
                         </div>
                       </div>
                     );
