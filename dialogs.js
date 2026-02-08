@@ -381,18 +381,6 @@
                       <span className="text-sm">📍</span>
                       <span>מיקום</span>
                     </button>
-                    {newLocation.lat && newLocation.lng && (
-                      <a
-                        href={`https://www.google.com/maps?q=${newLocation.lat},${newLocation.lng}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1.5 rounded-lg text-[9px] font-bold bg-orange-500 text-white hover:bg-orange-600 flex flex-col items-center"
-                        title="בדוק על המפה"
-                      >
-                        <span className="text-sm">🗺️</span>
-                        <span>בדוק</span>
-                      </a>
-                    )}
                   </div>
                 </div>
 
@@ -500,6 +488,41 @@
                     <span className="text-xs">🔒 נעול</span>
                   </label>
                 </div>
+
+                {/* Actions: Skip permanently + Delete (edit mode only) */}
+                {showEditLocationDialog && editingLocation && (
+                  <div className="border-t border-red-200 bg-red-50 px-4 py-2 space-y-1.5">
+                    {!(editingLocation.locked && !isUnlocked) && (
+                      <>
+                        <button
+                          onClick={() => {
+                            toggleLocationStatus(editingLocation.id);
+                            setShowEditLocationDialog(false);
+                            setEditingLocation(null);
+                          }}
+                          className="w-full py-1.5 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600"
+                        >
+                          🚫 דלג לצמיתות
+                        </button>
+                        <button
+                          onClick={() => {
+                            showConfirm(`למחוק את "${editingLocation.name}"?`, () => {
+                              deleteCustomLocation(editingLocation.id);
+                              setShowEditLocationDialog(false);
+                              setEditingLocation(null);
+                            });
+                          }}
+                          className="w-full py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700"
+                        >
+                          🗑️ מחק מקום
+                        </button>
+                      </>
+                    )}
+                    {editingLocation.locked && !isUnlocked && (
+                      <div className="text-center text-xs text-yellow-700">🔒 מקום נעול - פעולות חסומות</div>
+                    )}
+                  </div>
+                )}
 
               </div>
               
@@ -1222,6 +1245,32 @@
                   Cancel
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Dialog */}
+      {showConfirmDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-4 max-w-sm w-full shadow-2xl">
+            <p className="text-sm text-gray-800 mb-4 text-center font-medium">{confirmConfig.message}</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setShowConfirmDialog(false);
+                  if (confirmConfig.onConfirm) confirmConfig.onConfirm();
+                }}
+                className="flex-1 py-2 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600"
+              >
+                אישור
+              </button>
+              <button
+                onClick={() => setShowConfirmDialog(false)}
+                className="flex-1 py-2 bg-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-400"
+              >
+                ביטול
+              </button>
             </div>
           </div>
         </div>

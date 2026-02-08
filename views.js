@@ -1618,14 +1618,9 @@
                           </div>
                         </div>
                         <div className="flex gap-0.5">
-                          <button onClick={() => { if (!canEdit) { showToast('מקום נעול - דרוש סיסמה אדמין', 'warning'); return; } handleEditLocation(loc); }}
-                            className={`text-xs px-1 py-0.5 rounded hover:bg-blue-100 ${!canEdit ? 'opacity-30' : ''}`}
-                            title={!canEdit ? 'נעול - דרוש סיסמה' : 'ערוך'}>✏️</button>
-                          <button onClick={() => toggleLocationStatus(loc.id)}
-                            className="text-xs px-1 py-0.5 rounded bg-red-500 text-white hover:bg-red-600" title="דלג תמיד">🚫</button>
-                          <button onClick={() => { if (!canEdit) { showToast('מקום נעול - דרוש סיסמה אדמין', 'warning'); return; } showConfirm(`למחוק את "${loc.name}"?`, () => deleteCustomLocation(loc.id)); }}
-                            className={`text-xs px-1 py-0.5 rounded hover:bg-red-100 ${!canEdit ? 'opacity-30' : ''}`}
-                            title={!canEdit ? 'נעול' : 'מחק'}>🗑️</button>
+                          <button onClick={() => handleEditLocation(loc)}
+                            className="text-xs px-1 py-0.5 rounded hover:bg-blue-100"
+                            title="פרטים / ערוך">✏️</button>
                         </div>
                       </div>
                     );
