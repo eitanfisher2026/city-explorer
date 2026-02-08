@@ -67,19 +67,46 @@
     <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Firebase SDK - dynamic loading for CSP compatibility -->
+    <!-- Firebase SDK - sequential loading with Promise -->
     <script>
-    (function() {
-      ['firebase-app-compat.js','firebase-database-compat.js'].forEach(function(lib) {
+    window.__firebaseReady = new Promise(function(resolve) {
+      var libs = ['firebase-app-compat.js','firebase-database-compat.js'];
+      var loaded = 0;
+      var failed = false;
+      
+      function loadNext() {
+        if (failed || loaded >= libs.length) {
+          resolve(!failed);
+          return;
+        }
         var s = document.createElement('script');
-        s.src = 'https://www.gstatic.com/firebasejs/9.22.0/' + lib;
-        s.onerror = function() { console.warn('[FIREBASE] Blocked: ' + lib); };
+        s.src = 'https://www.gstatic.com/firebasejs/9.22.0/' + libs[loaded];
+        s.onload = function() {
+          loaded++;
+          console.log('[FIREBASE] Loaded: ' + libs[loaded-1]);
+          loadNext();
+        };
+        s.onerror = function() {
+          console.warn('[FIREBASE] Blocked: ' + libs[loaded]);
+          failed = true;
+          resolve(false);
+        };
         document.head.appendChild(s);
-      });
-    })();
+      }
+      
+      loadNext();
+      
+      // Safety timeout - don't wait forever
+      setTimeout(function() {
+        if (loaded < libs.length && !failed) {
+          console.warn('[FIREBASE] Load timeout after 8s');
+          resolve(false);
+        }
+      }, 8000);
+    });
     </script>
     
-    <!-- Inlined JS modules -->
+    <!-- Config -->
     <script>
 // ============================================================================
 // Bangkok Explorer - Configuration & Constants
@@ -89,7 +116,7 @@
 window.BKK = window.BKK || {};
 
 // App Version
-window.BKK.VERSION = '2.7.1';
+window.BKK.VERSION = '2.7.2';
 
 // Firebase Configuration
 window.BKK.firebaseConfig = {
@@ -448,7 +475,9 @@ window.BKK.helpContent = {
 
 console.log('[CONFIG] Loaded successfully');
 
+
     </script>
+    <!-- Utils -->
     <script>
 // ============================================================================
 // Bangkok Explorer - Utility Functions
@@ -785,6 +814,7 @@ window.BKK.parseUserAgent = (ua) => {
 
 console.log('[UTILS] Loaded successfully');
 
+
     </script>
 
     
@@ -807,33 +837,36 @@ console.log('[UTILS] Loaded successfully');
     <script type="text/babel">
 const { useState, useEffect } = React;
 
-// Firebase Configuration - loaded from js/config.js
+// Firebase Configuration - loaded from config.js
 const firebaseConfig = window.BKK.firebaseConfig;
 
-// Initialize Firebase (only if available)
+// Initialize Firebase (deferred until SDK loads)
 let firebaseApp = null;
 let database = null;
 let isFirebaseAvailable = false;
 
-try {
-  if (typeof firebase !== 'undefined') {
-    firebaseApp = firebase.initializeApp(firebaseConfig);
-    database = firebase.database();
-    isFirebaseAvailable = true;
-    console.log('[FIREBASE] Initialized successfully');
-  } else {
-    console.log('[FIREBASE] Not available - using localStorage only');
+function initFirebase() {
+  try {
+    if (typeof firebase !== 'undefined') {
+      firebaseApp = firebase.initializeApp(firebaseConfig);
+      database = firebase.database();
+      isFirebaseAvailable = true;
+      console.log('[FIREBASE] Initialized successfully');
+    } else {
+      console.log('[FIREBASE] Not available - using localStorage only');
+    }
+  } catch (error) {
+    console.error('[FIREBASE] Initialization failed:', error);
+    console.log('[FIREBASE] Falling back to localStorage');
   }
-} catch (error) {
-  console.error('[FIREBASE] Initialization failed:', error);
-  console.log('[FIREBASE] Falling back to localStorage');
 }
 
-// Google Places API - loaded from js/config.js
+// Google Places API - loaded from config.js
 const GOOGLE_PLACES_API_KEY = window.BKK.GOOGLE_PLACES_API_KEY;
 const GOOGLE_PLACES_API_URL = window.BKK.GOOGLE_PLACES_API_URL;
 
 const BangkokExplorer = () => {
+
   // Load saved preferences
   const loadPreferences = () => {
     try {
@@ -874,7 +907,7 @@ const BangkokExplorer = () => {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [customLocations, setCustomLocations] = useState([]);
   const [showAddLocationDialog, setShowAddLocationDialog] = useState(false);
-  const [showBlacklistLocations, setShowBlacklistLocations] = useState(false); // NEW: collapsed by default
+  const [showBlacklistLocations, setShowBlacklistLocations] = useState(false); // collapsed by default
   const [newLocation, setNewLocation] = useState({
     name: '',
     description: '',
@@ -937,6 +970,7 @@ const BangkokExplorer = () => {
   });
   const [debugLogs, setDebugLogs] = useState([]);
   const [debugPanelOpen, setDebugPanelOpen] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Admin System - Password based
   const [adminPassword, setAdminPassword] = useState('');
@@ -959,7 +993,7 @@ const BangkokExplorer = () => {
     localStorage.setItem('bangkok_debug_mode', debugMode.toString());
   }, [debugMode]);
   
-  // Help content - loaded from js/config.js
+  // Help content - loaded from config.js
   const helpContent = window.BKK.helpContent;
 
   const showHelpFor = (context) => {
@@ -992,7 +1026,6 @@ const BangkokExplorer = () => {
     }
   }, []);
 
-  // Load custom locations from Firebase
   // Load custom locations from Firebase
   useEffect(() => {
     if (isFirebaseAvailable && database) {
@@ -1162,6 +1195,149 @@ const BangkokExplorer = () => {
     }
   }, []);
 
+  // ============================================================
+  // Refresh All Data - Manual reload from Firebase & localStorage
+  // ============================================================
+  const refreshAllData = async () => {
+    setIsRefreshing(true);
+    console.log('[REFRESH] Starting full data refresh...');
+    
+    try {
+      // 1. Saved Routes (localStorage)
+      try {
+        const saved = localStorage.getItem('bangkok_saved_routes');
+        if (saved) {
+          setSavedRoutes(JSON.parse(saved));
+          console.log('[REFRESH] Saved routes loaded from localStorage');
+        }
+      } catch (e) {
+        console.error('[REFRESH] Error loading saved routes:', e);
+      }
+      
+      if (isFirebaseAvailable && database) {
+        // 2. Custom Locations
+        try {
+          const locSnap = await database.ref('customLocations').once('value');
+          const locData = locSnap.val();
+          if (locData) {
+            const locationsArray = Object.keys(locData).map(key => ({
+              ...locData[key],
+              firebaseId: key
+            }));
+            setCustomLocations(locationsArray);
+            console.log('[REFRESH] Loaded', locationsArray.length, 'locations');
+          } else {
+            setCustomLocations([]);
+          }
+        } catch (e) {
+          console.error('[REFRESH] Error loading locations:', e);
+        }
+        
+        // 3. Custom Interests
+        try {
+          const intSnap = await database.ref('customInterests').once('value');
+          const intData = intSnap.val();
+          if (intData) {
+            const interestsArray = Object.keys(intData).map(key => ({
+              ...intData[key],
+              firebaseId: key
+            }));
+            setCustomInterests(interestsArray);
+            console.log('[REFRESH] Loaded', interestsArray.length, 'interests');
+          } else {
+            setCustomInterests([]);
+          }
+        } catch (e) {
+          console.error('[REFRESH] Error loading interests:', e);
+        }
+        
+        // 4. Interest Config
+        try {
+          const configSnap = await database.ref('settings/interestConfig').once('value');
+          const configData = configSnap.val();
+          if (configData) {
+            setInterestConfig(prev => ({ ...prev, ...configData }));
+            console.log('[REFRESH] Loaded interest config');
+          }
+        } catch (e) {
+          console.error('[REFRESH] Error loading interest config:', e);
+        }
+        
+        // 5. Interest Status
+        try {
+          const statusSnap = await database.ref('settings/interestStatus').once('value');
+          const statusData = statusSnap.val();
+          if (statusData) {
+            const builtInIds = interestOptions.map(i => i.id);
+            const uncoveredIds = uncoveredInterests.map(i => i.id || i.name.replace(/\s+/g, '_').toLowerCase());
+            const defaultStatus = {};
+            builtInIds.forEach(id => { defaultStatus[id] = true; });
+            uncoveredIds.forEach(id => { defaultStatus[id] = false; });
+            setInterestStatus({ ...defaultStatus, ...statusData });
+            console.log('[REFRESH] Loaded interest status');
+          }
+        } catch (e) {
+          console.error('[REFRESH] Error loading interest status:', e);
+        }
+        
+        // 6. Admin Settings
+        try {
+          const pwSnap = await database.ref('settings/adminPassword').once('value');
+          setAdminPassword(pwSnap.val() || '');
+          
+          const usersSnap = await database.ref('settings/adminUsers').once('value');
+          const usersData = usersSnap.val() || {};
+          const usersList = Object.entries(usersData).map(([oderId, data]) => ({
+            oderId,
+            ...data
+          }));
+          setAdminUsers(usersList);
+          
+          const userId = localStorage.getItem('bangkok_user_id');
+          const isInAdminList = usersList.some(u => u.oderId === userId);
+          const passwordEmpty = !pwSnap.val();
+          const userIsAdmin = isInAdminList || passwordEmpty;
+          setIsUnlocked(userIsAdmin);
+          setIsCurrentUserAdmin(userIsAdmin);
+          console.log('[REFRESH] Loaded admin settings');
+        } catch (e) {
+          console.error('[REFRESH] Error loading admin settings:', e);
+        }
+        
+        showToast('🔄 כל הנתונים רועננו בהצלחה!', 'success');
+      } else {
+        // Firebase not available - load from localStorage fallbacks
+        try {
+          const customLocs = localStorage.getItem('bangkok_custom_locations');
+          if (customLocs) setCustomLocations(JSON.parse(customLocs));
+        } catch (e) {}
+        try {
+          const customInts = localStorage.getItem('bangkok_custom_interests');
+          if (customInts) setCustomInterests(JSON.parse(customInts));
+        } catch (e) {}
+        try {
+          const saved = localStorage.getItem('bangkok_interest_status');
+          if (saved) {
+            const builtInIds = interestOptions.map(i => i.id);
+            const uncoveredIds = uncoveredInterests.map(i => i.id || i.name.replace(/\s+/g, '_').toLowerCase());
+            const defaultStatus = {};
+            builtInIds.forEach(id => { defaultStatus[id] = true; });
+            uncoveredIds.forEach(id => { defaultStatus[id] = false; });
+            setInterestStatus({ ...defaultStatus, ...JSON.parse(saved) });
+          }
+        } catch (e) {}
+        
+        showToast('🔄 נתונים רועננו (localStorage בלבד - Firebase לא זמין)', 'warning');
+      }
+    } catch (error) {
+      console.error('[REFRESH] Unexpected error:', error);
+      showToast('❌ שגיאה ברענון הנתונים', 'error');
+    } finally {
+      setIsRefreshing(false);
+      console.log('[REFRESH] Complete');
+    }
+  };
+
   // Save routeType to localStorage when it changes
   useEffect(() => {
     localStorage.setItem('bangkok_route_type', routeType);
@@ -1174,7 +1350,7 @@ const BangkokExplorer = () => {
     // Generate or retrieve user ID
     let userId = localStorage.getItem('bangkok_user_id');
     if (!userId) {
-      userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
       localStorage.setItem('bangkok_user_id', userId);
     }
     
@@ -1319,7 +1495,7 @@ const BangkokExplorer = () => {
     setHasNewEntries(false);
   };
 
-  // Config - loaded from js/config.js
+  // Config - loaded from config.js
   const interestOptions = window.BKK.interestOptions;
 
   const interestToGooglePlaces = window.BKK.interestToGooglePlaces;
@@ -1330,13 +1506,10 @@ const BangkokExplorer = () => {
 
   const areaCoordinates = window.BKK.areaCoordinates;
   
-  // Utility functions - loaded from js/utils.js
+  // Utility functions - loaded from utils.js
   const checkLocationInArea = window.BKK.checkLocationInArea;
   const getButtonStyle = window.BKK.getButtonStyle;
 
-  // Fetch places from Google Places API
-
-  // === APP LOGIC (from app-logic.js) ===
   // Text Search URL
   const GOOGLE_PLACES_TEXT_SEARCH_URL = window.BKK.GOOGLE_PLACES_TEXT_SEARCH_URL || 'https://places.googleapis.com/v1/places:searchText';
 
@@ -1685,7 +1858,6 @@ const BangkokExplorer = () => {
     }
   };
 
-  // Combine default and custom interests - with safety check
   // Combine all interests: built-in + uncovered + custom
   const allInterestOptions = [...interestOptions, ...uncoveredInterests, ...(customInterests || [])];
 
@@ -1717,7 +1889,7 @@ const BangkokExplorer = () => {
 
   const areaOptions = window.BKK.areaOptions;
 
-  // Image handling - loaded from js/utils.js
+  // Image handling - loaded from utils.js
   const compressImage = window.BKK.compressImage;
   
   const handleImageUpload = async (event) => {
@@ -1747,7 +1919,7 @@ const BangkokExplorer = () => {
     }));
   };
 
-  // Button styles - loaded from js/utils.js (via getButtonStyle reference above)
+  // Button styles - loaded from utils.js
 
   const getStopsForInterests = () => {
     // Now we only collect CUSTOM locations - Google Places will be fetched in generateRoute
@@ -2031,7 +2203,7 @@ const BangkokExplorer = () => {
     }
   };
 
-  // NEW: Fetch more places for a specific interest
+  // Fetch more places for a specific interest
   const fetchMoreForInterest = async (interest) => {
     if (!route) return;
     
@@ -2080,7 +2252,7 @@ const BangkokExplorer = () => {
     }
   };
 
-  // NEW: Fetch more places for all interests
+  // Fetch more places for all interests
   const fetchMoreAll = async () => {
     if (!route) return;
     
@@ -2133,7 +2305,7 @@ const BangkokExplorer = () => {
     }
   };
 
-  // NEW: Filter blacklisted places
+  // Filter blacklisted places
   const filterBlacklist = (places) => {
     return places.filter(place => {
       const blacklisted = customLocations.find(loc => 
@@ -2293,7 +2465,7 @@ const BangkokExplorer = () => {
     }
   };
   
-  // NEW: Toggle location status with review state
+  // Toggle location status with review state
   const toggleLocationStatus = (locationId) => {
     const location = customLocations.find(loc => loc.id === locationId);
     if (!location) return;
@@ -2354,7 +2526,7 @@ const BangkokExplorer = () => {
     }
   };
   
-  // NEW: Handle edit location - populate form with existing data
+  // Handle edit location - populate form with existing data
   const handleEditLocation = (loc) => {
     console.log('[EDIT] ====== Opening edit ======');
     console.log('[EDIT] Location object:', JSON.stringify(loc, null, 2));
@@ -2385,7 +2557,7 @@ const BangkokExplorer = () => {
     console.log('[EDIT] Dialog opened');
   };
   
-  // NEW: Add Google place to My Locations
+  // Add Google place to My Locations
   const addGooglePlaceToCustom = async (place) => {
     // Check if already exists (by name, case-insensitive)
     const exists = customLocations.find(loc => 
@@ -2448,7 +2620,7 @@ const BangkokExplorer = () => {
     }
   };
   
-  // NEW: Skip place permanently (add to blacklist)
+  // Skip place permanently (add to blacklist)
   const skipPlacePermanently = (place) => {
     // Check if already exists
     const exists = customLocations.find(loc => 
@@ -2571,7 +2743,7 @@ const BangkokExplorer = () => {
         }
         
         try {
-          const interestId = interest.id || `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          const interestId = interest.id || `custom_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
           const newInterest = {
             id: interestId,
             label: label,
@@ -2689,7 +2861,7 @@ const BangkokExplorer = () => {
           return;
         }
         
-        const interestId = interest.id || `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const interestId = interest.id || `custom_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
         newInterests.push({
           id: interestId,
           label: label,
@@ -3319,6 +3491,8 @@ const BangkokExplorer = () => {
     
     setRoute({...route, mapUrl});
   };
+
+
 
 
   return (
@@ -5259,6 +5433,35 @@ const BangkokExplorer = () => {
               </div>
             </div>
             
+            {/* Refresh Data Button */}
+            <div className="mb-3">
+              <div className="bg-gradient-to-r from-cyan-50 to-teal-50 border-2 border-cyan-400 rounded-xl p-3">
+                <h3 className="text-base font-bold text-gray-800 mb-1">🔄 רענון נתונים</h3>
+                <p className="text-xs text-gray-600 mb-2">
+                  טען מחדש את כל הנתונים מ-Firebase: תחומים, מקומות, מסלולים והגדרות
+                </p>
+                <button
+                  onClick={refreshAllData}
+                  disabled={isRefreshing}
+                  className={`w-full py-2 px-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition ${
+                    isRefreshing 
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                      : 'bg-cyan-500 text-white hover:bg-cyan-600 active:bg-cyan-700'
+                  }`}
+                >
+                  <span className={isRefreshing ? 'animate-spin' : ''}>🔄</span>
+                  <span>{isRefreshing ? 'מרענן...' : 'רענן את כל הנתונים'}</span>
+                </button>
+                <div className="mt-2 text-[10px] text-gray-500 flex flex-wrap gap-1">
+                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">📍 מקומות</span>
+                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">🏷️ תחומים</span>
+                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">💾 מסלולים</span>
+                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">⚙️ הגדרות חיפוש</span>
+                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">👑 הרשאות</span>
+                </div>
+              </div>
+            </div>
+            
             {/* Debug Mode Toggle */}
             <div className="mb-4">
               <div className="bg-gradient-to-r from-gray-50 to-slate-50 border-2 border-gray-400 rounded-xl p-3">
@@ -5604,10 +5807,10 @@ const BangkokExplorer = () => {
             </div>
           </div>
         )}
-        {/* Save Dialog */}
-
 
         {/* === DIALOGS (from dialogs.js) === */}
+
+
         {showSaveDialog && (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2">
             <div className="bg-white rounded-xl w-full max-w-md shadow-2xl">
@@ -7346,6 +7549,9 @@ const BangkokExplorer = () => {
         </div>
       )}
 
+
+
+
       {/* Debug Panel - Fixed at bottom */}
       {debugMode && (
         <div 
@@ -7476,7 +7682,15 @@ const BangkokExplorer = () => {
   );
 };
 
-ReactDOM.createRoot(document.getElementById('root')).render(<BangkokExplorer />);
+// Wait for Firebase SDK, then init and render
+window.__firebaseReady.then(function(sdkLoaded) {
+  if (sdkLoaded) {
+    initFirebase();
+  } else {
+    console.log('[FIREBASE] SDK not loaded - running without Firebase');
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<BangkokExplorer />);
+});
     </script>
 </body>
 </html>

@@ -1,3 +1,4 @@
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-pink-50" dir="rtl">
       <div className="bg-gradient-to-r from-orange-500 to-pink-500 text-white p-4 shadow-lg">
@@ -12,41 +13,53 @@
 
       <div className="max-w-4xl mx-auto p-4 pb-32">
         {/* Navigation Tabs */}
-        <div className={`grid ${isCurrentUserAdmin ? 'grid-cols-4' : 'grid-cols-3'} gap-2 mb-4 bg-white rounded-lg p-2 shadow`}>
+        <div className="flex flex-wrap gap-1 mb-4 bg-white rounded-lg p-1.5 shadow">
           <button
             onClick={() => setCurrentView('form')}
-            className={`py-3 px-2 rounded-lg font-medium transition text-sm ${
+            className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
               currentView === 'form' || currentView === 'route' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            🗺️ מסלול
+            <div className="truncate text-center">🗺️ מסלול</div>
           </button>
           <button
             onClick={() => setCurrentView('saved')}
-            className={`py-3 px-2 rounded-lg font-medium transition text-sm ${
+            className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
               currentView === 'saved' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            💾 שמורים {savedRoutes.length > 0 && `(${savedRoutes.length})`}
+            <div className="truncate text-center">💾 {savedRoutes.length > 0 ? `(${savedRoutes.length})` : ''}</div>
           </button>
           <button
-            onClick={() => setCurrentView('myContent')}
-            className={`py-3 px-2 rounded-lg font-medium transition text-sm ${
-              currentView === 'myContent' || currentView === 'search' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
+            onClick={() => setCurrentView('myPlaces')}
+            className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
+              currentView === 'myPlaces' || currentView === 'search' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            התוכן שלי {customLocations.length > 0 && `(${customLocations.length})`}
+            <div className="truncate text-center">📍 {customLocations.length > 0 ? `(${customLocations.length})` : ''}</div>
           </button>
-          {isCurrentUserAdmin && (
-            <button
-              onClick={() => setCurrentView('settings')}
-              className={`py-3 px-2 rounded-lg font-medium transition text-sm ${
-                currentView === 'settings' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              הגדרות
-            </button>
-          )}
+          <button
+            onClick={() => setCurrentView('myInterests')}
+            className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
+              currentView === 'myInterests' ? 'bg-purple-500 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <div className="truncate text-center">🏷️ {Object.values(interestStatus).filter(Boolean).length > 0 ? `(${Object.values(interestStatus).filter(Boolean).length})` : ''}</div>
+          </button>
+          <button
+            onClick={() => {
+              if (isUnlocked || !adminPassword) {
+                setCurrentView('settings');
+              } else {
+                setShowPasswordDialog(true);
+              }
+            }}
+            className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
+              currentView === 'settings' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <div className="truncate text-center">{(isUnlocked || !adminPassword) ? '🔓' : '🔒'}</div>
+          </button>
         </div>
 
         {/* Form View */}
@@ -100,7 +113,16 @@
               <div className="flex flex-col min-h-0">
                 <label className="font-medium text-xs mb-1.5 block">⭐ מה מעניין?</label>
                 <div className="grid grid-cols-3 gap-2 overflow-y-auto border border-gray-200 rounded-lg p-2 flex-1 min-h-0">
-                {allInterestOptions.filter(option => option && option.id).map(option => {
+                {allInterestOptions.filter(option => {
+                  if (!option || !option.id) return false;
+                  // Must be valid (have search config)
+                  if (!isInterestValid(option.id)) return false;
+                  // Custom interests always shown (if valid)
+                  const isCustom = customInterests.some(ci => ci.id === option.id);
+                  if (isCustom) return true;
+                  // Built-in/uncovered shown only if active
+                  return interestStatus[option.id] !== false;
+                }).map(option => {
                   const tooltip = interestTooltips[option.id] || option.label;
                   const customInterest = customInterests.find(ci => ci.id === option.id);
                   const isCustom = !!customInterest;
@@ -124,16 +146,30 @@
                         fontSize: '11px',
                         color: formData.interests.includes(option.id) ? '#c2410c' : '#374151'
                       }}>{option.label}</div>
-                      {/* Info icon - purple and larger for custom interests */}
-                      <div style={{
-                        position: 'absolute',
-                        top: '2px',
-                        left: '2px',
-                        fontSize: isCustom ? '11px' : '9px',
-                        color: isCustom ? '#a855f7' : '#9ca3af',
-                        opacity: isCustom ? '1' : '0.7',
-                        fontWeight: isCustom ? 'bold' : 'normal'
-                      }}>ⓘ</div>
+                      {/* Info icon - clickable to show/edit search config */}
+                      <div 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingInterestConfig({
+                            id: option.id,
+                            label: option.label,
+                            icon: option.icon,
+                            isCustom: isCustom,
+                            config: interestConfig[option.id] || {}
+                          });
+                          setShowInterestConfigDialog(true);
+                        }}
+                        style={{
+                          position: 'absolute',
+                          top: '2px',
+                          left: '2px',
+                          fontSize: '10px',
+                          color: '#3b82f6',
+                          cursor: 'pointer',
+                          padding: '2px'
+                        }}
+                        title="הגדרות חיפוש"
+                      >ⓘ</div>
                     </button>
                   );
                 })}
@@ -208,7 +244,7 @@
                     let stopCounter = 0;
                     
                     route.stops.forEach((stop, i) => {
-                      const interests = stop.interests || ['other'];
+                      const interests = stop.interests || [];
                       interests.forEach(interest => {
                         if (!groupedStops[interest]) {
                           groupedStops[interest] = [];
@@ -361,7 +397,7 @@
                                   </div>
                                   
                                   <a
-                                    href={hasValidCoords ? `https://www.google.com/maps?q=${stop.lat},${stop.lng}` : '#'}
+                                    href={hasValidCoords ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.name + ' Bangkok')}` : '#'}
                                     target={hasValidCoords ? "_blank" : undefined}
                                     rel={hasValidCoords ? "noopener noreferrer" : undefined}
                                     className="block hover:bg-gray-100 transition pr-2"
@@ -381,6 +417,18 @@
                                         </span>
                                       )}
                                       <span>{stop.name}</span>
+                                      {/* Info icon - show selection criteria */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          setSelectedStopInfo(stop);
+                                          setShowStopInfoDialog(true);
+                                        }}
+                                        className="text-blue-500 hover:text-blue-700 ml-1"
+                                        title="מידע על בחירת המקום"
+                                        style={{ fontSize: '10px' }}
+                                      >ⓘ</button>
                                       {stop.outsideArea && (
                                         <span className="text-orange-500" title="מקום מחוץ לגבולות האזור" style={{ fontSize: '10px' }}>
                                           🔺
@@ -825,7 +873,7 @@
                               </span>
                             )}
                             <a
-                              href={hasValidCoords ? `https://www.google.com/maps?q=${stop.lat},${stop.lng}` : '#'}
+                              href={hasValidCoords ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.name + ' Bangkok')}` : '#'}
                               target={hasValidCoords ? "_blank" : undefined}
                               rel={hasValidCoords ? "noopener noreferrer" : undefined}
                               className={`font-bold text-sm ${isDisabled ? 'line-through text-gray-500' : hasValidCoords ? 'text-blue-600 hover:text-blue-800' : 'text-red-600'}`}
@@ -838,6 +886,18 @@
                             >
                               {stop.name}
                             </a>
+                            {/* Info icon - show selection criteria */}
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setSelectedStopInfo(stop);
+                                setShowStopInfoDialog(true);
+                              }}
+                              className="text-blue-500 hover:text-blue-700 ml-1"
+                              title="מידע על בחירת המקום"
+                              style={{ fontSize: '12px' }}
+                            >ⓘ</button>
                             {stop.outsideArea && (
                               <span 
                                 className="text-orange-500" 
@@ -868,6 +928,7 @@
                                 <button
                                   onClick={() => {
                                     setSelectedLocation(stop);
+                                    setGooglePlaceInfo(null);
                                     setShowLocationDetailModal(true);
                                   }}
                                   className={`${sourceBadge.color} text-white text-[10px] px-2 py-0.5 rounded-full font-bold cursor-pointer hover:opacity-80 transition`}
@@ -1352,12 +1413,12 @@
 
         {/* My Content View */}
         {/* My Content View - Compact Design */}
-        {currentView === 'myContent' && (
+        {currentView === 'myPlaces' && (
           <div className="bg-white rounded-xl shadow-lg p-3">
             <div className="flex items-center gap-2 mb-3">
-              <h2 className="text-lg font-bold">התוכן שלי</h2>
+              <h2 className="text-lg font-bold">📍 המקומות שלי</h2>
               <button
-                onClick={() => showHelpFor('myContent')}
+                onClick={() => showHelpFor('myPlaces')}
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title="עזרה"
               >
@@ -1368,7 +1429,7 @@
             {/* Custom Locations Section - Split by status */}
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="text-base font-bold">המקומות שלי ({customLocations.length})</h3>
+                <h3 className="text-base font-bold">מקומות ({customLocations.length})</h3>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setCurrentView('search')}
@@ -1403,7 +1464,7 @@
                         <h4 className="text-sm font-bold text-green-700 mb-2 flex items-center gap-1">
                           <span>✅ מקומות כלולים ({activeLocations.length})</span>
                         </h4>
-                        <div className="space-y-1 max-h-60 overflow-y-auto">
+                        <div className="space-y-1 max-h-[50vh] overflow-y-auto">
                           {activeLocations.map(loc => (
                             <div
                               key={loc.id}
@@ -1450,6 +1511,17 @@
                               
                               {/* Action buttons */}
                               <div className="flex gap-0.5">
+                                <button
+                                  onClick={() => {
+                                    setSelectedLocation(loc);
+                                    setGooglePlaceInfo(null);
+                                    setShowLocationDetailModal(true);
+                                  }}
+                                  className="text-xs px-1 py-0.5 rounded bg-indigo-500 text-white hover:bg-indigo-600"
+                                  title="פרטים + בדיקת Google"
+                                >
+                                  🔍
+                                </button>
                                 <button
                                   onClick={() => toggleLocationStatus(loc.id)}
                                   className="text-xs px-1 py-0.5 rounded bg-red-500 text-white hover:bg-red-600"
@@ -1503,7 +1575,7 @@
                         </button>
                         
                         {showBlacklistLocations && (
-                          <div className="space-y-1 mt-2 max-h-60 overflow-y-auto">
+                          <div className="space-y-1 mt-2 max-h-40 overflow-y-auto">
                             {blacklistedLocations.map(loc => (
                               <div
                                 key={loc.id}
@@ -1576,74 +1648,236 @@
               )}
             </div>
 
-            {/* Custom Interests Section */}
-            <div className="mb-4">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="text-base font-bold">תחומי עניין מותאמים ({customInterests.length})</h3>
-                <button
-                  onClick={() => setShowAddInterestDialog(true)}
-                  className="bg-purple-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-purple-600"
-                >
-                  ➕ הוסף תחום
-                </button>
+          </div>
+        )}
+
+        {/* My Interests View */}
+        {currentView === 'myInterests' && (
+          <div className="bg-white rounded-xl shadow-lg p-3">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold">🏷️ התחומים שלי</h2>
+                <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                  {Object.values(interestStatus).filter(Boolean).length} פעילים
+                </span>
               </div>
-              
-              {customInterests.length === 0 ? (
-                <div className="text-center py-6 bg-gray-50 rounded-lg">
-                  <div className="text-3xl mb-2">🎯</div>
-                  <p className="text-gray-600 text-sm">עדיין אין תחומי עניין מותאמים</p>
-                  <p className="text-xs text-gray-500 mt-1">לחץ "הוסף תחום" כדי ליצור</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  {customInterests.map(interest => (
+              <button
+                onClick={() => {
+                  setEditingCustomInterest(null);
+                  setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '' });
+                  setShowAddInterestDialog(true);
+                }}
+                className="bg-purple-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-purple-600"
+              >
+                ➕ הוסף תחום
+              </button>
+            </div>
+            
+            {/* Active Interests */}
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-green-700 mb-2">✅ תחומים פעילים</h3>
+              <div className="space-y-1">
+                {/* Built-in interests that are active */}
+                {interestOptions.filter(i => interestStatus[i.id] !== false).map(interest => {
+                  const isValid = isInterestValid(interest.id);
+                  return (
                     <div
                       key={interest.id}
-                      className="border-2 border-purple-400 rounded-lg p-2 bg-purple-50"
+                      className={`flex items-center justify-between gap-2 rounded-lg p-2 ${
+                        isValid 
+                          ? 'border border-green-300 bg-green-50' 
+                          : 'border-2 border-red-400 bg-red-50'
+                      }`}
                     >
-                      <div className="flex items-start justify-between gap-1">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-lg">{interest.icon}</div>
-                          <div className="font-bold text-sm truncate">{interest.name}</div>
-                          <div className="text-xs text-gray-600">
-                            מבוסס: {interestOptions.find(i => i.id === interest.baseCategory)?.label}
-                          </div>
-                        </div>
+                      <div className="flex items-center gap-2 flex-1">
+                        <span className="text-lg">{interest.icon}</span>
+                        <span className="font-medium text-sm">{interest.label}</span>
+                        {!isValid && (
+                          <span className="text-red-500 text-xs" title="חסר הגדרות חיפוש - לא יופיע בתוצאות">⚠️</span>
+                        )}
+                      </div>
+                      <div className="flex gap-1">
                         <button
                           onClick={() => {
-                            showConfirm(`למחוק את "${interest.label}"?`, () => {
-                              deleteCustomInterest(interest.id);
+                            setEditingInterestConfig({
+                              id: interest.id,
+                              label: interest.label,
+                              icon: interest.icon,
+                              config: interestConfig[interest.id] || {}
                             });
+                            setShowInterestConfigDialog(true);
                           }}
-                          className="text-red-600 text-xs px-1 hover:bg-red-50 rounded"
+                          className={`text-xs px-1.5 py-0.5 rounded text-white ${isValid ? 'bg-blue-500' : 'bg-red-500 animate-pulse'}`}
+                          title={isValid ? "הגדרות חיפוש" : "⚠️ חובה להגדיר Place Types!"}
                         >
-                          ✕
+                          ⚙️
+                        </button>
+                        <button
+                          onClick={() => toggleInterestStatus(interest.id)}
+                          className="text-xs px-1.5 py-0.5 rounded bg-red-500 text-white"
+                          title="השבת"
+                        >
+                          ❌
                         </button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            
-            {/* Uncovered Interests Section */}
-            <div className="mb-4">
-              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-orange-400 rounded-xl p-3">
-                <h3 className="text-base font-bold text-gray-800 mb-1">ℹ️ תחומי עניין שלא נכללים</h3>
-                <p className="text-xs text-gray-600 mb-2">
-                  המערכת ממוקדת בתיירות וטיולים. התחומים הבאים <strong>לא נכללים</strong>:
-                </p>
+                  );
+                })}
                 
-                <div className="grid grid-cols-2 gap-1.5">
-                  {uncoveredInterests.map((interest, i) => (
-                    <div key={i} className="bg-white rounded-lg p-2 border border-orange-200">
-                      <div className="flex items-center gap-1.5">
+                {/* Uncovered interests that are active */}
+                {uncoveredInterests.filter(i => interestStatus[i.id] === true).map(interest => {
+                  const isValid = isInterestValid(interest.id);
+                  return (
+                    <div
+                      key={interest.id}
+                      className={`flex items-center justify-between gap-2 rounded-lg p-2 ${
+                        isValid 
+                          ? 'border border-green-300 bg-green-50' 
+                          : 'border-2 border-red-400 bg-red-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 flex-1">
                         <span className="text-lg">{interest.icon}</span>
-                        <span className="text-xs font-medium text-gray-700">{interest.name}</span>
+                        <span className="font-medium text-sm">{interest.label}</span>
+                        {!isValid && (
+                          <span className="text-red-500 text-xs" title="חסר הגדרות חיפוש - לא יופיע בתוצאות">⚠️</span>
+                        )}
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => {
+                            setEditingInterestConfig({
+                              id: interest.id,
+                              label: interest.label,
+                              icon: interest.icon,
+                              config: interestConfig[interest.id] || {}
+                            });
+                            setShowInterestConfigDialog(true);
+                          }}
+                          className={`text-xs px-1.5 py-0.5 rounded text-white ${isValid ? 'bg-blue-500' : 'bg-red-500 animate-pulse'}`}
+                          title={isValid ? "הגדרות חיפוש" : "⚠️ חובה להגדיר Place Types!"}
+                        >
+                          ⚙️
+                        </button>
+                        <button
+                          onClick={() => toggleInterestStatus(interest.id)}
+                          className="text-xs px-1.5 py-0.5 rounded bg-red-500 text-white"
+                          title="השבת"
+                        >
+                          ❌
+                        </button>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
+                
+                {/* Custom interests - always shown, always "active" */}
+                {customInterests.map(interest => {
+                  const isValid = isInterestValid(interest.id);
+                  return (
+                    <div
+                      key={interest.id}
+                      className={`flex items-center justify-between gap-2 rounded-lg p-2 ${
+                        isValid 
+                          ? 'border-2 border-purple-400 bg-purple-50' 
+                          : 'border-2 border-red-400 bg-red-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 flex-1">
+                        <span className="text-lg">{interest.icon}</span>
+                        <div>
+                          <span className="font-medium text-sm">{interest.label || interest.name}</span>
+                          <span className="ml-2 text-[10px] bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded">חדש</span>
+                          {!isValid && (
+                            <span className="ml-1 text-[10px] bg-red-200 text-red-800 px-1.5 py-0.5 rounded">⚠️ חסר הגדרות</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => {
+                            setEditingCustomInterest(interest);
+                            const config = interestConfig[interest.id] || {};
+                            setNewInterest({
+                              id: interest.id,
+                              label: interest.label || interest.name,
+                              icon: interest.icon,
+                              searchMode: config.textSearch ? 'text' : 'types',
+                              types: (config.types || []).join(', '),
+                              textSearch: config.textSearch || '',
+                              blacklist: (config.blacklist || []).join(', ')
+                            });
+                            setShowAddInterestDialog(true);
+                          }}
+                          className={`text-xs px-1.5 py-0.5 rounded text-white ${isValid ? 'bg-blue-500' : 'bg-red-500 animate-pulse'}`}
+                          title={isValid ? "ערוך" : "⚠️ חובה להגדיר Place Types!"}
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => {
+                            showConfirm(`למחוק את "${interest.label || interest.name}"?`, () => {
+                              deleteCustomInterest(interest.id);
+                            });
+                          }}
+                          className="text-xs px-1.5 py-0.5 rounded bg-red-500 text-white"
+                          title="מחק"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* Inactive Interests */}
+            <div className="mb-2">
+              <h3 className="text-sm font-bold text-gray-500 mb-2">⏸️ תחומים לא פעילים</h3>
+              <div className="space-y-1">
+                {/* Built-in interests that are inactive */}
+                {interestOptions.filter(i => interestStatus[i.id] === false).map(interest => (
+                  <div
+                    key={interest.id}
+                    className="flex items-center justify-between gap-2 border border-gray-300 rounded-lg p-2 bg-gray-50 opacity-60"
+                  >
+                    <div className="flex items-center gap-2 flex-1">
+                      <span className="text-lg">{interest.icon}</span>
+                      <span className="font-medium text-sm text-gray-500">{interest.label}</span>
+                    </div>
+                    <button
+                      onClick={() => toggleInterestStatus(interest.id)}
+                      className="text-xs px-2 py-1 rounded bg-green-500 text-white"
+                      title="הפעל"
+                    >
+                      ✅ הפעל
+                    </button>
+                  </div>
+                ))}
+                
+                {/* Uncovered interests that are inactive (default) */}
+                {uncoveredInterests.filter(i => interestStatus[i.id] !== true).map(interest => (
+                  <div
+                    key={interest.id}
+                    className="flex items-center justify-between gap-2 border border-gray-300 rounded-lg p-2 bg-gray-50 opacity-60"
+                  >
+                    <div className="flex items-center gap-2 flex-1">
+                      <span className="text-lg">{interest.icon}</span>
+                      <div>
+                        <span className="font-medium text-sm text-gray-500">{interest.label}</span>
+                        <div className="text-[10px] text-gray-400">{interest.examples}</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => toggleInterestStatus(interest.id)}
+                      className="text-xs px-2 py-1 rounded bg-green-500 text-white"
+                      title="הפעל"
+                    >
+                      ✅ הפעל
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -1703,6 +1937,35 @@
               </div>
             </div>
             
+            {/* Refresh Data Button */}
+            <div className="mb-3">
+              <div className="bg-gradient-to-r from-cyan-50 to-teal-50 border-2 border-cyan-400 rounded-xl p-3">
+                <h3 className="text-base font-bold text-gray-800 mb-1">🔄 רענון נתונים</h3>
+                <p className="text-xs text-gray-600 mb-2">
+                  טען מחדש את כל הנתונים מ-Firebase: תחומים, מקומות, מסלולים והגדרות
+                </p>
+                <button
+                  onClick={refreshAllData}
+                  disabled={isRefreshing}
+                  className={`w-full py-2 px-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition ${
+                    isRefreshing 
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                      : 'bg-cyan-500 text-white hover:bg-cyan-600 active:bg-cyan-700'
+                  }`}
+                >
+                  <span className={isRefreshing ? 'animate-spin' : ''}>🔄</span>
+                  <span>{isRefreshing ? 'מרענן...' : 'רענן את כל הנתונים'}</span>
+                </button>
+                <div className="mt-2 text-[10px] text-gray-500 flex flex-wrap gap-1">
+                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">📍 מקומות</span>
+                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">🏷️ תחומים</span>
+                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">💾 מסלולים</span>
+                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">⚙️ הגדרות חיפוש</span>
+                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">👑 הרשאות</span>
+                </div>
+              </div>
+            </div>
+            
             {/* Debug Mode Toggle */}
             <div className="mb-4">
               <div className="bg-gradient-to-r from-gray-50 to-slate-50 border-2 border-gray-400 rounded-xl p-3">
@@ -1733,62 +1996,97 @@
             
             {/* Import/Export Section */}
             
-            {/* Admin Device Management */}
+            {/* Admin Management - Password Based */}
             <div className="mb-4">
               <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-400 rounded-xl p-3">
                 <h3 className="text-base font-bold text-gray-800 mb-1">👑 ניהול Admin</h3>
-                <p className="text-xs text-gray-600 mb-2">
-                  רשום מכשירים נוספים כ-Admin (לא ירשמו בלוג)
-                </p>
                 
-                <div className="text-xs bg-white rounded-lg p-2 border border-red-200 mb-2">
+                {/* Current Device Info */}
+                <div className="text-xs bg-white rounded-lg p-2 border border-red-200 mb-3">
                   <strong>מכשיר נוכחי:</strong> {localStorage.getItem('bangkok_user_id')?.slice(-12) || 'N/A'}
                   <br />
-                  <strong>סטטוס:</strong> {isCurrentUserAdmin ? 
-                    <span className="text-green-600 font-bold"> ✅ Admin</span> : 
-                    <span className="text-red-600 font-bold"> ❌ לא Admin</span>
-                  }
+                  <strong>סטטוס:</strong> 
+                  <span className="text-green-600 font-bold"> 🔓 פתוח</span>
                 </div>
                 
-                {/* Register this device as admin */}
-                {!isCurrentUserAdmin && isFirebaseAvailable && database && (
-                  <button
-                    onClick={() => {
-                      const code = prompt('הזן קוד Admin (שאלו את ה-Admin):');
-                      if (code === 'bangkok2026') {
-                        const userId = localStorage.getItem('bangkok_user_id');
-                        database.ref(`settings/adminDevices/${userId}`).set(true)
-                          .then(() => {
-                            setIsCurrentUserAdmin(true);
-                            localStorage.setItem('bangkok_is_admin', 'true');
-                            showToast('מכשיר זה נרשם כ-Admin!', 'success');
-                          })
-                          .catch(err => showToast('שגיאה', 'error'));
-                      } else if (code !== null) {
-                        showToast('קוד שגוי', 'error');
-                      }
-                    }}
-                    className="w-full bg-red-500 text-white py-2 rounded-lg font-bold text-sm hover:bg-red-600"
-                  >
-                    🔑 רשום מכשיר זה כ-Admin
-                  </button>
-                )}
-                
-                {isCurrentUserAdmin && (
-                  <div className="space-y-2">
-                    {/* Access Log Button */}
+                {/* Password Section */}
+                <div className="mb-3">
+                  <label className="text-xs font-bold text-gray-700 block mb-1">🔑 סיסמת מערכת:</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={adminPassword}
+                      onChange={(e) => {
+                        const newPw = e.target.value;
+                        setAdminPassword(newPw);
+                      }}
+                      placeholder="ללא סיסמה = גישה פתוחה"
+                      className="flex-1 p-2 border rounded text-sm"
+                    />
                     <button
                       onClick={() => {
-                        markLogsAsSeen();
-                        setShowAccessLog(true);
+                        if (isFirebaseAvailable && database) {
+                          database.ref('settings/adminPassword').set(adminPassword)
+                            .then(() => showToast('סיסמה נשמרה!', 'success'))
+                            .catch(() => showToast('שגיאה בשמירה', 'error'));
+                        }
                       }}
-                      className="w-full bg-blue-500 text-white py-2 rounded-lg font-bold text-sm hover:bg-blue-600 flex items-center justify-center gap-2"
+                      className="px-3 py-2 bg-green-500 text-white rounded text-sm font-bold"
                     >
-                      📋 צפה בלוג כניסות
-                      {hasNewEntries && <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full">חדש!</span>}
+                      שמור
                     </button>
                   </div>
-                )}
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    {adminPassword ? '🔒 מערכת מוגנת בסיסמה' : '🔓 ללא סיסמה - גישה פתוחה לכולם'}
+                  </p>
+                </div>
+                
+                {/* Admin Users List */}
+                <div className="mb-3">
+                  <label className="text-xs font-bold text-gray-700 block mb-1">👥 משתמשי Admin ({adminUsers.length}):</label>
+                  <div className="bg-white border rounded-lg max-h-32 overflow-y-auto">
+                    {adminUsers.length === 0 ? (
+                      <div className="p-2 text-xs text-gray-500 text-center">אין משתמשים רשומים</div>
+                    ) : (
+                      adminUsers.map((user, idx) => (
+                        <div key={user.userId} className="flex justify-between items-center p-2 border-b last:border-b-0 text-xs">
+                          <div>
+                            <span className="font-mono">{user.oderId?.slice(-12) || 'Unknown'}</span>
+                            {user.oderId === localStorage.getItem('bangkok_user_id') && (
+                              <span className="text-green-600 mr-1">(אתה)</span>
+                            )}
+                            <br />
+                            <span className="text-gray-500">{user.addedAt ? new Date(user.addedAt).toLocaleDateString('he-IL') : ''}</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (isFirebaseAvailable && database) {
+                                database.ref(`settings/adminUsers/${user.oderId}`).remove()
+                                  .then(() => showToast('משתמש הוסר', 'success'))
+                                  .catch(() => showToast('שגיאה', 'error'));
+                              }
+                            }}
+                            className="px-2 py-1 bg-red-500 text-white rounded text-[10px]"
+                          >
+                            הסר
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+                
+                {/* Access Log Button */}
+                <button
+                  onClick={() => {
+                    markLogsAsSeen();
+                    setShowAccessLog(true);
+                  }}
+                  className="w-full bg-blue-500 text-white py-2 rounded-lg font-bold text-sm hover:bg-blue-600 flex items-center justify-center gap-2"
+                >
+                  📋 צפה בלוג כניסות
+                  {hasNewEntries && <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full">חדש!</span>}
+                </button>
               </div>
             </div>
             
@@ -1804,12 +2102,23 @@
                   <button
                     onClick={() => {
                       try {
+                        // Count active interests
+                        const activeCount = Object.values(interestStatus).filter(Boolean).length;
+                        
                         const data = {
+                          // Custom interests created by user
                           customInterests: customInterests,
+                          // Custom locations
                           customLocations: customLocations,
+                          // Saved routes
                           savedRoutes: savedRoutes,
+                          // Interest search configurations (types, textSearch, blacklist)
+                          interestConfig: interestConfig,
+                          // Interest active/inactive status
+                          interestStatus: interestStatus,
+                          // Metadata
                           exportDate: new Date().toISOString(),
-                          version: '2.0'
+                          version: '2.6'
                         };
                         
                         const dataStr = JSON.stringify(data, null, 2);
@@ -1822,7 +2131,7 @@
                         link.click();
                         URL.revokeObjectURL(url);
                         
-                        showToast(`הקובץ הורד! (${customInterests.length} תחומים, ${customLocations.length} מקומות, ${savedRoutes.length} מסלולים)`, 'success');
+                        showToast(`הקובץ הורד! (${customInterests.length} תחומים מותאמים, ${activeCount} פעילים, ${customLocations.length} מקומות, ${savedRoutes.length} מסלולים)`, 'success');
                       } catch (error) {
                         console.error('[EXPORT] Error:', error);
                         showToast('שגיאה בייצוא', 'error');
@@ -1830,7 +2139,7 @@
                     }}
                     className="w-full bg-blue-500 text-white py-2 px-3 rounded-lg font-bold hover:bg-blue-600 transition text-sm flex items-center justify-center gap-2"
                   >
-                    <span>📤 ייצא</span>
+                    <span>📤 ייצא הכל</span>
                     <span className="text-xs bg-blue-600 px-2 py-0.5 rounded">
                       {customInterests.length + customLocations.length + savedRoutes.length}
                     </span>
@@ -2002,7 +2311,5 @@
             </div>
           </div>
         )}
-        {/* Save Dialog */}
-
 
         {/* === DIALOGS (from dialogs.js) === */}

@@ -38,7 +38,7 @@
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [customLocations, setCustomLocations] = useState([]);
   const [showAddLocationDialog, setShowAddLocationDialog] = useState(false);
-  const [showBlacklistLocations, setShowBlacklistLocations] = useState(false); // NEW: collapsed by default
+  const [showBlacklistLocations, setShowBlacklistLocations] = useState(false); // collapsed by default
   const [newLocation, setNewLocation] = useState({
     name: '',
     description: '',
@@ -53,8 +53,19 @@
     imageUrls: []  // Array of URL strings
   });
   const [customInterests, setCustomInterests] = useState([]);
+  const [interestStatus, setInterestStatus] = useState({}); // { interestId: true/false }
+  
+  // Interest search configuration (editable)
+  const [interestConfig, setInterestConfig] = useState({});
+  const [showInterestConfigDialog, setShowInterestConfigDialog] = useState(false);
+  const [editingInterestConfig, setEditingInterestConfig] = useState(null);
+  const [googlePlaceInfo, setGooglePlaceInfo] = useState(null);
+  const [loadingGoogleInfo, setLoadingGoogleInfo] = useState(false);
+  const [showStopInfoDialog, setShowStopInfoDialog] = useState(false);
+  const [selectedStopInfo, setSelectedStopInfo] = useState(null);
+  const [editingCustomInterest, setEditingCustomInterest] = useState(null);
   const [showAddInterestDialog, setShowAddInterestDialog] = useState(false);
-  const [newInterest, setNewInterest] = useState({ label: '', icon: '📍', baseCategory: '' });
+  const [newInterest, setNewInterest] = useState({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '' });
   const [showEditLocationDialog, setShowEditLocationDialog] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -90,6 +101,14 @@
   });
   const [debugLogs, setDebugLogs] = useState([]);
   const [debugPanelOpen, setDebugPanelOpen] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Admin System - Password based
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [isUnlocked, setIsUnlocked] = useState(true);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
   
   // Add debug log entry
   const addDebugLog = (category, message, data = null) => {
@@ -105,7 +124,7 @@
     localStorage.setItem('bangkok_debug_mode', debugMode.toString());
   }, [debugMode]);
   
-  // Help content - loaded from js/config.js
+  // Help content - loaded from config.js
   const helpContent = window.BKK.helpContent;
 
   const showHelpFor = (context) => {
@@ -138,7 +157,6 @@
     }
   }, []);
 
-  // Load custom locations from Firebase
   // Load custom locations from Firebase
   useEffect(() => {
     if (isFirebaseAvailable && database) {
@@ -205,6 +223,252 @@
     }
   }, []);
 
+  // Load interest search configurations from Firebase
+  useEffect(() => {
+    // Default configurations
+    const defaultConfig = {
+      temples: { types: ['hindu_temple', 'buddhist_temple', 'church', 'mosque'], blacklist: [] },
+      food: { types: ['restaurant', 'meal_takeaway'], blacklist: ['bar', 'pub', 'club'] },
+      graffiti: { textSearch: 'street art', blacklist: [] },
+      artisans: { types: ['store', 'art_gallery'], blacklist: ['cannabis', 'weed', 'kratom', 'massage', 'spa'] },
+      galleries: { types: ['art_gallery', 'museum'], blacklist: ['cannabis', 'weed', 'kratom', 'massage', 'spa', 'cafe', 'coffee'] },
+      architecture: { types: ['historical_landmark'], blacklist: [] },
+      canals: { types: ['boat_tour_agency', 'marina'], blacklist: [] },
+      cafes: { types: ['cafe', 'coffee_shop'], blacklist: ['cannabis', 'weed', 'kratom'] },
+      markets: { types: ['market', 'shopping_mall'], blacklist: [] },
+      nightlife: { types: ['bar', 'night_club'], blacklist: [] },
+      parks: { types: ['park', 'national_park'], blacklist: [] },
+      rooftop: { types: ['bar', 'restaurant'], blacklist: [] },
+      entertainment: { types: ['movie_theater', 'amusement_park', 'performing_arts_theater'], blacklist: [] },
+      // Uncovered interests (inactive by default)
+      massage_spa: { types: ['spa', 'massage'], blacklist: [] },
+      fitness: { types: ['gym', 'fitness_center', 'sports_club'], blacklist: [] },
+      shopping_special: { types: ['clothing_store', 'jewelry_store', 'shoe_store'], blacklist: [] },
+      learning: { types: ['school', 'university'], blacklist: [] },
+      health: { types: ['pharmacy', 'hospital', 'doctor'], blacklist: [] },
+      accommodation: { types: ['hotel', 'lodging'], blacklist: [] },
+      transport: { types: ['car_rental', 'transit_station'], blacklist: [] },
+      business: { types: ['coworking_space'], blacklist: [] },
+    };
+    
+    if (isFirebaseAvailable && database) {
+      const configRef = database.ref('settings/interestConfig');
+      
+      configRef.once('value').then((snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          // Merge with defaults
+          setInterestConfig({ ...defaultConfig, ...data });
+          console.log('[FIREBASE] Loaded interest config');
+        } else {
+          // Save defaults to Firebase
+          configRef.set(defaultConfig);
+          setInterestConfig(defaultConfig);
+          console.log('[FIREBASE] Saved default interest config');
+        }
+      });
+      
+      // Listen for changes
+      configRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          setInterestConfig({ ...defaultConfig, ...data });
+        }
+      });
+    } else {
+      setInterestConfig(defaultConfig);
+    }
+  }, []);
+
+  // Load interest active/inactive status
+  useEffect(() => {
+    // Default status: built-in = active, uncovered = inactive
+    const builtInIds = interestOptions.map(i => i.id);
+    const uncoveredIds = uncoveredInterests.map(i => i.id || i.name.replace(/\s+/g, '_').toLowerCase());
+    
+    const defaultStatus = {};
+    builtInIds.forEach(id => { defaultStatus[id] = true; });
+    uncoveredIds.forEach(id => { defaultStatus[id] = false; });
+    
+    if (isFirebaseAvailable && database) {
+      const statusRef = database.ref('settings/interestStatus');
+      
+      statusRef.once('value').then((snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          setInterestStatus({ ...defaultStatus, ...data });
+          console.log('[FIREBASE] Loaded interest status');
+        } else {
+          statusRef.set(defaultStatus);
+          setInterestStatus(defaultStatus);
+          console.log('[FIREBASE] Saved default interest status');
+        }
+      });
+      
+      // Listen for changes
+      statusRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          setInterestStatus(prev => ({ ...defaultStatus, ...data }));
+        }
+      });
+    } else {
+      try {
+        const saved = localStorage.getItem('bangkok_interest_status');
+        if (saved) {
+          setInterestStatus({ ...defaultStatus, ...JSON.parse(saved) });
+        } else {
+          setInterestStatus(defaultStatus);
+        }
+      } catch (e) {
+        setInterestStatus(defaultStatus);
+      }
+    }
+  }, []);
+
+  // ============================================================
+  // Refresh All Data - Manual reload from Firebase & localStorage
+  // ============================================================
+  const refreshAllData = async () => {
+    setIsRefreshing(true);
+    console.log('[REFRESH] Starting full data refresh...');
+    
+    try {
+      // 1. Saved Routes (localStorage)
+      try {
+        const saved = localStorage.getItem('bangkok_saved_routes');
+        if (saved) {
+          setSavedRoutes(JSON.parse(saved));
+          console.log('[REFRESH] Saved routes loaded from localStorage');
+        }
+      } catch (e) {
+        console.error('[REFRESH] Error loading saved routes:', e);
+      }
+      
+      if (isFirebaseAvailable && database) {
+        // 2. Custom Locations
+        try {
+          const locSnap = await database.ref('customLocations').once('value');
+          const locData = locSnap.val();
+          if (locData) {
+            const locationsArray = Object.keys(locData).map(key => ({
+              ...locData[key],
+              firebaseId: key
+            }));
+            setCustomLocations(locationsArray);
+            console.log('[REFRESH] Loaded', locationsArray.length, 'locations');
+          } else {
+            setCustomLocations([]);
+          }
+        } catch (e) {
+          console.error('[REFRESH] Error loading locations:', e);
+        }
+        
+        // 3. Custom Interests
+        try {
+          const intSnap = await database.ref('customInterests').once('value');
+          const intData = intSnap.val();
+          if (intData) {
+            const interestsArray = Object.keys(intData).map(key => ({
+              ...intData[key],
+              firebaseId: key
+            }));
+            setCustomInterests(interestsArray);
+            console.log('[REFRESH] Loaded', interestsArray.length, 'interests');
+          } else {
+            setCustomInterests([]);
+          }
+        } catch (e) {
+          console.error('[REFRESH] Error loading interests:', e);
+        }
+        
+        // 4. Interest Config
+        try {
+          const configSnap = await database.ref('settings/interestConfig').once('value');
+          const configData = configSnap.val();
+          if (configData) {
+            setInterestConfig(prev => ({ ...prev, ...configData }));
+            console.log('[REFRESH] Loaded interest config');
+          }
+        } catch (e) {
+          console.error('[REFRESH] Error loading interest config:', e);
+        }
+        
+        // 5. Interest Status
+        try {
+          const statusSnap = await database.ref('settings/interestStatus').once('value');
+          const statusData = statusSnap.val();
+          if (statusData) {
+            const builtInIds = interestOptions.map(i => i.id);
+            const uncoveredIds = uncoveredInterests.map(i => i.id || i.name.replace(/\s+/g, '_').toLowerCase());
+            const defaultStatus = {};
+            builtInIds.forEach(id => { defaultStatus[id] = true; });
+            uncoveredIds.forEach(id => { defaultStatus[id] = false; });
+            setInterestStatus({ ...defaultStatus, ...statusData });
+            console.log('[REFRESH] Loaded interest status');
+          }
+        } catch (e) {
+          console.error('[REFRESH] Error loading interest status:', e);
+        }
+        
+        // 6. Admin Settings
+        try {
+          const pwSnap = await database.ref('settings/adminPassword').once('value');
+          setAdminPassword(pwSnap.val() || '');
+          
+          const usersSnap = await database.ref('settings/adminUsers').once('value');
+          const usersData = usersSnap.val() || {};
+          const usersList = Object.entries(usersData).map(([oderId, data]) => ({
+            oderId,
+            ...data
+          }));
+          setAdminUsers(usersList);
+          
+          const userId = localStorage.getItem('bangkok_user_id');
+          const isInAdminList = usersList.some(u => u.oderId === userId);
+          const passwordEmpty = !pwSnap.val();
+          const userIsAdmin = isInAdminList || passwordEmpty;
+          setIsUnlocked(userIsAdmin);
+          setIsCurrentUserAdmin(userIsAdmin);
+          console.log('[REFRESH] Loaded admin settings');
+        } catch (e) {
+          console.error('[REFRESH] Error loading admin settings:', e);
+        }
+        
+        showToast('🔄 כל הנתונים רועננו בהצלחה!', 'success');
+      } else {
+        // Firebase not available - load from localStorage fallbacks
+        try {
+          const customLocs = localStorage.getItem('bangkok_custom_locations');
+          if (customLocs) setCustomLocations(JSON.parse(customLocs));
+        } catch (e) {}
+        try {
+          const customInts = localStorage.getItem('bangkok_custom_interests');
+          if (customInts) setCustomInterests(JSON.parse(customInts));
+        } catch (e) {}
+        try {
+          const saved = localStorage.getItem('bangkok_interest_status');
+          if (saved) {
+            const builtInIds = interestOptions.map(i => i.id);
+            const uncoveredIds = uncoveredInterests.map(i => i.id || i.name.replace(/\s+/g, '_').toLowerCase());
+            const defaultStatus = {};
+            builtInIds.forEach(id => { defaultStatus[id] = true; });
+            uncoveredIds.forEach(id => { defaultStatus[id] = false; });
+            setInterestStatus({ ...defaultStatus, ...JSON.parse(saved) });
+          }
+        } catch (e) {}
+        
+        showToast('🔄 נתונים רועננו (localStorage בלבד - Firebase לא זמין)', 'warning');
+      }
+    } catch (error) {
+      console.error('[REFRESH] Unexpected error:', error);
+      showToast('❌ שגיאה ברענון הנתונים', 'error');
+    } finally {
+      setIsRefreshing(false);
+      console.log('[REFRESH] Complete');
+    }
+  };
+
   // Save routeType to localStorage when it changes
   useEffect(() => {
     localStorage.setItem('bangkok_route_type', routeType);
@@ -217,118 +481,144 @@
     // Generate or retrieve user ID
     let userId = localStorage.getItem('bangkok_user_id');
     if (!userId) {
-      userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
       localStorage.setItem('bangkok_user_id', userId);
     }
     
     console.log('[ACCESS LOG] User ID:', userId);
     
-    // Admin detection: support MULTIPLE admin devices
-    // Firebase stores: settings/adminId (primary) + settings/adminDevices/{userId} = true
-    database.ref('settings/adminId').once('value')
-      .then(async (snapshot) => {
-        let adminId = snapshot.val();
+    // Admin detection: Password-based system
+    const loadAdminSettings = async () => {
+      try {
+        // Load admin password
+        const pwSnapshot = await database.ref('settings/adminPassword').once('value');
+        const storedPassword = pwSnapshot.val() || '';
+        setAdminPassword(storedPassword);
         
-        if (!adminId) {
-          // First user ever - this user becomes admin
-          adminId = userId;
-          await database.ref('settings/adminId').set(adminId);
-          await database.ref(`settings/adminDevices/${userId}`).set(true);
-          console.log('[ACCESS LOG] You are the FIRST admin! ID:', adminId);
-          showToast('אתה ה-Admin הראשון!', 'success');
-        }
+        // Load admin users list
+        const usersSnapshot = await database.ref('settings/adminUsers').once('value');
+        const usersData = usersSnapshot.val() || {};
+        const usersList = Object.entries(usersData).map(([oderId, data]) => ({
+          oderId,
+          ...data
+        }));
+        setAdminUsers(usersList);
         
-        // Check if this device is registered as admin
-        let isAdmin = (userId === adminId);
+        // Check if user is admin: either in list OR password is empty
+        const isInAdminList = usersList.some(u => u.oderId === userId);
+        const passwordEmpty = !storedPassword || storedPassword === '';
+        const userIsAdmin = isInAdminList || passwordEmpty;
         
-        if (!isAdmin) {
-          // Check adminDevices list (for additional devices)
-          const deviceSnapshot = await database.ref(`settings/adminDevices/${userId}`).once('value');
-          isAdmin = deviceSnapshot.val() === true;
-        }
+        setIsUnlocked(userIsAdmin);
+        setIsCurrentUserAdmin(userIsAdmin);
+        localStorage.setItem('bangkok_is_admin', userIsAdmin ? 'true' : 'false');
         
-        console.log('[ACCESS LOG] Admin:', adminId, 'Is Admin:', isAdmin);
+        console.log('[ADMIN] Password empty:', passwordEmpty, 'In list:', isInAdminList, 'Unlocked:', userIsAdmin);
+      } catch (err) {
+        console.error('[ADMIN] Error loading settings:', err);
+      }
+    };
+    
+    loadAdminSettings();
+    
+    // Listen to admin settings changes
+    database.ref('settings/adminPassword').on('value', (snap) => {
+      const pw = snap.val() || '';
+      setAdminPassword(pw);
+      const cachedUserId = localStorage.getItem('bangkok_user_id');
+      database.ref('settings/adminUsers').once('value').then(usersSnap => {
+        const usersData = usersSnap.val() || {};
+        const isInList = Object.keys(usersData).includes(cachedUserId);
+        setIsUnlocked(isInList || !pw);
+      });
+    });
+    
+    database.ref('settings/adminUsers').on('value', (snap) => {
+      const usersData = snap.val() || {};
+      const usersList = Object.entries(usersData).map(([oderId, data]) => ({
+        oderId,
+        ...data
+      }));
+      setAdminUsers(usersList);
+    });
+    
+    // Log access (skip if admin)
+    const isAdmin = localStorage.getItem('bangkok_is_admin') === 'true';
+    
+    if (!isAdmin) {
+      const lastLogTime = parseInt(localStorage.getItem('bangkok_last_log_time') || '0');
+      const oneHour = 60 * 60 * 1000;
+      
+      if (Date.now() - lastLogTime >= oneHour) {
+        localStorage.setItem('bangkok_last_log_time', Date.now().toString());
         
-        // Update admin state for UI + cache in localStorage
-        setIsCurrentUserAdmin(isAdmin);
-        localStorage.setItem('bangkok_is_admin', isAdmin ? 'true' : 'false');
+        const { browser, os } = window.BKK.parseUserAgent(navigator.userAgent);
         
-        // Log access (skip admin)
-        if (!isAdmin) {
-          // THROTTLE: Don't log same userId more than once per hour
-          const lastLogTime = parseInt(localStorage.getItem('bangkok_last_log_time') || '0');
-          const oneHour = 60 * 60 * 1000;
-          
-          if (Date.now() - lastLogTime < oneHour) {
-            console.log('[ACCESS LOG] Throttled - already logged within last hour');
-          } else {
-            localStorage.setItem('bangkok_last_log_time', Date.now().toString());
-            
-            const { browser, os } = window.BKK.parseUserAgent(navigator.userAgent);
-            
-            const accessEntry = {
-              userId, timestamp: Date.now(), date: new Date().toISOString(),
-              userAgent: navigator.userAgent.substring(0, 100),
-              browser, os,
-              screenSize: `${screen.width}x${screen.height}`,
-              language: navigator.language || 'unknown',
-              country: '', city: '', region: ''
-            };
-            
-            const entryRef = database.ref('accessLog').push();
-            entryRef.set(accessEntry)
-              .then(() => {
-                console.log('[ACCESS LOG] Visit logged');
-                // Fetch geo data async
-                fetch('https://ipapi.co/json/')
-                  .then(r => r.json())
-                  .then(geo => {
-                    entryRef.update({
-                      country: geo.country_name || '',
-                      countryCode: geo.country_code || '',
-                      city: geo.city || '',
-                      region: geo.region || '',
-                      ip: geo.ip ? geo.ip.substring(0, 12) + '***' : '',
-                      isp: geo.org || ''
-                    });
-                  })
-                  .catch(err => console.log('[ACCESS LOG] Geo lookup failed:', err));
+        const accessEntry = {
+          userId, 
+          timestamp: Date.now(), 
+          date: new Date().toISOString(),
+          userAgent: navigator.userAgent.substring(0, 100),
+          browser, 
+          os,
+          screenSize: `${screen.width}x${screen.height}`,
+          language: navigator.language || 'unknown',
+          country: '', 
+          city: '', 
+          region: ''
+        };
+        
+        const entryRef = database.ref('accessLog').push();
+        entryRef.set(accessEntry)
+          .then(() => {
+            console.log('[ACCESS LOG] Visit logged');
+            fetch('https://ipapi.co/json/')
+              .then(r => r.json())
+              .then(geo => {
+                entryRef.update({
+                  country: geo.country_name || '',
+                  countryCode: geo.country_code || '',
+                  city: geo.city || '',
+                  region: geo.region || '',
+                  ip: geo.ip ? geo.ip.substring(0, 12) + '***' : '',
+                  isp: geo.org || ''
+                });
               })
-              .catch(err => console.error('[ACCESS LOG] Error:', err));
+              .catch(err => console.log('[ACCESS LOG] Geo lookup failed:', err));
+          })
+          .catch(err => console.error('[ACCESS LOG] Error:', err));
+      }
+    }
+    
+    // Listen to access log (admin only)
+    if (isAdmin) {
+      const logRef = database.ref('accessLog').orderByChild('timestamp').limitToLast(50);
+      const lastSeen = parseInt(localStorage.getItem('bangkok_last_seen') || '0');
+      
+      const unsubscribe = logRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          const logsArray = Object.keys(data).map(key => ({
+            ...data[key], 
+            id: key
+          })).sort((a, b) => b.timestamp - a.timestamp);
+          
+          setAccessLogs(logsArray);
+          
+          const hasNew = logsArray.some(log => log.timestamp > lastSeen);
+          if (hasNew && lastSeen > 0) {
+            setHasNewEntries(true);
+            showToast('יש כניסות חדשות!', 'info');
           }
+        } else {
+          setAccessLogs([]);
         }
-        
-        // Listen to access log (admin only)
-        if (isAdmin) {
-          const logRef = database.ref('accessLog').orderByChild('timestamp').limitToLast(50);
-          const lastSeen = parseInt(localStorage.getItem('bangkok_last_seen') || '0');
-          
-          const unsubscribe = logRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            console.log('[ACCESS LOG] Snapshot:', data ? Object.keys(data).length + ' entries' : 'EMPTY');
-            if (data) {
-              const logsArray = Object.keys(data).map(key => ({
-                ...data[key], id: key
-              })).sort((a, b) => b.timestamp - a.timestamp);
-              
-              setAccessLogs(logsArray);
-              
-              const hasNew = logsArray.some(log => log.timestamp > lastSeen);
-              if (hasNew && lastSeen > 0) {
-                setHasNewEntries(true);
-                showToast('יש כניסות חדשות!', 'info');
-              }
-            } else {
-              setAccessLogs([]);
-            }
-          });
-          
-          return () => logRef.off('value', unsubscribe);
-        }
-      })
-      .catch(err => console.error('[ACCESS LOG] Error reading admin:', err));
+      });
+      
+      return () => logRef.off('value', unsubscribe);
+    }
   }, []);
-  
+
   // Mark logs as seen
   const markLogsAsSeen = () => {
     const latest = accessLogs.length > 0 ? accessLogs[0].timestamp : Date.now();
@@ -336,7 +626,7 @@
     setHasNewEntries(false);
   };
 
-  // Config - loaded from js/config.js
+  // Config - loaded from config.js
   const interestOptions = window.BKK.interestOptions;
 
   const interestToGooglePlaces = window.BKK.interestToGooglePlaces;
@@ -347,13 +637,13 @@
 
   const areaCoordinates = window.BKK.areaCoordinates;
   
-  // Utility functions - loaded from js/utils.js
+  // Utility functions - loaded from utils.js
   const checkLocationInArea = window.BKK.checkLocationInArea;
   const getButtonStyle = window.BKK.getButtonStyle;
 
-  // Fetch places from Google Places API
+  // Text Search URL
+  const GOOGLE_PLACES_TEXT_SEARCH_URL = window.BKK.GOOGLE_PLACES_TEXT_SEARCH_URL || 'https://places.googleapis.com/v1/places:searchText';
 
-  // === APP LOGIC (from app-logic.js) ===
   const fetchGooglePlaces = async (area, interests) => {
     const center = areaCoordinates[area];
     if (!center) {
@@ -362,41 +652,125 @@
       return [];
     }
 
+    // Filter out invalid interests (those without search config)
+    const validInterests = interests.filter(id => isInterestValid(id));
+    if (validInterests.length === 0) {
+      addDebugLog('API', 'No valid interests to search for (all missing config)');
+      console.warn('[DYNAMIC] No valid interests - all are missing search config');
+      return [];
+    }
+    
+    if (validInterests.length < interests.length) {
+      const skipped = interests.filter(id => !isInterestValid(id));
+      addDebugLog('API', `Skipped ${skipped.length} invalid interests: ${skipped.join(', ')}`);
+      console.warn('[DYNAMIC] Skipped invalid interests:', skipped);
+    }
+
     try {
-      // Get all relevant place types
-      const placeTypes = [...new Set(
-        interests.flatMap(interest => {
-          const customInterest = customInterests.find(ci => ci.id === interest);
-          const baseInterest = customInterest?.baseCategory || interest;
-          return interestToGooglePlaces[baseInterest] || ['point_of_interest'];
+      // Get config for the first valid interest (primary)
+      const primaryInterest = validInterests[0];
+      
+      // Check if this interest has direct config or through baseCategory
+      let config = interestConfig[primaryInterest];
+      if (!config) {
+        const customInterest = customInterests.find(ci => ci.id === primaryInterest);
+        if (customInterest?.baseCategory) {
+          config = interestConfig[customInterest.baseCategory] || {};
+        } else {
+          config = {};
+        }
+      }
+      
+      // Check if this interest uses text search
+      const textSearchQuery = config.textSearch;
+      
+      // Collect blacklist words from all valid interests
+      const blacklistWords = validInterests
+        .flatMap(interest => {
+          const directConfig = interestConfig[interest];
+          if (directConfig?.blacklist) return directConfig.blacklist;
+          const ci = customInterests.find(c => c.id === interest);
+          if (ci?.baseCategory) return interestConfig[ci.baseCategory]?.blacklist || [];
+          return [];
         })
-      )];
-
-      addDebugLog('API', `Fetching Google Places`, { area, interests, placeTypes: placeTypes.slice(0, 10), center });
-      console.log('[DYNAMIC] Fetching from Google Places API:', { area, interests });
-
-      const response = await fetch(GOOGLE_PLACES_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-          'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types'
-        },
-        body: JSON.stringify({
-          includedTypes: placeTypes.slice(0, 10), // API limit
-          maxResultCount: 20,
-          locationRestriction: {
-            circle: {
-              center: {
-                latitude: center.lat,
-                longitude: center.lng
-              },
-              radius: 2000 // 2km radius
-            }
+        .map(word => word.toLowerCase());
+      
+      let response;
+      let placeTypes = [];
+      
+      if (textSearchQuery) {
+        // Use Text Search API for interests like "graffiti" -> "street art"
+        const areaName = areaOptions.find(a => a.id === area)?.labelEn || area;
+        const searchQuery = `${textSearchQuery} ${areaName} Bangkok`;
+        
+        addDebugLog('API', `Text Search`, { query: searchQuery, area });
+        console.log('[DYNAMIC] Using Text Search:', searchQuery);
+        
+        response = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types'
           },
-          rankPreference: 'POPULARITY'
-        })
-      });
+          body: JSON.stringify({
+            textQuery: searchQuery,
+            maxResultCount: 20,
+            locationBias: {
+              circle: {
+                center: {
+                  latitude: center.lat,
+                  longitude: center.lng
+                },
+                radius: 3000.0
+              }
+            }
+          })
+        });
+      } else {
+        // Use Nearby Search API with types from interestConfig
+        placeTypes = [...new Set(
+          validInterests.flatMap(interest => {
+            // First check if this interest has direct config
+            if (interestConfig[interest]?.types) {
+              return interestConfig[interest].types;
+            }
+            // Fallback to baseCategory if it's a custom interest
+            const customInterest = customInterests.find(ci => ci.id === interest);
+            if (customInterest?.baseCategory && interestConfig[customInterest.baseCategory]?.types) {
+              return interestConfig[customInterest.baseCategory].types;
+            }
+            // Fallback to interestToGooglePlaces
+            return interestToGooglePlaces[interest] || interestToGooglePlaces[customInterest?.baseCategory] || ['point_of_interest'];
+          })
+        )];
+
+        addDebugLog('API', `Fetching Google Places`, { area, validInterests, placeTypes: placeTypes.slice(0, 10), center });
+        console.log('[DYNAMIC] Fetching from Google Places API:', { area, validInterests });
+
+        response = await fetch(GOOGLE_PLACES_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types'
+          },
+          body: JSON.stringify({
+            includedTypes: placeTypes.slice(0, 10),
+            maxResultCount: 20,
+            locationRestriction: {
+              circle: {
+                center: {
+                  latitude: center.lat,
+                  longitude: center.lng
+                },
+                radius: 2000
+              }
+            },
+            rankPreference: 'POPULARITY'
+          })
+        });
+      }
 
       console.log('[DYNAMIC] Google Places Response:', { 
         status: response.status, 
@@ -431,37 +805,57 @@
         return [];
       }
 
+      // Check if this was a text search
+      const isTextSearch = !!textSearchQuery;
+      
       // Filter and transform Google Places data
-      let filteredCount = 0;
       let ratingFilteredCount = 0;
       let typeFilteredCount = 0;
+      let blacklistFilteredCount = 0;
       
       const transformed = data.places
         .filter(place => {
-          // Filter 1: Rating check
-          if (place.rating < 4.0) {
+          const placeName = (place.displayName?.text || '').toLowerCase();
+          
+          // Filter 1: Blacklist check - filter out places with blacklisted words in name
+          if (blacklistWords.length > 0) {
+            const isBlacklisted = blacklistWords.some(word => placeName.includes(word));
+            if (isBlacklisted) {
+              blacklistFilteredCount++;
+              console.log('[DYNAMIC] ❌ Filtered out (blacklist):', {
+                name: place.displayName?.text,
+                matchedWord: blacklistWords.find(word => placeName.includes(word))
+              });
+              return false;
+            }
+          }
+          
+          // Filter 2: Rating check (no filter for text search)
+          const minRating = isTextSearch ? 0 : 4.0;
+          if (place.rating && place.rating < minRating) {
             ratingFilteredCount++;
             return false;
           }
           
-          // Filter 2: Type validation - CRITICAL!
-          // Only include places that have at least one of the types we requested
-          const placeTypesFromGoogle = place.types || [];
-          const hasValidType = placeTypesFromGoogle.some(type => placeTypes.includes(type));
-          
-          if (!hasValidType) {
-            typeFilteredCount++;
-            console.log('[DYNAMIC] ❌ Filtered out (invalid type):', {
-              name: place.displayName?.text,
-              googleTypes: placeTypesFromGoogle,
-              expectedTypes: placeTypes
-            });
-            return false;
+          // Filter 3: Type validation - skip for text search
+          if (!isTextSearch && placeTypes.length > 0) {
+            const placeTypesFromGoogle = place.types || [];
+            const hasValidType = placeTypesFromGoogle.some(type => placeTypes.includes(type));
+            
+            if (!hasValidType) {
+              typeFilteredCount++;
+              console.log('[DYNAMIC] ❌ Filtered out (invalid type):', {
+                name: place.displayName?.text,
+                googleTypes: placeTypesFromGoogle,
+                expectedTypes: placeTypes
+              });
+              return false;
+            }
           }
           
           console.log('[DYNAMIC] ✅ Kept:', {
             name: place.displayName?.text,
-            matchingTypes: placeTypesFromGoogle.filter(t => placeTypes.includes(t))
+            isTextSearch
           });
           
           return true;
@@ -485,7 +879,7 @@
         final: transformed.length
       });
       
-      addDebugLog('API', `Got ${transformed.length} results (filtered ${ratingFilteredCount} by rating, ${typeFilteredCount} by type)`, {
+      addDebugLog('API', `Got ${transformed.length} results (filtered ${blacklistFilteredCount} blacklist, ${ratingFilteredCount} rating, ${typeFilteredCount} type)`, {
         names: transformed.slice(0, 5).map(p => p.name)
       });
       
@@ -507,8 +901,96 @@
     }
   };
 
-  // Combine default and custom interests - with safety check
-  const allInterestOptions = [...interestOptions, ...(customInterests || [])];
+  // Function to fetch Google Place info for a location
+  const fetchGooglePlaceInfo = async (location) => {
+    if (!location || (!location.lat && !location.name)) {
+      showToast('אין מספיק מידע על המקום', 'error');
+      return null;
+    }
+    
+    setLoadingGoogleInfo(true);
+    
+    try {
+      // Use Text Search to find the place
+      const searchQuery = location.name + ' Bangkok';
+      
+      const response = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+          'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.primaryTypeDisplayName'
+        },
+        body: JSON.stringify({
+          textQuery: searchQuery,
+          maxResultCount: 5,
+          locationBias: location.lat && location.lng ? {
+            circle: {
+              center: { latitude: location.lat, longitude: location.lng },
+              radius: 1000.0
+            }
+          } : undefined
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Google API error');
+      }
+      
+      const data = await response.json();
+      
+      if (!data.places || data.places.length === 0) {
+        setGooglePlaceInfo({ notFound: true, searchQuery });
+        showToast('המקום לא נמצא ב-Google', 'warning');
+        return null;
+      }
+      
+      // Find best match (closest to our coordinates if available)
+      let bestMatch = data.places[0];
+      
+      if (location.lat && location.lng && data.places.length > 1) {
+        const getDistance = (place) => {
+          const lat = place.location?.latitude || 0;
+          const lng = place.location?.longitude || 0;
+          return Math.sqrt(Math.pow(lat - location.lat, 2) + Math.pow(lng - location.lng, 2));
+        };
+        
+        bestMatch = data.places.reduce((best, place) => 
+          getDistance(place) < getDistance(best) ? place : best
+        );
+      }
+      
+      const placeInfo = {
+        name: bestMatch.displayName?.text,
+        address: bestMatch.formattedAddress,
+        types: bestMatch.types || [],
+        primaryType: bestMatch.primaryType,
+        primaryTypeDisplayName: bestMatch.primaryTypeDisplayName?.text,
+        rating: bestMatch.rating,
+        ratingCount: bestMatch.userRatingCount,
+        location: bestMatch.location,
+        allResults: data.places.map(p => ({
+          name: p.displayName?.text,
+          types: p.types,
+          primaryType: p.primaryType
+        }))
+      };
+      
+      setGooglePlaceInfo(placeInfo);
+      addDebugLog('API', 'Fetched Google Place Info', { name: placeInfo.name, types: placeInfo.types });
+      
+      return placeInfo;
+    } catch (error) {
+      console.error('Error fetching Google place info:', error);
+      showToast('שגיאה בשליפת מידע מ-Google', 'error');
+      return null;
+    } finally {
+      setLoadingGoogleInfo(false);
+    }
+  };
+
+  // Combine all interests: built-in + uncovered + custom
+  const allInterestOptions = [...interestOptions, ...uncoveredInterests, ...(customInterests || [])];
 
   // Save preferences whenever they change
   useEffect(() => {
@@ -538,7 +1020,7 @@
 
   const areaOptions = window.BKK.areaOptions;
 
-  // Image handling - loaded from js/utils.js
+  // Image handling - loaded from utils.js
   const compressImage = window.BKK.compressImage;
   
   const handleImageUpload = async (event) => {
@@ -568,7 +1050,7 @@
     }));
   };
 
-  // Button styles - loaded from js/utils.js (via getButtonStyle reference above)
+  // Button styles - loaded from utils.js
 
   const getStopsForInterests = () => {
     // Now we only collect CUSTOM locations - Google Places will be fetched in generateRoute
@@ -852,7 +1334,7 @@
     }
   };
 
-  // NEW: Fetch more places for a specific interest
+  // Fetch more places for a specific interest
   const fetchMoreForInterest = async (interest) => {
     if (!route) return;
     
@@ -901,7 +1383,7 @@
     }
   };
 
-  // NEW: Fetch more places for all interests
+  // Fetch more places for all interests
   const fetchMoreAll = async () => {
     if (!route) return;
     
@@ -954,7 +1436,7 @@
     }
   };
 
-  // NEW: Filter blacklisted places
+  // Filter blacklisted places
   const filterBlacklist = (places) => {
     return places.filter(place => {
       const blacklisted = customLocations.find(loc => 
@@ -1014,43 +1496,8 @@
     setCurrentView('form'); // Go to form view to show places list
   };
 
-  const addCustomInterest = () => {
-    if (!newInterest.label.trim() || !newInterest.baseCategory) {
-      return; // Require both label and baseCategory
-    }
-    
-    const interestToAdd = {
-      id: `custom_${Date.now()}`,
-      label: newInterest.label.trim(),
-      icon: newInterest.icon || '📍',
-      baseCategory: newInterest.baseCategory, // Store the base category
-      custom: true
-    };
-    
-    // Save to Firebase (or localStorage fallback)
-    if (isFirebaseAvailable && database) {
-      // DYNAMIC MODE: Firebase (shared)
-      database.ref('customInterests').push(interestToAdd)
-        .then(() => {
-          console.log('[FIREBASE] Interest added to shared database');
-          showToast('תחום העניין נוסף!', 'success');
-        })
-        .catch((error) => {
-          console.error('[FIREBASE] Error adding interest:', error);
-          showToast('שגיאה בשמירה', 'error');
-        });
-    } else {
-      // STATIC MODE: localStorage (local)
-      const updated = [...customInterests, interestToAdd];
-      setCustomInterests(updated);
-      localStorage.setItem('bangkok_custom_interests', JSON.stringify(updated));
-      showToast('תחום העניין נוסף!', 'success');
-    }
-    
-    // Reset and close dialog
-    setNewInterest({ label: '', icon: '📍', baseCategory: '' });
-    setShowAddInterestDialog(false);
-  };
+  // NOTE: addCustomInterest logic is now inline in the dialog footer (see Add Interest Dialog)
+  // This allows direct configuration of search settings when creating an interest
 
   const deleteCustomInterest = (interestId) => {
     const interestToDelete = customInterests.find(i => i.id === interestId);
@@ -1092,6 +1539,37 @@
     }
   };
 
+  // Toggle interest active/inactive status
+  const toggleInterestStatus = (interestId) => {
+    const newStatus = !interestStatus[interestId];
+    const updatedStatus = { ...interestStatus, [interestId]: newStatus };
+    setInterestStatus(updatedStatus);
+    
+    if (isFirebaseAvailable && database) {
+      database.ref(`settings/interestStatus/${interestId}`).set(newStatus)
+        .then(() => {
+          console.log('[FIREBASE] Interest status updated:', interestId, newStatus);
+        })
+        .catch(err => {
+          console.error('Error updating interest status:', err);
+        });
+    } else {
+      localStorage.setItem('bangkok_interest_status', JSON.stringify(updatedStatus));
+    }
+  };
+
+  // Check if interest has valid search config
+  const isInterestValid = (interestId) => {
+    const config = interestConfig[interestId];
+    if (!config) return false;
+    
+    // Valid if has textSearch OR has types array with items
+    if (config.textSearch && config.textSearch.trim()) return true;
+    if (config.types && Array.isArray(config.types) && config.types.length > 0) return true;
+    
+    return false;
+  };
+
   const deleteCustomLocation = (locationId) => {
     const locationToDelete = customLocations.find(loc => loc.id === locationId);
     
@@ -1118,7 +1596,7 @@
     }
   };
   
-  // NEW: Toggle location status with review state
+  // Toggle location status with review state
   const toggleLocationStatus = (locationId) => {
     const location = customLocations.find(loc => loc.id === locationId);
     if (!location) return;
@@ -1179,7 +1657,7 @@
     }
   };
   
-  // NEW: Handle edit location - populate form with existing data
+  // Handle edit location - populate form with existing data
   const handleEditLocation = (loc) => {
     console.log('[EDIT] ====== Opening edit ======');
     console.log('[EDIT] Location object:', JSON.stringify(loc, null, 2));
@@ -1210,7 +1688,7 @@
     console.log('[EDIT] Dialog opened');
   };
   
-  // NEW: Add Google place to My Locations
+  // Add Google place to My Locations
   const addGooglePlaceToCustom = async (place) => {
     // Check if already exists (by name, case-insensitive)
     const exists = customLocations.find(loc => 
@@ -1273,7 +1751,7 @@
     }
   };
   
-  // NEW: Skip place permanently (add to blacklist)
+  // Skip place permanently (add to blacklist)
   const skipPlacePermanently = (place) => {
     // Check if already exists
     const exists = customLocations.find(loc => 
@@ -1367,10 +1845,12 @@
     let skippedLocations = 0;
     let addedRoutes = 0;
     let skippedRoutes = 0;
+    let updatedConfigs = 0;
+    let updatedStatuses = 0;
     
     // Helper to check if interest exists by label (not id)
     const interestExistsByLabel = (label) => {
-      return customInterests.find(i => i.label.toLowerCase() === label.toLowerCase());
+      return customInterests.find(i => (i.label || i.name || '').toLowerCase() === label.toLowerCase());
     };
     
     // Helper to check if location exists by name (not id)
@@ -1382,31 +1862,57 @@
     if (isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       
-      // Import interests first
+      // 1. Import custom interests
       for (const interest of (importedData.customInterests || [])) {
-        if (!interest.label) continue;
+        const label = interest.label || interest.name;
+        if (!label) continue;
         
-        const exists = interestExistsByLabel(interest.label);
+        const exists = interestExistsByLabel(label);
         if (exists) {
           skippedInterests++;
           continue;
         }
         
         try {
+          const interestId = interest.id || `custom_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
           const newInterest = {
-            id: `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            label: interest.label,
-            icon: interest.icon || '📍',
-            baseCategory: interest.baseCategory || 'other'
+            id: interestId,
+            label: label,
+            name: label,
+            icon: interest.icon || '📍'
           };
-          await database.ref('customInterests').push(newInterest);
+          await database.ref(`customInterests/${interestId}`).set(newInterest);
           addedInterests++;
         } catch (error) {
           console.error('[FIREBASE] Error importing interest:', error);
         }
       }
       
-      // Import locations
+      // 2. Import interest configurations (search settings)
+      if (importedData.interestConfig) {
+        for (const [interestId, config] of Object.entries(importedData.interestConfig)) {
+          try {
+            await database.ref(`settings/interestConfig/${interestId}`).set(config);
+            updatedConfigs++;
+          } catch (error) {
+            console.error('[FIREBASE] Error importing config:', error);
+          }
+        }
+      }
+      
+      // 3. Import interest statuses (active/inactive)
+      if (importedData.interestStatus) {
+        for (const [interestId, status] of Object.entries(importedData.interestStatus)) {
+          try {
+            await database.ref(`settings/interestStatus/${interestId}`).set(status);
+            updatedStatuses++;
+          } catch (error) {
+            console.error('[FIREBASE] Error importing status:', error);
+          }
+        }
+      }
+      
+      // 4. Import locations
       for (const loc of (importedData.customLocations || [])) {
         if (!loc.name) continue;
         
@@ -1417,14 +1923,13 @@
         }
         
         try {
-          // Create location with proper structure
           const newLocation = {
-            id: Date.now() + Math.floor(Math.random() * 1000),
+            id: loc.id || Date.now() + Math.floor(Math.random() * 1000),
             name: loc.name.trim(),
-            description: loc.description || loc.notes || 'מקום מיובא',
+            description: loc.description || loc.notes || '',
             notes: loc.notes || '',
             area: loc.area || 'sukhumvit',
-            interests: Array.isArray(loc.interests) ? loc.interests : ['other'],
+            interests: Array.isArray(loc.interests) ? loc.interests : [],
             lat: loc.lat || null,
             lng: loc.lng || null,
             mapsUrl: loc.mapsUrl || '',
@@ -1436,24 +1941,9 @@
             duration: loc.duration || 45,
             custom: true,
             status: loc.status || 'active',
-            inProgress: false,
-            addedAt: new Date().toISOString()
+            inProgress: loc.inProgress || false,
+            addedAt: loc.addedAt || new Date().toISOString()
           };
-          
-          // Check if location has interests that don't exist - create them
-          for (const interestId of newLocation.interests) {
-            const baseInterests = ['temples', 'food', 'shopping', 'entertainment', 'nature', 'markets', 'massage', 'art', 'cafes', 'nightlife', 'historic', 'other'];
-            if (!baseInterests.includes(interestId) && !interestExistsByLabel(interestId)) {
-              // Create the interest
-              const newInterest = {
-                id: interestId,
-                label: interestId,
-                icon: '📍',
-                baseCategory: 'other'
-              };
-              await database.ref('customInterests').push(newInterest);
-            }
-          }
           
           await database.ref('customLocations').push(newLocation);
           addedLocations++;
@@ -1462,7 +1952,7 @@
         }
       }
       
-      // Import saved routes (always localStorage, not Firebase)
+      // 5. Import saved routes
       const newRoutes = [...savedRoutes];
       (importedData.savedRoutes || []).forEach(route => {
         if (!route.name) return;
@@ -1483,31 +1973,52 @@
       
       setSavedRoutes(newRoutes);
       localStorage.setItem('bangkok_saved_routes', JSON.stringify(newRoutes));
+      
     } else {
       // STATIC MODE: localStorage (local)
       const newInterests = [...customInterests];
       const newLocations = [...customLocations];
+      const newConfig = { ...interestConfig };
+      const newStatus = { ...interestStatus };
       
-      // Import interests first
+      // 1. Import custom interests
       (importedData.customInterests || []).forEach(interest => {
-        if (!interest.label) return;
+        const label = interest.label || interest.name;
+        if (!label) return;
         
-        const exists = newInterests.find(i => i.label.toLowerCase() === interest.label.toLowerCase());
+        const exists = newInterests.find(i => (i.label || i.name || '').toLowerCase() === label.toLowerCase());
         if (exists) {
           skippedInterests++;
           return;
         }
         
+        const interestId = interest.id || `custom_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
         newInterests.push({
-          id: `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          label: interest.label,
-          icon: interest.icon || '📍',
-          baseCategory: interest.baseCategory || 'other'
+          id: interestId,
+          label: label,
+          name: label,
+          icon: interest.icon || '📍'
         });
         addedInterests++;
       });
       
-      // Import locations
+      // 2. Import interest configurations
+      if (importedData.interestConfig) {
+        Object.entries(importedData.interestConfig).forEach(([id, config]) => {
+          newConfig[id] = config;
+          updatedConfigs++;
+        });
+      }
+      
+      // 3. Import interest statuses
+      if (importedData.interestStatus) {
+        Object.entries(importedData.interestStatus).forEach(([id, status]) => {
+          newStatus[id] = status;
+          updatedStatuses++;
+        });
+      }
+      
+      // 4. Import locations
       (importedData.customLocations || []).forEach(loc => {
         if (!loc.name) return;
         
@@ -1517,14 +2028,13 @@
           return;
         }
         
-        // Create location with proper structure
         const newLocation = {
-          id: Date.now() + Math.floor(Math.random() * 1000),
+          id: loc.id || Date.now() + Math.floor(Math.random() * 1000),
           name: loc.name.trim(),
-          description: loc.description || loc.notes || 'מקום מיובא',
+          description: loc.description || loc.notes || '',
           notes: loc.notes || '',
           area: loc.area || 'sukhumvit',
-          interests: Array.isArray(loc.interests) ? loc.interests : ['other'],
+          interests: Array.isArray(loc.interests) ? loc.interests : [],
           lat: loc.lat || null,
           lng: loc.lng || null,
           mapsUrl: loc.mapsUrl || '',
@@ -1536,29 +2046,15 @@
           duration: loc.duration || 45,
           custom: true,
           status: loc.status || 'active',
-          inProgress: false,
-          addedAt: new Date().toISOString()
+          inProgress: loc.inProgress || false,
+          addedAt: loc.addedAt || new Date().toISOString()
         };
-        
-        // Check if location has interests that don't exist - create them
-        const baseInterests = ['temples', 'food', 'shopping', 'entertainment', 'nature', 'markets', 'massage', 'art', 'cafes', 'nightlife', 'historic', 'other'];
-        for (const interestId of newLocation.interests) {
-          if (!baseInterests.includes(interestId) && !newInterests.find(i => i.id === interestId || i.label.toLowerCase() === interestId.toLowerCase())) {
-            newInterests.push({
-              id: interestId,
-              label: interestId,
-              icon: '📍',
-              baseCategory: 'other'
-            });
-            addedInterests++;
-          }
-        }
         
         newLocations.push(newLocation);
         addedLocations++;
       });
       
-      // Import saved routes
+      // 5. Import saved routes
       const newRoutes = [...savedRoutes];
       (importedData.savedRoutes || []).forEach(route => {
         if (!route.name) return;
@@ -1580,9 +2076,13 @@
       setCustomInterests(newInterests);
       setCustomLocations(newLocations);
       setSavedRoutes(newRoutes);
+      setInterestConfig(newConfig);
+      setInterestStatus(newStatus);
+      
       localStorage.setItem('bangkok_custom_interests', JSON.stringify(newInterests));
       localStorage.setItem('bangkok_custom_locations', JSON.stringify(newLocations));
       localStorage.setItem('bangkok_saved_routes', JSON.stringify(newRoutes));
+      localStorage.setItem('bangkok_interest_status', JSON.stringify(newStatus));
     }
     
     setShowImportDialog(false);
@@ -1591,16 +2091,19 @@
     // Build detailed report
     const report = [];
     if (addedInterests > 0 || skippedInterests > 0) {
-      report.push(`תחומים: ${addedInterests}+, ${skippedInterests} דולגו`);
+      report.push(`תחומים: +${addedInterests}`);
+    }
+    if (updatedConfigs > 0) {
+      report.push(`הגדרות: +${updatedConfigs}`);
     }
     if (addedLocations > 0 || skippedLocations > 0) {
-      report.push(`מקומות: ${addedLocations}+, ${skippedLocations} דולגו`);
+      report.push(`מקומות: +${addedLocations}`);
     }
     if (addedRoutes > 0 || skippedRoutes > 0) {
-      report.push(`מסלולים: ${addedRoutes}+, ${skippedRoutes} דולגו`);
+      report.push(`מסלולים: +${addedRoutes}`);
     }
     
-    const totalAdded = addedInterests + addedLocations + addedRoutes;
+    const totalAdded = addedInterests + addedLocations + addedRoutes + updatedConfigs;
     showToast(report.join(' | ') || 'לא נמצאו פריטים לייבוא', totalAdded > 0 ? 'success' : 'warning');
   };
 
@@ -2119,5 +2622,4 @@
     
     setRoute({...route, mapUrl});
   };
-
 

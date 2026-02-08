@@ -486,7 +486,7 @@
               {/* Header */}
               <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold">הוסף תחום עניין</h3>
+                  <h3 className="text-base font-bold">{editingCustomInterest ? '✏️ ערוך תחום עניין' : 'הוסף תחום עניין'}</h3>
                   <button
                     onClick={() => showHelpFor('addInterest')}
                     className="bg-white text-purple-600 hover:bg-purple-100 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold shadow"
@@ -498,7 +498,8 @@
                 <button
                   onClick={() => {
                     setShowAddInterestDialog(false);
-                    setNewInterest({ label: '', icon: '📍', baseCategory: '' });
+                    setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '' });
+                    setEditingCustomInterest(null);
                   }}
                   className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center"
                 >
@@ -508,6 +509,7 @@
               
               {/* Content */}
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                {/* Name */}
                 <div>
                   <label className="block text-xs font-bold mb-1">שם התחום <span className="text-red-500">*</span></label>
                   <input
@@ -521,71 +523,221 @@
                   />
                 </div>
 
+                {/* Icon */}
                 <div>
-                  <label className="block text-xs font-bold mb-1">אייקון (אימוג'י)</label>
+                  <label className="block text-xs font-bold mb-1">אייקון</label>
                   <input
                     type="text"
                     value={newInterest.icon}
-                    onChange={(e) => setNewInterest({...newInterest, icon: e.target.value})}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      const firstEmoji = [...value][0] || '';
+                      setNewInterest({...newInterest, icon: firstEmoji});
+                    }}
                     placeholder="📍"
-                    maxLength="2"
                     className="w-full p-2 text-xl border-2 border-gray-300 rounded-lg focus:border-purple-500 text-center"
                   />
+                  <p className="text-[10px] text-gray-500 mt-1 text-center" style={{ direction: 'ltr' }}>
+                    Emoji (🎨 🏛️), Unicode, single char
+                  </p>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold mb-1">תחום בסיס <span className="text-red-500">*</span></label>
-                  <select
-                    value={newInterest.baseCategory || ''}
-                    onChange={(e) => setNewInterest({...newInterest, baseCategory: e.target.value})}
-                    className="w-full p-2 text-sm border-2 border-purple-300 rounded-lg focus:border-purple-500"
-                    style={{ direction: 'rtl' }}
-                  >
-                    <option value="">-- בחר תחום בסיס --</option>
-                    {interestOptions.map(option => (
-                      <option key={option.id} value={option.id}>
-                        {option.icon} {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="bg-gray-100 border border-gray-300 rounded-lg p-2 text-center">
-                  <span className="text-xs text-gray-600">לחץ על <strong>?</strong> בכותרת להסבר מפורט</span>
+                {/* Search Configuration */}
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
+                  <label className="block text-xs font-bold mb-2 text-blue-800">🔍 הגדרות חיפוש</label>
+                  
+                  {/* Search Mode */}
+                  <div className="mb-2">
+                    <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>Search Mode:</label>
+                    <select
+                      value={newInterest.searchMode || 'types'}
+                      onChange={(e) => setNewInterest({...newInterest, searchMode: e.target.value})}
+                      className="w-full p-1.5 text-sm border rounded"
+                      style={{ direction: 'ltr' }}
+                    >
+                      <option value="types">Category Search (types)</option>
+                      <option value="text">Text Search (query)</option>
+                    </select>
+                  </div>
+                  
+                  {/* Types or Text Query */}
+                  {newInterest.searchMode === 'text' ? (
+                    <div className="mb-2">
+                      <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>Text Query:</label>
+                      <input
+                        type="text"
+                        value={newInterest.textSearch || ''}
+                        onChange={(e) => setNewInterest({...newInterest, textSearch: e.target.value})}
+                        placeholder="e.g., street art"
+                        className="w-full p-1.5 text-sm border rounded"
+                        style={{ direction: 'ltr' }}
+                      />
+                      <p className="text-[9px] text-gray-500 mt-0.5" style={{ direction: 'ltr' }}>
+                        Searches: "[query] [area] Bangkok"
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mb-2">
+                      <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>Place Types (comma separated):</label>
+                      <input
+                        type="text"
+                        value={newInterest.types || ''}
+                        onChange={(e) => setNewInterest({...newInterest, types: e.target.value})}
+                        placeholder="e.g., movie_theater, museum"
+                        className="w-full p-1.5 text-sm border rounded"
+                        style={{ direction: 'ltr' }}
+                      />
+                      <p className="text-[9px] text-gray-500 mt-0.5" style={{ direction: 'ltr' }}>
+                        <a href="https://developers.google.com/maps/documentation/places/web-service/place-types" target="_blank" className="text-blue-500 underline">See types list</a>
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Blacklist */}
+                  <div>
+                    <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>Blacklist Words (comma separated):</label>
+                    <input
+                      type="text"
+                      value={newInterest.blacklist || ''}
+                      onChange={(e) => setNewInterest({...newInterest, blacklist: e.target.value})}
+                      placeholder="e.g., cannabis, massage"
+                      className="w-full p-1.5 text-sm border rounded"
+                      style={{ direction: 'ltr' }}
+                    />
+                  </div>
                 </div>
               </div>
               
               {/* Footer */}
               <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: 'rtl' }}>
-                <button
-                  onClick={() => {
-                    if (newInterest.label.trim() && newInterest.baseCategory) {
-                      addCustomInterest();
-                      // Reset for another entry but stay open
-                      setNewInterest({ label: '', icon: '📍', baseCategory: '' });
-                    }
-                  }}
-                  disabled={!newInterest.label.trim() || !newInterest.baseCategory}
-                  className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${
-                    newInterest.label.trim() && newInterest.baseCategory
-                      ? 'bg-purple-500 text-white hover:bg-purple-600'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
-                >
-                  ➕ הוסף
-                </button>
-                <button
-                  onClick={() => {
-                    if (newInterest.label.trim() && newInterest.baseCategory) {
-                      addCustomInterest();
-                    }
-                    setShowAddInterestDialog(false);
-                    setNewInterest({ label: '', icon: '📍', baseCategory: '' });
-                  }}
-                  className="px-5 py-2.5 rounded-lg bg-green-500 text-white text-sm font-bold hover:bg-green-600"
-                >
-                  ✓ סגור
-                </button>
+                {editingCustomInterest ? (
+                  /* Edit mode */
+                  <>
+                    <button
+                      onClick={() => {
+                        if (newInterest.label.trim()) {
+                          const interestId = editingCustomInterest.id || editingCustomInterest.firebaseId;
+                          
+                          // Prepare interest data
+                          const updatedInterest = {
+                            ...editingCustomInterest,
+                            label: newInterest.label.trim(),
+                            name: newInterest.label.trim(),
+                            icon: newInterest.icon || '📍'
+                          };
+                          
+                          // Prepare search config
+                          const searchConfig = {};
+                          if (newInterest.searchMode === 'text' && newInterest.textSearch) {
+                            searchConfig.textSearch = newInterest.textSearch.trim();
+                          } else if (newInterest.types) {
+                            searchConfig.types = newInterest.types.split(',').map(t => t.trim()).filter(t => t);
+                          }
+                          if (newInterest.blacklist) {
+                            searchConfig.blacklist = newInterest.blacklist.split(',').map(t => t.trim().toLowerCase()).filter(t => t);
+                          }
+                          
+                          if (isFirebaseAvailable && database) {
+                            // Save interest
+                            database.ref(`customInterests/${editingCustomInterest.firebaseId || interestId}`).update(updatedInterest);
+                            // Save search config
+                            if (Object.keys(searchConfig).length > 0) {
+                              database.ref(`settings/interestConfig/${interestId}`).set(searchConfig);
+                            }
+                            showToast('התחום עודכן!', 'success');
+                          } else {
+                            const updated = customInterests.map(ci => ci.id === interestId ? updatedInterest : ci);
+                            setCustomInterests(updated);
+                            localStorage.setItem('bangkok_custom_interests', JSON.stringify(updated));
+                            showToast('התחום עודכן!', 'success');
+                          }
+                          
+                          setShowAddInterestDialog(false);
+                          setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '' });
+                          setEditingCustomInterest(null);
+                        }
+                      }}
+                      disabled={!newInterest.label.trim()}
+                      className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                        newInterest.label.trim()
+                          ? 'bg-green-500 text-white hover:bg-green-600'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      💾 שמור
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAddInterestDialog(false);
+                        setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '' });
+                        setEditingCustomInterest(null);
+                      }}
+                      className="px-5 py-2.5 rounded-lg bg-gray-400 text-white text-sm font-bold hover:bg-gray-500"
+                    >
+                      ביטול
+                    </button>
+                  </>
+                ) : (
+                  /* Add mode */
+                  <>
+                    <button
+                      onClick={() => {
+                        if (newInterest.label.trim()) {
+                          // Create new interest with search config
+                          const interestId = 'custom_' + Date.now();
+                          const newInterestData = {
+                            id: interestId,
+                            label: newInterest.label.trim(),
+                            name: newInterest.label.trim(),
+                            icon: newInterest.icon || '📍'
+                          };
+                          
+                          // Prepare search config
+                          const searchConfig = {};
+                          if (newInterest.searchMode === 'text' && newInterest.textSearch) {
+                            searchConfig.textSearch = newInterest.textSearch.trim();
+                          } else if (newInterest.types) {
+                            searchConfig.types = newInterest.types.split(',').map(t => t.trim()).filter(t => t);
+                          }
+                          if (newInterest.blacklist) {
+                            searchConfig.blacklist = newInterest.blacklist.split(',').map(t => t.trim().toLowerCase()).filter(t => t);
+                          }
+                          
+                          if (isFirebaseAvailable && database) {
+                            database.ref(`customInterests/${interestId}`).set(newInterestData);
+                            if (Object.keys(searchConfig).length > 0) {
+                              database.ref(`settings/interestConfig/${interestId}`).set(searchConfig);
+                            }
+                          } else {
+                            const updated = [...customInterests, newInterestData];
+                            setCustomInterests(updated);
+                            localStorage.setItem('bangkok_custom_interests', JSON.stringify(updated));
+                          }
+                          
+                          showToast('התחום נוסף!', 'success');
+                          setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '' });
+                        }
+                      }}
+                      disabled={!newInterest.label.trim()}
+                      className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                        newInterest.label.trim()
+                          ? 'bg-purple-500 text-white hover:bg-purple-600'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      ➕ הוסף
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAddInterestDialog(false);
+                        setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '' });
+                      }}
+                      className="px-5 py-2.5 rounded-lg bg-green-500 text-white text-sm font-bold hover:bg-green-600"
+                    >
+                      ✓ סגור
+                    </button>
+                  </>
+                )}
               </div>
               
             </div>
@@ -618,7 +770,9 @@
               <div className="bg-blue-100 border border-blue-300 rounded-lg p-3">
                 <div className="font-bold text-blue-800 text-sm mb-1">📥 בקובץ:</div>
                 <div className="text-xs text-blue-700 space-y-0.5">
-                  <div>• {importedData.customInterests?.length || 0} תחומי עניין</div>
+                  <div>• {importedData.customInterests?.length || 0} תחומים מותאמים</div>
+                  <div>• {importedData.interestConfig ? Object.keys(importedData.interestConfig).length : 0} הגדרות חיפוש</div>
+                  <div>• {importedData.interestStatus ? Object.values(importedData.interestStatus).filter(Boolean).length : 0} תחומים פעילים</div>
                   <div>• {importedData.customLocations?.length || 0} מקומות</div>
                   <div>• {importedData.savedRoutes?.length || 0} מסלולים שמורים</div>
                 </div>
@@ -792,6 +946,72 @@
                   </a>
                 </div>
               )}
+              {/* Google Place Info Section */}
+              <div className="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-3">
+                <div className="flex justify-between items-center mb-2">
+                  <div className="text-xs font-bold text-indigo-900">🔍 מידע מ-Google</div>
+                  <button
+                    onClick={() => {
+                      setGooglePlaceInfo(null);
+                      fetchGooglePlaceInfo(selectedLocation);
+                    }}
+                    disabled={loadingGoogleInfo}
+                    className="bg-indigo-500 text-white text-xs px-3 py-1 rounded-full font-bold hover:bg-indigo-600 disabled:opacity-50"
+                  >
+                    {loadingGoogleInfo ? '⏳ טוען...' : '🔎 בדוק ב-Google'}
+                  </button>
+                </div>
+                
+                {googlePlaceInfo && !googlePlaceInfo.notFound && (
+                  <div className="text-xs space-y-2" style={{ direction: 'ltr' }}>
+                    <div>
+                      <span className="font-bold text-indigo-700">Found:</span>
+                      <span className="ml-1">{googlePlaceInfo.name}</span>
+                    </div>
+                    <div>
+                      <span className="font-bold text-indigo-700">Primary Type:</span>
+                      <span className="ml-1 bg-indigo-200 px-2 py-0.5 rounded">
+                        {googlePlaceInfo.primaryTypeDisplayName || googlePlaceInfo.primaryType || 'N/A'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-bold text-indigo-700">All Types:</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {googlePlaceInfo.types.map((type, idx) => (
+                          <span key={idx} className="bg-gray-200 px-2 py-0.5 rounded text-[10px]">
+                            {type}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="font-bold text-indigo-700">Rating:</span>
+                      <span className="ml-1">⭐ {googlePlaceInfo.rating?.toFixed(1) || 'N/A'} ({googlePlaceInfo.ratingCount || 0})</span>
+                    </div>
+                    
+                    {/* Explanation */}
+                    <div className="mt-2 p-2 bg-white rounded border border-indigo-200 text-[10px]">
+                      <div className="font-bold text-indigo-800 mb-1">💡 למה זה חשוב?</div>
+                      <div className="text-gray-600">
+                        כדי שמקום יופיע בחיפוש, ה-Types שלו צריכים להתאים להגדרות החיפוש של תחום העניין.
+                        לחץ על ⓘ ליד תחום עניין בטופס כדי לראות ולערוך את הגדרות החיפוש.
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {googlePlaceInfo && googlePlaceInfo.notFound && (
+                  <div className="text-xs text-red-600">
+                    ❌ המקום לא נמצא ב-Google עבור החיפוש: "{googlePlaceInfo.searchQuery}"
+                  </div>
+                )}
+                
+                {!googlePlaceInfo && !loadingGoogleInfo && (
+                  <div className="text-xs text-gray-500">
+                    לחץ על "בדוק ב-Google" כדי לראות איך המקום מוגדר
+                  </div>
+                )}
+              </div>
             </div>
             
             {/* Footer Actions */}
@@ -1040,7 +1260,7 @@
       
       {/* Help Modal */}
       {showHelp && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-xl max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col shadow-2xl">
             {/* Header */}
             <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-3 flex items-center justify-between">
@@ -1099,8 +1319,395 @@
         </div>
       )}
       
+      {/* Stop Info Dialog - shows selection criteria */}
+      {showStopInfoDialog && selectedStopInfo && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowStopInfoDialog(false)}
+        >
+          <div 
+            className="bg-white rounded-xl w-full max-w-sm shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-3 rounded-t-xl">
+              <div className="flex justify-between items-center">
+                <h3 className="text-base font-bold">ⓘ מידע על בחירת המקום</h3>
+                <button
+                  onClick={() => setShowStopInfoDialog(false)}
+                  className="text-white hover:text-gray-200"
+                >✕</button>
+              </div>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="font-bold text-lg text-gray-800">{selectedStopInfo.name}</div>
+              
+              {/* Source */}
+              <div className="bg-gray-50 rounded-lg p-3">
+                <div className="text-xs font-bold text-gray-600 mb-1">📍 מקור:</div>
+                <div className="text-sm">
+                  {selectedStopInfo.custom ? (
+                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-bold">
+                      מקום מותאם אישית (שלי)
+                    </span>
+                  ) : (
+                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-bold">
+                      Google Places API
+                    </span>
+                  )}
+                </div>
+              </div>
+              
+              {/* Interests that matched */}
+              <div className="bg-blue-50 rounded-lg p-3">
+                <div className="text-xs font-bold text-blue-800 mb-1">🏷️ תחומי עניין שהתאימו:</div>
+                <div className="flex flex-wrap gap-1">
+                  {selectedStopInfo.interests && selectedStopInfo.interests.length > 0 ? (
+                    selectedStopInfo.interests.map((interest, idx) => {
+                      const interestObj = allInterestOptions.find(opt => opt.id === interest);
+                      const config = interestConfig[interest] || {};
+                      return (
+                        <div key={idx} className="bg-white border border-blue-200 rounded px-2 py-1">
+                          <span className="text-sm">{interestObj?.icon} {interestObj?.label || interest}</span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <span className="text-gray-500 text-sm">לא צוינו תחומי עניין</span>
+                  )}
+                </div>
+              </div>
+              
+              {/* Search criteria used */}
+              <div className="bg-indigo-50 rounded-lg p-3" style={{ direction: 'ltr' }}>
+                <div className="text-xs font-bold text-indigo-800 mb-2" style={{ direction: 'rtl' }}>🔍 קריטריוני חיפוש:</div>
+                {selectedStopInfo.interests && selectedStopInfo.interests.map((interest, idx) => {
+                  const config = interestConfig[interest] || {};
+                  return (
+                    <div key={idx} className="text-xs mb-2 bg-white p-2 rounded border border-indigo-200">
+                      <div className="font-bold text-indigo-700">{interest}:</div>
+                      {config.textSearch ? (
+                        <div className="text-gray-600">Text Search: "{config.textSearch}"</div>
+                      ) : (
+                        <div className="text-gray-600">Types: {(config.types || []).join(', ') || 'default'}</div>
+                      )}
+                      {config.blacklist && config.blacklist.length > 0 && (
+                        <div className="text-red-600">Blacklist: {config.blacklist.join(', ')}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {/* Rating */}
+              {selectedStopInfo.rating && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="font-bold text-gray-600">⭐ דירוג:</span>
+                  <span>{selectedStopInfo.rating.toFixed(1)} ({selectedStopInfo.ratingCount || 0} ביקורות)</span>
+                </div>
+              )}
+              
+              {/* Close button */}
+              <button
+                onClick={() => setShowStopInfoDialog(false)}
+                className="w-full py-2 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300"
+              >
+                סגור
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Interest Config Dialog */}
+      {showInterestConfigDialog && editingInterestConfig && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-3 rounded-t-xl sticky top-0">
+              <div className="flex justify-between items-center">
+                <h3 className="text-base font-bold">
+                  {editingInterestConfig.icon} {editingInterestConfig.label} - הגדרות חיפוש
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowInterestConfigDialog(false);
+                    setEditingInterestConfig(null);
+                  }}
+                  className="text-white hover:text-gray-200"
+                >✕</button>
+              </div>
+            </div>
+            <div className="p-4 space-y-4" style={{ direction: 'ltr' }}>
+              {/* Current Config Display */}
+              <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                <div className="font-bold text-gray-700 mb-2">Current Configuration:</div>
+                {editingInterestConfig.config.textSearch ? (
+                  <div className="mb-2">
+                    <span className="text-blue-600 font-medium">Text Search:</span>
+                    <span className="ml-2">"{editingInterestConfig.config.textSearch}"</span>
+                  </div>
+                ) : (
+                  <div className="mb-2">
+                    <span className="text-green-600 font-medium">Place Types:</span>
+                    <div className="ml-2 text-xs text-gray-600">
+                      {(editingInterestConfig.config.types || []).join(', ') || 'None defined'}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <span className="text-red-600 font-medium">Blacklist Words:</span>
+                  <div className="ml-2 text-xs text-gray-600">
+                    {(editingInterestConfig.config.blacklist || []).join(', ') || 'None'}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Edit Section */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Search Mode:
+                  </label>
+                  <select
+                    value={editingInterestConfig.config.textSearch ? 'text' : 'types'}
+                    onChange={(e) => {
+                      const newConfig = { ...editingInterestConfig.config };
+                      if (e.target.value === 'text') {
+                        newConfig.textSearch = newConfig.textSearch || '';
+                        delete newConfig.types;
+                      } else {
+                        delete newConfig.textSearch;
+                        newConfig.types = newConfig.types || [];
+                      }
+                      setEditingInterestConfig({
+                        ...editingInterestConfig,
+                        config: newConfig
+                      });
+                    }}
+                    className="w-full p-2 border rounded text-sm"
+                  >
+                    <option value="types">Category Search (types)</option>
+                    <option value="text">Text Search (query)</option>
+                  </select>
+                </div>
+                
+                {editingInterestConfig.config.textSearch !== undefined ? (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                      Text Search Query:
+                    </label>
+                    <input
+                      type="text"
+                      value={editingInterestConfig.config.textSearch || ''}
+                      onChange={(e) => {
+                        setEditingInterestConfig({
+                          ...editingInterestConfig,
+                          config: {
+                            ...editingInterestConfig.config,
+                            textSearch: e.target.value
+                          }
+                        });
+                      }}
+                      placeholder="e.g., street art"
+                      className="w-full p-2 border rounded text-sm"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Will search: "[query] [area] Bangkok"
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                      Place Types (comma separated):
+                    </label>
+                    <input
+                      type="text"
+                      value={(editingInterestConfig.config.types || []).join(', ')}
+                      onChange={(e) => {
+                        const types = e.target.value.split(',').map(t => t.trim()).filter(t => t);
+                        setEditingInterestConfig({
+                          ...editingInterestConfig,
+                          config: {
+                            ...editingInterestConfig.config,
+                            types
+                          }
+                        });
+                      }}
+                      placeholder="e.g., art_gallery, museum"
+                      className="w-full p-2 border rounded text-sm"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      <a href="https://developers.google.com/maps/documentation/places/web-service/place-types" target="_blank" className="text-blue-500 underline">
+                        See available types
+                      </a>
+                    </p>
+                  </div>
+                )}
+                
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Blacklist Words (comma separated):
+                  </label>
+                  <input
+                    type="text"
+                    value={(editingInterestConfig.config.blacklist || []).join(', ')}
+                    onChange={(e) => {
+                      const blacklist = e.target.value.split(',').map(t => t.trim().toLowerCase()).filter(t => t);
+                      setEditingInterestConfig({
+                        ...editingInterestConfig,
+                        config: {
+                          ...editingInterestConfig.config,
+                          blacklist
+                        }
+                      });
+                    }}
+                    placeholder="e.g., cannabis, weed, massage"
+                    className="w-full p-2 border rounded text-sm"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Places with these words in name will be filtered out
+                  </p>
+                </div>
+              </div>
+              
+              {/* Buttons */}
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => {
+                    // Save to Firebase
+                    if (isFirebaseAvailable && database) {
+                      const configToSave = { ...editingInterestConfig.config };
+                      database.ref(`settings/interestConfig/${editingInterestConfig.id}`).set(configToSave)
+                        .then(() => {
+                          showToast('Configuration saved!', 'success');
+                          setShowInterestConfigDialog(false);
+                          setEditingInterestConfig(null);
+                        })
+                        .catch(err => {
+                          console.error('Error saving config:', err);
+                          showToast('Error saving', 'error');
+                        });
+                    } else {
+                      // Update local state only
+                      setInterestConfig(prev => ({
+                        ...prev,
+                        [editingInterestConfig.id]: editingInterestConfig.config
+                      }));
+                      showToast('Configuration updated (local only)', 'success');
+                      setShowInterestConfigDialog(false);
+                      setEditingInterestConfig(null);
+                    }
+                  }}
+                  className="flex-1 py-2 bg-green-500 text-white rounded-lg font-bold text-sm hover:bg-green-600"
+                >
+                  💾 Save
+                </button>
+                <button
+                  onClick={() => {
+                    setShowInterestConfigDialog(false);
+                    setEditingInterestConfig(null);
+                  }}
+                  className="flex-1 py-2 bg-gray-300 text-gray-700 rounded-lg font-bold text-sm hover:bg-gray-400"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast Notification - Subtle */}
-      {toastMessage && (
+      {/* Password Dialog */}
+      {showPasswordDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-sm shadow-2xl">
+            <div className="bg-gradient-to-r from-gray-700 to-gray-800 text-white p-3 rounded-t-xl">
+              <h3 className="text-base font-bold">🔒 הגדרות נעולות</h3>
+            </div>
+            <div className="p-4 space-y-4">
+              <p className="text-sm text-gray-600 text-center">הזן סיסמה לפתיחת ההגדרות</p>
+              <input
+                type="text"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                placeholder="סיסמה"
+                className="w-full p-3 border rounded-lg text-center text-lg"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    // Check password
+                    if (passwordInput === adminPassword) {
+                      const userId = localStorage.getItem('bangkok_user_id');
+                      const userName = localStorage.getItem('bangkok_user_name') || 'Unknown';
+                      // Add to admin list
+                      if (isFirebaseAvailable && database) {
+                        database.ref(`settings/adminUsers/${userId}`).set({
+                          addedAt: new Date().toISOString(),
+                          name: userName
+                        }).then(() => {
+                          setIsUnlocked(true);
+                          setIsCurrentUserAdmin(true);
+                          localStorage.setItem('bangkok_is_admin', 'true');
+                          setShowPasswordDialog(false);
+                          setPasswordInput('');
+                          setCurrentView('settings');
+                          showToast('נפתח בהצלחה!', 'success');
+                        });
+                      }
+                    } else {
+                      showToast('סיסמה שגויה', 'error');
+                      setPasswordInput('');
+                    }
+                  }
+                }}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    // Check password
+                    if (passwordInput === adminPassword) {
+                      const userId = localStorage.getItem('bangkok_user_id');
+                      const userName = localStorage.getItem('bangkok_user_name') || 'Unknown';
+                      // Add to admin list
+                      if (isFirebaseAvailable && database) {
+                        database.ref(`settings/adminUsers/${userId}`).set({
+                          addedAt: new Date().toISOString(),
+                          name: userName
+                        }).then(() => {
+                          setIsUnlocked(true);
+                          setIsCurrentUserAdmin(true);
+                          localStorage.setItem('bangkok_is_admin', 'true');
+                          setShowPasswordDialog(false);
+                          setPasswordInput('');
+                          setCurrentView('settings');
+                          showToast('נפתח בהצלחה!', 'success');
+                        });
+                      }
+                    } else {
+                      showToast('סיסמה שגויה', 'error');
+                      setPasswordInput('');
+                    }
+                  }}
+                  className="flex-1 py-2 bg-green-500 text-white rounded-lg font-medium"
+                >
+                  אישור
+                </button>
+                <button
+                  onClick={() => {
+                    setShowPasswordDialog(false);
+                    setPasswordInput('');
+                  }}
+                  className="flex-1 py-2 bg-gray-300 text-gray-700 rounded-lg font-medium"
+                >
+                  ביטול
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+            {toastMessage && (
         <div
           style={{
             position: 'fixed',
@@ -1128,3 +1735,4 @@
           </div>
         </div>
       )}
+
