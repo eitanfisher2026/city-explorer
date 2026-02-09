@@ -116,7 +116,7 @@
 window.BKK = window.BKK || {};
 
 // App Version
-window.BKK.VERSION = '2.8.0';
+window.BKK.VERSION = '2.8.2';
 
 // Firebase Configuration
 window.BKK.firebaseConfig = {
@@ -856,6 +856,19 @@ window.BKK.parseUserAgent = (ua) => {
   return { browser, os };
 };
 
+/**
+ * SHA-256 hash a string (for password protection)
+ * Returns hex string. Uses Web Crypto API.
+ */
+window.BKK.hashPassword = async function(password) {
+  if (!password) return '';
+  var encoder = new TextEncoder();
+  var data = encoder.encode(password);
+  var hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  var hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+};
+
 console.log('[UTILS] Loaded successfully');
 
 
@@ -1010,6 +1023,26 @@ const BangkokExplorer = () => {
     return localStorage.getItem('bangkok_debug_mode') === 'true';
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false); // Tracks initial Firebase/localStorage load
+  const dataLoadTracker = React.useRef({ locations: false, interests: false, config: false, status: false });
+  const markLoaded = (key) => {
+    dataLoadTracker.current[key] = true;
+    const t = dataLoadTracker.current;
+    if (t.locations && t.interests && t.config && t.status) {
+      setIsDataLoaded(true);
+    }
+  };
+  
+  // Safety timeout - don't show loading forever
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!isDataLoaded) {
+        console.warn('[LOAD] Safety timeout - forcing data loaded after 5s');
+        setIsDataLoaded(true);
+      }
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [isDataLoaded]);
   const [startPointCoords, setStartPointCoords] = useState(null); // { lat, lng }
   const [isLocating, setIsLocating] = useState(false);
   
@@ -1019,6 +1052,7 @@ const BangkokExplorer = () => {
   const [isUnlocked, setIsUnlocked] = useState(true);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState(''); // For setting new password in admin panel
   
   // Add debug log entry (console only)
   const addDebugLog = (category, message, data = null) => {
@@ -1198,6 +1232,7 @@ const BangkokExplorer = () => {
         } else {
           setCustomLocations([]);
         }
+        markLoaded('locations');
       });
       
       return () => locationsRef.off('value', unsubscribe);
@@ -1211,6 +1246,7 @@ const BangkokExplorer = () => {
       } catch (e) {
         console.error('[LOCALSTORAGE] Error loading locations:', e);
       }
+      markLoaded('locations');
     }
   }, []);
 
@@ -1231,6 +1267,7 @@ const BangkokExplorer = () => {
         } else {
           setCustomInterests([]);
         }
+        markLoaded('interests');
       });
       
       return () => interestsRef.off('value', unsubscribe);
@@ -1243,6 +1280,7 @@ const BangkokExplorer = () => {
       } catch (e) {
         console.error('[LOCALSTORAGE] Error loading interests:', e);
       }
+      markLoaded('interests');
     }
   }, []);
 
@@ -1289,6 +1327,7 @@ const BangkokExplorer = () => {
           setInterestConfig(defaultConfig);
           console.log('[FIREBASE] Saved default interest config');
         }
+        markLoaded('config');
       });
       
       // Listen for changes
@@ -1300,6 +1339,7 @@ const BangkokExplorer = () => {
       });
     } else {
       setInterestConfig(defaultConfig);
+      markLoaded('config');
     }
   }, []);
 
@@ -1326,6 +1366,7 @@ const BangkokExplorer = () => {
           setInterestStatus(defaultStatus);
           console.log('[FIREBASE] Saved default interest status');
         }
+        markLoaded('status');
       });
       
       // Listen for changes
@@ -1346,6 +1387,7 @@ const BangkokExplorer = () => {
       } catch (e) {
         setInterestStatus(defaultStatus);
       }
+      markLoaded('status');
     }
   }, []);
 
@@ -3089,7 +3131,9 @@ const BangkokExplorer = () => {
             id: interestId,
             label: label,
             name: label,
-            icon: interest.icon || '📍'
+            icon: interest.icon || '📍',
+            inProgress: interest.inProgress || false,
+            locked: interest.locked || false
           };
           await database.ref(`customInterests/${interestId}`).set(newInterest);
           addedInterests++;
@@ -3152,6 +3196,10 @@ const BangkokExplorer = () => {
             custom: true,
             status: loc.status || 'active',
             inProgress: loc.inProgress || false,
+            locked: loc.locked || false,
+            rating: loc.rating || null,
+            ratingCount: loc.ratingCount || null,
+            fromGoogle: loc.fromGoogle || false,
             addedAt: loc.addedAt || new Date().toISOString()
           };
           
@@ -3207,7 +3255,9 @@ const BangkokExplorer = () => {
           id: interestId,
           label: label,
           name: label,
-          icon: interest.icon || '📍'
+          icon: interest.icon || '📍',
+          inProgress: interest.inProgress || false,
+          locked: interest.locked || false
         });
         addedInterests++;
       });
@@ -3257,6 +3307,10 @@ const BangkokExplorer = () => {
           custom: true,
           status: loc.status || 'active',
           inProgress: loc.inProgress || false,
+          locked: loc.locked || false,
+          rating: loc.rating || null,
+          ratingCount: loc.ratingCount || null,
+          fromGoogle: loc.fromGoogle || false,
           addedAt: loc.addedAt || new Date().toISOString()
         };
         
@@ -3839,6 +3893,23 @@ const BangkokExplorer = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-pink-50" dir="rtl">
+      {/* Loading Overlay */}
+      {!isDataLoaded && (
+        <div className="fixed inset-0 bg-gradient-to-br from-orange-50 to-pink-50 z-[100] flex flex-col items-center justify-center">
+          <div className="text-center">
+            <div className="text-5xl mb-4 animate-bounce">🇹🇭</div>
+            <h2 className="text-xl font-bold text-gray-700 mb-2">Bangkok Explorer</h2>
+            <div className="flex items-center justify-center gap-2 text-gray-500">
+              <svg className="animate-spin h-5 w-5 text-orange-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              <span className="text-sm">...טוען נתונים</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-gradient-to-r from-orange-500 to-pink-500 text-white p-4 shadow-lg">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Bangkok Explorer 🇹🇭</h1>
@@ -5793,7 +5864,8 @@ const BangkokExplorer = () => {
             
             {/* Import/Export Section */}
             
-            {/* Admin Management - Password Based */}
+            {/* Admin Management - Password Based (Admin Only) */}
+            {isCurrentUserAdmin && (
             <div className="mb-4">
               <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-400 rounded-xl p-3">
                 <h3 className="text-base font-bold text-gray-800 mb-1">👑 ניהול Admin</h3>
@@ -5806,26 +5878,35 @@ const BangkokExplorer = () => {
                   <span className="text-green-600 font-bold"> 🔓 פתוח</span>
                 </div>
                 
-                {/* Password Section */}
+                {/* Password Section - Secure */}
                 <div className="mb-3">
-                  <label className="text-xs font-bold text-gray-700 block mb-1">🔑 סיסמת מערכת:</label>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">🔑 {adminPassword ? 'שנה סיסמת מערכת:' : 'הגדר סיסמת מערכת:'}</label>
                   <div className="flex gap-2">
                     <input
-                      type="text"
-                      value={adminPassword}
-                      onChange={(e) => {
-                        const newPw = e.target.value;
-                        setAdminPassword(newPw);
-                      }}
-                      placeholder="ללא סיסמה = גישה פתוחה"
+                      type="password"
+                      value={newAdminPassword}
+                      onChange={(e) => setNewAdminPassword(e.target.value)}
+                      placeholder={adminPassword ? 'סיסמה חדשה...' : 'הגדר סיסמה'}
                       className="flex-1 p-2 border rounded text-sm"
                     />
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         if (isFirebaseAvailable && database) {
-                          database.ref('settings/adminPassword').set(adminPassword)
-                            .then(() => showToast('סיסמה נשמרה!', 'success'))
-                            .catch(() => showToast('שגיאה בשמירה', 'error'));
+                          try {
+                            if (newAdminPassword.trim()) {
+                              const hashed = await window.BKK.hashPassword(newAdminPassword.trim());
+                              await database.ref('settings/adminPassword').set(hashed);
+                              setAdminPassword(hashed);
+                              showToast('סיסמה נשמרה!', 'success');
+                            } else {
+                              await database.ref('settings/adminPassword').set('');
+                              setAdminPassword('');
+                              showToast('סיסמה הוסרה - גישה פתוחה', 'warning');
+                            }
+                            setNewAdminPassword('');
+                          } catch (err) {
+                            showToast('שגיאה בשמירה', 'error');
+                          }
                         }
                       }}
                       className="px-3 py-2 bg-green-500 text-white rounded text-sm font-bold"
@@ -5886,6 +5967,7 @@ const BangkokExplorer = () => {
                 </button>
               </div>
             </div>
+            )}
             
             <div className="mb-4">
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-400 rounded-xl p-3">
@@ -5915,7 +5997,7 @@ const BangkokExplorer = () => {
                           interestStatus: interestStatus,
                           // Metadata
                           exportDate: new Date().toISOString(),
-                          version: '2.6'
+                          version: window.BKK.VERSION || '2.8'
                         };
                         
                         const dataStr = JSON.stringify(data, null, 2);
@@ -5956,8 +6038,8 @@ const BangkokExplorer = () => {
                           try {
                             const data = JSON.parse(event.target.result);
                             
-                            if (!data.customInterests || !data.customLocations) {
-                              showToast('קובץ לא תקין', 'error');
+                            if (!data.customInterests && !data.customLocations && !data.savedRoutes) {
+                              showToast('קובץ לא תקין - לא נמצאו נתונים', 'error');
                               return;
                             }
                             
@@ -7471,6 +7553,76 @@ const BangkokExplorer = () => {
       )}
 
       {/* Toast Notification - Subtle */}
+      {/* Import Confirmation Dialog */}
+      {showImportDialog && importedData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-sm shadow-2xl">
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white p-3 rounded-t-xl">
+              <h3 className="text-base font-bold">📥 ייבוא נתונים</h3>
+            </div>
+            <div className="p-4 space-y-3">
+              {importedData.exportDate && (
+                <p className="text-xs text-gray-500 text-center">
+                  מתאריך: {new Date(importedData.exportDate).toLocaleDateString('he-IL')}
+                  {importedData.version && ` | גרסה: ${importedData.version}`}
+                </p>
+              )}
+              
+              <div className="bg-gray-50 rounded-lg p-3 space-y-1.5">
+                <div className="flex justify-between text-sm">
+                  <span>🏷️ תחומי עניין מותאמים</span>
+                  <span className="font-bold text-purple-600">{(importedData.customInterests || []).length}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>📍 מקומות</span>
+                  <span className="font-bold text-blue-600">{(importedData.customLocations || []).length}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>🗺️ מסלולים שמורים</span>
+                  <span className="font-bold text-orange-600">{(importedData.savedRoutes || []).length}</span>
+                </div>
+                {importedData.interestConfig && (
+                  <div className="flex justify-between text-sm">
+                    <span>⚙️ הגדרות חיפוש</span>
+                    <span className="font-bold text-gray-600">{Object.keys(importedData.interestConfig).length}</span>
+                  </div>
+                )}
+                {importedData.interestStatus && (
+                  <div className="flex justify-between text-sm">
+                    <span>✅ סטטוס תחומים</span>
+                    <span className="font-bold text-gray-600">{Object.keys(importedData.interestStatus).length}</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-2">
+                <p className="text-xs text-yellow-800">
+                  💡 פריטים קיימים (לפי שם) לא יידרסו. רק פריטים חדשים יתווספו.
+                </p>
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={handleImportMerge}
+                  className="flex-1 py-2.5 bg-green-500 text-white rounded-lg font-bold hover:bg-green-600 transition text-sm"
+                >
+                  ✅ ייבא הכל
+                </button>
+                <button
+                  onClick={() => {
+                    setShowImportDialog(false);
+                    setImportedData(null);
+                  }}
+                  className="flex-1 py-2.5 bg-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-400 transition text-sm"
+                >
+                  ביטול
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Password Dialog */}
       {showPasswordDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -7481,20 +7633,25 @@ const BangkokExplorer = () => {
             <div className="p-4 space-y-4">
               <p className="text-sm text-gray-600 text-center">הזן סיסמה לפתיחת ההגדרות</p>
               <input
-                type="text"
+                type="password"
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
                 placeholder="סיסמה"
                 className="w-full p-3 border rounded-lg text-center text-lg"
                 autoFocus
-                onKeyDown={(e) => {
+                onKeyDown={async (e) => {
                   if (e.key === 'Enter') {
-                    // Check password
-                    if (passwordInput === adminPassword) {
+                    const hashedInput = await window.BKK.hashPassword(passwordInput);
+                    // Support both hashed and legacy plaintext passwords
+                    if (hashedInput === adminPassword || passwordInput === adminPassword) {
                       const userId = localStorage.getItem('bangkok_user_id');
                       const userName = localStorage.getItem('bangkok_user_name') || 'Unknown';
-                      // Add to admin list
                       if (isFirebaseAvailable && database) {
+                        // If password was plaintext, upgrade to hash
+                        if (passwordInput === adminPassword && hashedInput !== adminPassword) {
+                          database.ref('settings/adminPassword').set(hashedInput);
+                          setAdminPassword(hashedInput);
+                        }
                         database.ref(`settings/adminUsers/${userId}`).set({
                           addedAt: new Date().toISOString(),
                           name: userName
@@ -7517,13 +7674,18 @@ const BangkokExplorer = () => {
               />
               <div className="flex gap-2">
                 <button
-                  onClick={() => {
-                    // Check password
-                    if (passwordInput === adminPassword) {
+                  onClick={async () => {
+                    const hashedInput = await window.BKK.hashPassword(passwordInput);
+                    // Support both hashed and legacy plaintext passwords
+                    if (hashedInput === adminPassword || passwordInput === adminPassword) {
                       const userId = localStorage.getItem('bangkok_user_id');
                       const userName = localStorage.getItem('bangkok_user_name') || 'Unknown';
-                      // Add to admin list
                       if (isFirebaseAvailable && database) {
+                        // If password was plaintext, upgrade to hash
+                        if (passwordInput === adminPassword && hashedInput !== adminPassword) {
+                          database.ref('settings/adminPassword').set(hashedInput);
+                          setAdminPassword(hashedInput);
+                        }
                         database.ref(`settings/adminUsers/${userId}`).set({
                           addedAt: new Date().toISOString(),
                           name: userName

@@ -97,6 +97,26 @@
     return localStorage.getItem('bangkok_debug_mode') === 'true';
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false); // Tracks initial Firebase/localStorage load
+  const dataLoadTracker = React.useRef({ locations: false, interests: false, config: false, status: false });
+  const markLoaded = (key) => {
+    dataLoadTracker.current[key] = true;
+    const t = dataLoadTracker.current;
+    if (t.locations && t.interests && t.config && t.status) {
+      setIsDataLoaded(true);
+    }
+  };
+  
+  // Safety timeout - don't show loading forever
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!isDataLoaded) {
+        console.warn('[LOAD] Safety timeout - forcing data loaded after 5s');
+        setIsDataLoaded(true);
+      }
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [isDataLoaded]);
   const [startPointCoords, setStartPointCoords] = useState(null); // { lat, lng }
   const [isLocating, setIsLocating] = useState(false);
   
@@ -106,6 +126,7 @@
   const [isUnlocked, setIsUnlocked] = useState(true);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState(''); // For setting new password in admin panel
   
   // Add debug log entry (console only)
   const addDebugLog = (category, message, data = null) => {
@@ -285,6 +306,7 @@
         } else {
           setCustomLocations([]);
         }
+        markLoaded('locations');
       });
       
       return () => locationsRef.off('value', unsubscribe);
@@ -298,6 +320,7 @@
       } catch (e) {
         console.error('[LOCALSTORAGE] Error loading locations:', e);
       }
+      markLoaded('locations');
     }
   }, []);
 
@@ -318,6 +341,7 @@
         } else {
           setCustomInterests([]);
         }
+        markLoaded('interests');
       });
       
       return () => interestsRef.off('value', unsubscribe);
@@ -330,6 +354,7 @@
       } catch (e) {
         console.error('[LOCALSTORAGE] Error loading interests:', e);
       }
+      markLoaded('interests');
     }
   }, []);
 
@@ -376,6 +401,7 @@
           setInterestConfig(defaultConfig);
           console.log('[FIREBASE] Saved default interest config');
         }
+        markLoaded('config');
       });
       
       // Listen for changes
@@ -387,6 +413,7 @@
       });
     } else {
       setInterestConfig(defaultConfig);
+      markLoaded('config');
     }
   }, []);
 
@@ -413,6 +440,7 @@
           setInterestStatus(defaultStatus);
           console.log('[FIREBASE] Saved default interest status');
         }
+        markLoaded('status');
       });
       
       // Listen for changes
@@ -433,6 +461,7 @@
       } catch (e) {
         setInterestStatus(defaultStatus);
       }
+      markLoaded('status');
     }
   }, []);
 
@@ -2176,7 +2205,9 @@
             id: interestId,
             label: label,
             name: label,
-            icon: interest.icon || '📍'
+            icon: interest.icon || '📍',
+            inProgress: interest.inProgress || false,
+            locked: interest.locked || false
           };
           await database.ref(`customInterests/${interestId}`).set(newInterest);
           addedInterests++;
@@ -2239,6 +2270,10 @@
             custom: true,
             status: loc.status || 'active',
             inProgress: loc.inProgress || false,
+            locked: loc.locked || false,
+            rating: loc.rating || null,
+            ratingCount: loc.ratingCount || null,
+            fromGoogle: loc.fromGoogle || false,
             addedAt: loc.addedAt || new Date().toISOString()
           };
           
@@ -2294,7 +2329,9 @@
           id: interestId,
           label: label,
           name: label,
-          icon: interest.icon || '📍'
+          icon: interest.icon || '📍',
+          inProgress: interest.inProgress || false,
+          locked: interest.locked || false
         });
         addedInterests++;
       });
@@ -2344,6 +2381,10 @@
           custom: true,
           status: loc.status || 'active',
           inProgress: loc.inProgress || false,
+          locked: loc.locked || false,
+          rating: loc.rating || null,
+          ratingCount: loc.ratingCount || null,
+          fromGoogle: loc.fromGoogle || false,
           addedAt: loc.addedAt || new Date().toISOString()
         };
         

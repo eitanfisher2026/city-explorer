@@ -1,6 +1,23 @@
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-pink-50" dir="rtl">
+      {/* Loading Overlay */}
+      {!isDataLoaded && (
+        <div className="fixed inset-0 bg-gradient-to-br from-orange-50 to-pink-50 z-[100] flex flex-col items-center justify-center">
+          <div className="text-center">
+            <div className="text-5xl mb-4 animate-bounce">🇹🇭</div>
+            <h2 className="text-xl font-bold text-gray-700 mb-2">Bangkok Explorer</h2>
+            <div className="flex items-center justify-center gap-2 text-gray-500">
+              <svg className="animate-spin h-5 w-5 text-orange-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              <span className="text-sm">...טוען נתונים</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-gradient-to-r from-orange-500 to-pink-500 text-white p-4 shadow-lg">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Bangkok Explorer 🇹🇭</h1>
@@ -1955,7 +1972,8 @@
             
             {/* Import/Export Section */}
             
-            {/* Admin Management - Password Based */}
+            {/* Admin Management - Password Based (Admin Only) */}
+            {isCurrentUserAdmin && (
             <div className="mb-4">
               <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-400 rounded-xl p-3">
                 <h3 className="text-base font-bold text-gray-800 mb-1">👑 ניהול Admin</h3>
@@ -1968,26 +1986,35 @@
                   <span className="text-green-600 font-bold"> 🔓 פתוח</span>
                 </div>
                 
-                {/* Password Section */}
+                {/* Password Section - Secure */}
                 <div className="mb-3">
-                  <label className="text-xs font-bold text-gray-700 block mb-1">🔑 סיסמת מערכת:</label>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">🔑 {adminPassword ? 'שנה סיסמת מערכת:' : 'הגדר סיסמת מערכת:'}</label>
                   <div className="flex gap-2">
                     <input
-                      type="text"
-                      value={adminPassword}
-                      onChange={(e) => {
-                        const newPw = e.target.value;
-                        setAdminPassword(newPw);
-                      }}
-                      placeholder="ללא סיסמה = גישה פתוחה"
+                      type="password"
+                      value={newAdminPassword}
+                      onChange={(e) => setNewAdminPassword(e.target.value)}
+                      placeholder={adminPassword ? 'סיסמה חדשה...' : 'הגדר סיסמה'}
                       className="flex-1 p-2 border rounded text-sm"
                     />
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         if (isFirebaseAvailable && database) {
-                          database.ref('settings/adminPassword').set(adminPassword)
-                            .then(() => showToast('סיסמה נשמרה!', 'success'))
-                            .catch(() => showToast('שגיאה בשמירה', 'error'));
+                          try {
+                            if (newAdminPassword.trim()) {
+                              const hashed = await window.BKK.hashPassword(newAdminPassword.trim());
+                              await database.ref('settings/adminPassword').set(hashed);
+                              setAdminPassword(hashed);
+                              showToast('סיסמה נשמרה!', 'success');
+                            } else {
+                              await database.ref('settings/adminPassword').set('');
+                              setAdminPassword('');
+                              showToast('סיסמה הוסרה - גישה פתוחה', 'warning');
+                            }
+                            setNewAdminPassword('');
+                          } catch (err) {
+                            showToast('שגיאה בשמירה', 'error');
+                          }
                         }
                       }}
                       className="px-3 py-2 bg-green-500 text-white rounded text-sm font-bold"
@@ -2048,6 +2075,7 @@
                 </button>
               </div>
             </div>
+            )}
             
             <div className="mb-4">
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-400 rounded-xl p-3">
@@ -2077,7 +2105,7 @@
                           interestStatus: interestStatus,
                           // Metadata
                           exportDate: new Date().toISOString(),
-                          version: '2.6'
+                          version: window.BKK.VERSION || '2.8'
                         };
                         
                         const dataStr = JSON.stringify(data, null, 2);
@@ -2118,8 +2146,8 @@
                           try {
                             const data = JSON.parse(event.target.result);
                             
-                            if (!data.customInterests || !data.customLocations) {
-                              showToast('קובץ לא תקין', 'error');
+                            if (!data.customInterests && !data.customLocations && !data.savedRoutes) {
+                              showToast('קובץ לא תקין - לא נמצאו נתונים', 'error');
                               return;
                             }
                             

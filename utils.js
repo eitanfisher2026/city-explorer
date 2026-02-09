@@ -331,5 +331,18 @@ window.BKK.parseUserAgent = (ua) => {
   return { browser, os };
 };
 
+/**
+ * SHA-256 hash a string (for password protection)
+ * Returns hex string. Uses Web Crypto API.
+ */
+window.BKK.hashPassword = async function(password) {
+  if (!password) return '';
+  var encoder = new TextEncoder();
+  var data = encoder.encode(password);
+  var hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  var hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+};
+
 console.log('[UTILS] Loaded successfully');
 

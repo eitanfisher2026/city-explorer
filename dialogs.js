@@ -1357,6 +1357,76 @@
       )}
 
       {/* Toast Notification - Subtle */}
+      {/* Import Confirmation Dialog */}
+      {showImportDialog && importedData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-sm shadow-2xl">
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white p-3 rounded-t-xl">
+              <h3 className="text-base font-bold">📥 ייבוא נתונים</h3>
+            </div>
+            <div className="p-4 space-y-3">
+              {importedData.exportDate && (
+                <p className="text-xs text-gray-500 text-center">
+                  מתאריך: {new Date(importedData.exportDate).toLocaleDateString('he-IL')}
+                  {importedData.version && ` | גרסה: ${importedData.version}`}
+                </p>
+              )}
+              
+              <div className="bg-gray-50 rounded-lg p-3 space-y-1.5">
+                <div className="flex justify-between text-sm">
+                  <span>🏷️ תחומי עניין מותאמים</span>
+                  <span className="font-bold text-purple-600">{(importedData.customInterests || []).length}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>📍 מקומות</span>
+                  <span className="font-bold text-blue-600">{(importedData.customLocations || []).length}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>🗺️ מסלולים שמורים</span>
+                  <span className="font-bold text-orange-600">{(importedData.savedRoutes || []).length}</span>
+                </div>
+                {importedData.interestConfig && (
+                  <div className="flex justify-between text-sm">
+                    <span>⚙️ הגדרות חיפוש</span>
+                    <span className="font-bold text-gray-600">{Object.keys(importedData.interestConfig).length}</span>
+                  </div>
+                )}
+                {importedData.interestStatus && (
+                  <div className="flex justify-between text-sm">
+                    <span>✅ סטטוס תחומים</span>
+                    <span className="font-bold text-gray-600">{Object.keys(importedData.interestStatus).length}</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-2">
+                <p className="text-xs text-yellow-800">
+                  💡 פריטים קיימים (לפי שם) לא יידרסו. רק פריטים חדשים יתווספו.
+                </p>
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={handleImportMerge}
+                  className="flex-1 py-2.5 bg-green-500 text-white rounded-lg font-bold hover:bg-green-600 transition text-sm"
+                >
+                  ✅ ייבא הכל
+                </button>
+                <button
+                  onClick={() => {
+                    setShowImportDialog(false);
+                    setImportedData(null);
+                  }}
+                  className="flex-1 py-2.5 bg-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-400 transition text-sm"
+                >
+                  ביטול
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Password Dialog */}
       {showPasswordDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -1367,20 +1437,25 @@
             <div className="p-4 space-y-4">
               <p className="text-sm text-gray-600 text-center">הזן סיסמה לפתיחת ההגדרות</p>
               <input
-                type="text"
+                type="password"
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
                 placeholder="סיסמה"
                 className="w-full p-3 border rounded-lg text-center text-lg"
                 autoFocus
-                onKeyDown={(e) => {
+                onKeyDown={async (e) => {
                   if (e.key === 'Enter') {
-                    // Check password
-                    if (passwordInput === adminPassword) {
+                    const hashedInput = await window.BKK.hashPassword(passwordInput);
+                    // Support both hashed and legacy plaintext passwords
+                    if (hashedInput === adminPassword || passwordInput === adminPassword) {
                       const userId = localStorage.getItem('bangkok_user_id');
                       const userName = localStorage.getItem('bangkok_user_name') || 'Unknown';
-                      // Add to admin list
                       if (isFirebaseAvailable && database) {
+                        // If password was plaintext, upgrade to hash
+                        if (passwordInput === adminPassword && hashedInput !== adminPassword) {
+                          database.ref('settings/adminPassword').set(hashedInput);
+                          setAdminPassword(hashedInput);
+                        }
                         database.ref(`settings/adminUsers/${userId}`).set({
                           addedAt: new Date().toISOString(),
                           name: userName
@@ -1403,13 +1478,18 @@
               />
               <div className="flex gap-2">
                 <button
-                  onClick={() => {
-                    // Check password
-                    if (passwordInput === adminPassword) {
+                  onClick={async () => {
+                    const hashedInput = await window.BKK.hashPassword(passwordInput);
+                    // Support both hashed and legacy plaintext passwords
+                    if (hashedInput === adminPassword || passwordInput === adminPassword) {
                       const userId = localStorage.getItem('bangkok_user_id');
                       const userName = localStorage.getItem('bangkok_user_name') || 'Unknown';
-                      // Add to admin list
                       if (isFirebaseAvailable && database) {
+                        // If password was plaintext, upgrade to hash
+                        if (passwordInput === adminPassword && hashedInput !== adminPassword) {
+                          database.ref('settings/adminPassword').set(hashedInput);
+                          setAdminPassword(hashedInput);
+                        }
                         database.ref(`settings/adminUsers/${userId}`).set({
                           addedAt: new Date().toISOString(),
                           name: userName
