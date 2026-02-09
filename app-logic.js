@@ -1754,7 +1754,7 @@
 
     const updated = [routeToSave, ...savedRoutes];
     setSavedRoutes(updated);
-    localStorage.setItem('bangkok_saved_routes', JSON.stringify(updated));
+    saveRoutesToStorage(updated);
     
     setShowSaveDialog(false);
     setRouteName('');
@@ -1769,6 +1769,28 @@
   };
 
   // Quick save - bypasses old dialog, saves with default name and opens new route dialog
+  // Strip heavy data (base64 images) from route before localStorage save
+  const stripRouteForStorage = (r) => {
+    const stripped = { ...r };
+    if (stripped.stops) {
+      stripped.stops = stripped.stops.map(s => {
+        const { uploadedImage, ...rest } = s;
+        return rest;
+      });
+    }
+    return stripped;
+  };
+
+  const saveRoutesToStorage = (routes) => {
+    try {
+      const stripped = routes.map(stripRouteForStorage);
+      localStorage.setItem('bangkok_saved_routes', JSON.stringify(stripped));
+    } catch (e) {
+      console.error('[STORAGE] Failed to save routes:', e);
+      showToast('שגיאה בשמירה - אחסון מלא. נסה למחוק מסלולים ישנים', 'error');
+    }
+  };
+
   const quickSaveRoute = () => {
     const name = route.defaultName || route.name || `מסלול ${Date.now()}`;
     
@@ -1783,7 +1805,7 @@
 
     const updated = [routeToSave, ...savedRoutes];
     setSavedRoutes(updated);
-    localStorage.setItem('bangkok_saved_routes', JSON.stringify(updated));
+    saveRoutesToStorage(updated);
     
     setRoute(routeToSave);
     showToast('המסלול נשמר!', 'success');
@@ -1797,14 +1819,14 @@
   const deleteRoute = (routeId) => {
     const updated = savedRoutes.filter(r => r.id !== routeId);
     setSavedRoutes(updated);
-    localStorage.setItem('bangkok_saved_routes', JSON.stringify(updated));
+    saveRoutesToStorage(updated);
     showToast('המסלול נמחק', 'success');
   };
 
   const updateRoute = (routeId, updates) => {
     const updated = savedRoutes.map(r => r.id === routeId ? { ...r, ...updates } : r);
     setSavedRoutes(updated);
-    localStorage.setItem('bangkok_saved_routes', JSON.stringify(updated));
+    saveRoutesToStorage(updated);
     showToast('המסלול עודכן', 'success');
   };
 
@@ -2301,7 +2323,7 @@
       });
       
       setSavedRoutes(newRoutes);
-      localStorage.setItem('bangkok_saved_routes', JSON.stringify(newRoutes));
+      saveRoutesToStorage(newRoutes);
       
     } else {
       // STATIC MODE: localStorage (local)
@@ -2410,7 +2432,7 @@
       
       localStorage.setItem('bangkok_custom_interests', JSON.stringify(newInterests));
       localStorage.setItem('bangkok_custom_locations', JSON.stringify(newLocations));
-      localStorage.setItem('bangkok_saved_routes', JSON.stringify(newRoutes));
+      saveRoutesToStorage(newRoutes);
       localStorage.setItem('bangkok_interest_status', JSON.stringify(newStatus));
     }
     
