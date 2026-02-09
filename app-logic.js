@@ -1768,6 +1768,32 @@
     setShowRouteDialog(true);
   };
 
+  // Quick save - bypasses old dialog, saves with default name and opens new route dialog
+  const quickSaveRoute = () => {
+    const name = route.defaultName || route.name || `מסלול ${Date.now()}`;
+    
+    const routeToSave = {
+      ...route,
+      name: name,
+      notes: '',
+      savedAt: new Date().toISOString(),
+      inProgress: true,
+      locked: false
+    };
+
+    const updated = [routeToSave, ...savedRoutes];
+    setSavedRoutes(updated);
+    localStorage.setItem('bangkok_saved_routes', JSON.stringify(updated));
+    
+    setRoute(routeToSave);
+    showToast('המסלול נשמר!', 'success');
+    
+    // Open new route dialog
+    setEditingRoute({...routeToSave});
+    setRouteDialogMode('add');
+    setShowRouteDialog(true);
+  };
+
   const deleteRoute = (routeId) => {
     const updated = savedRoutes.filter(r => r.id !== routeId);
     setSavedRoutes(updated);

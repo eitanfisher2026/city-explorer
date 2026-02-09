@@ -726,7 +726,7 @@
                         </span>
                       ) : (
                         <button
-                          onClick={() => setShowSaveDialog(true)}
+                          onClick={() => quickSaveRoute()}
                           style={{
                             background: 'none',
                             border: 'none',
@@ -773,7 +773,7 @@
             {/* Save Route Button */}
             {!route.name && (
               <button
-                onClick={() => setShowSaveDialog(true)}
+                onClick={() => quickSaveRoute()}
                 className="w-full bg-purple-500 text-white py-3 rounded-lg font-bold hover:bg-purple-600 mb-4"
               >
                 💾 שמור מסלול זה
