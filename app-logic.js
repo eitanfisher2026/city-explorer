@@ -12,6 +12,7 @@
         if (!prefs.searchMode) prefs.searchMode = 'area';
         if (!prefs.radiusMeters) prefs.radiusMeters = 500;
         if (!prefs.radiusSource) prefs.radiusSource = 'gps';
+        if (!prefs.radiusPlaceName) prefs.radiusPlaceName = '';
         return prefs;
       }
     } catch (e) {}
@@ -27,6 +28,9 @@
       radiusMeters: 500,
       radiusSource: 'gps',
       radiusPlaceId: null,
+      radiusPlaceName: '',
+      gpsLat: null,
+      gpsLng: null,
       currentLat: null,
       currentLng: null
     };
@@ -81,7 +85,12 @@
   const [modalImage, setModalImage] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [placeSearchQuery, setPlaceSearchQuery] = useState('');
+  const [placeSearchQuery, setPlaceSearchQuery] = useState(() => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('bangkok_preferences'));
+      return prefs?.radiusPlaceName || '';
+    } catch(e) { return ''; }
+  });
   const [searchResults, setSearchResults] = useState([]);
   const [addingPlaceIds, setAddingPlaceIds] = useState([]); // Track places being added
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -138,6 +147,12 @@
   }, [isDataLoaded]);
   const [startPointCoords, setStartPointCoords] = useState(null); // { lat, lng }
   const [isLocating, setIsLocating] = useState(false);
+  const [rightColWidth, setRightColWidth] = useState(() => {
+    try {
+      const saved = parseInt(localStorage.getItem('bangkok_right_col_width'));
+      return saved && saved >= 100 && saved <= 250 ? saved : 130;
+    } catch(e) { return 130; }
+  });
   
   // Admin System - Password based
   const [adminPassword, setAdminPassword] = useState('');
@@ -1383,6 +1398,11 @@
   useEffect(() => {
     localStorage.setItem('bangkok_preferences', JSON.stringify(formData));
   }, [formData]);
+
+  // Save column width
+  useEffect(() => {
+    localStorage.setItem('bangkok_right_col_width', rightColWidth.toString());
+  }, [rightColWidth]);
 
   // Sync editingLocation to newLocation when edit dialog opens
   useEffect(() => {

@@ -102,10 +102,10 @@
             </div>
 
             {/* Split Layout: Mode selector + content (right) | Interests (left) */}
-            <div className="grid grid-cols-[110px_1fr] gap-3 items-start" style={{ paddingBottom: '60px' }}>
+            <div className="flex gap-0 items-start" style={{ paddingBottom: '60px' }}>
               
               {/* Right Column: Search Mode */}
-              <div className="flex flex-col">
+              <div className="flex-shrink-0 flex flex-col" style={{ width: rightColWidth + 'px' }}>
                 {/* Mode Toggle */}
                 <div className="flex bg-gray-200 rounded-lg p-0.5 mb-2">
                   <button
@@ -178,17 +178,22 @@
                         style={{ accentColor: '#ea580c' }}
                       />
                       <div className="flex justify-between text-[8px] text-gray-400 mt-0.5">
-                        <span>100מ'</span>
                         <span>2ק"מ</span>
+                        <span>100מ'</span>
                       </div>
                     </div>
 
-                    {/* Source toggle: GPS vs My Place */}
+                    {/* Source toggle: GPS vs My Place - NO coord clearing */}
                     <div className="flex bg-white rounded p-0.5 border border-orange-200">
                       <button
                         onClick={() => {
-                          setFormData(prev => ({ ...prev, radiusSource: 'gps', currentLat: null, currentLng: null, radiusPlaceId: null }));
-                          setPlaceSearchQuery('');
+                          // Restore GPS coords if available
+                          setFormData(prev => ({ 
+                            ...prev, 
+                            radiusSource: 'gps',
+                            currentLat: prev.gpsLat || prev.currentLat,
+                            currentLng: prev.gpsLng || prev.currentLng
+                          }));
                         }}
                         className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
                           formData.radiusSource === 'gps' ? 'bg-orange-500 text-white' : 'text-gray-500'
@@ -196,8 +201,19 @@
                       >📍 GPS</button>
                       <button
                         onClick={() => {
-                          setFormData(prev => ({ ...prev, radiusSource: 'myplace', currentLat: null, currentLng: null, radiusPlaceId: null }));
-                          setPlaceSearchQuery('');
+                          // Restore place coords if available
+                          const savedPlace = formData.radiusPlaceId 
+                            ? customLocations.find(l => l.id === formData.radiusPlaceId)
+                            : null;
+                          setFormData(prev => ({ 
+                            ...prev, 
+                            radiusSource: 'myplace',
+                            currentLat: savedPlace?.lat || prev.currentLat,
+                            currentLng: savedPlace?.lng || prev.currentLng
+                          }));
+                          if (formData.radiusPlaceName) {
+                            setPlaceSearchQuery(formData.radiusPlaceName);
+                          }
                         }}
                         className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
                           formData.radiusSource === 'myplace' ? 'bg-orange-500 text-white' : 'text-gray-500'
@@ -217,10 +233,14 @@
                           navigator.geolocation.getCurrentPosition(
                             (position) => {
                               const { latitude, longitude } = position.coords;
+                              const lat = parseFloat(latitude.toFixed(6));
+                              const lng = parseFloat(longitude.toFixed(6));
                               setFormData(prev => ({ 
                                 ...prev, 
-                                currentLat: parseFloat(latitude.toFixed(6)), 
-                                currentLng: parseFloat(longitude.toFixed(6)) 
+                                currentLat: lat, 
+                                currentLng: lng,
+                                gpsLat: lat,
+                                gpsLng: lng
                               }));
                               showToast('📍 מיקום נקלט!', 'success');
                               setIsLocating(false);
@@ -252,11 +272,11 @@
                           className="w-full p-1.5 border border-orange-300 rounded-lg text-[10px] focus:border-orange-500 focus:outline-none"
                           dir="rtl"
                         />
-                        <div className="max-h-32 overflow-y-auto bg-white rounded border border-gray-200">
+                        <div className="max-h-48 overflow-y-auto bg-white rounded border border-gray-200">
                           {customLocations
                             .filter(loc => loc.lat && loc.lng && loc.status !== 'blacklist')
                             .filter(loc => !placeSearchQuery || loc.name.toLowerCase().includes(placeSearchQuery.toLowerCase()))
-                            .slice(0, 20)
+                            .slice(0, 30)
                             .map(loc => (
                               <button
                                 key={loc.id}
@@ -265,7 +285,8 @@
                                     ...prev,
                                     currentLat: loc.lat,
                                     currentLng: loc.lng,
-                                    radiusPlaceId: loc.id
+                                    radiusPlaceId: loc.id,
+                                    radiusPlaceName: loc.name
                                   }));
                                   setPlaceSearchQuery(loc.name);
                                 }}
@@ -287,27 +308,60 @@
                       </div>
                     )}
                     
-                    {/* Coordinates display */}
+                    {/* Coordinates display - compact, no overflow */}
                     {formData.currentLat && (
-                      <div className="bg-white rounded p-1.5 space-y-1">
-                        <div className="flex items-center gap-1">
-                          <span className="text-[8px] text-gray-400 w-6">Lat:</span>
-                          <input type="text" readOnly value={formData.currentLat} 
-                            className="flex-1 text-[9px] font-mono bg-gray-50 border border-gray-200 rounded px-1 py-0.5 text-center" />
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[8px] text-gray-400 w-6">Lng:</span>
-                          <input type="text" readOnly value={formData.currentLng} 
-                            className="flex-1 text-[9px] font-mono bg-gray-50 border border-gray-200 rounded px-1 py-0.5 text-center" />
-                        </div>
+                      <div className="bg-white rounded p-1 text-[8px] font-mono text-gray-500 text-center leading-relaxed" style={{ wordBreak: 'break-all' }}>
+                        {formData.currentLat}, {formData.currentLng}
                       </div>
                     )}
                   </div>
                 )}
               </div>
 
+              {/* Drag Handle */}
+              <div
+                className="flex-shrink-0 cursor-col-resize flex items-center justify-center hover:bg-gray-200 transition mx-1 rounded"
+                style={{ width: '10px', minHeight: '200px', touchAction: 'none' }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  const startX = e.clientX;
+                  const startWidth = rightColWidth;
+                  const isRtl = true;
+                  const onMove = (ev) => {
+                    const diff = isRtl ? (startX - ev.clientX) : (ev.clientX - startX);
+                    const newWidth = Math.min(250, Math.max(100, startWidth + diff));
+                    setRightColWidth(newWidth);
+                  };
+                  const onUp = () => {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                  };
+                  document.addEventListener('mousemove', onMove);
+                  document.addEventListener('mouseup', onUp);
+                }}
+                onTouchStart={(e) => {
+                  const startX = e.touches[0].clientX;
+                  const startWidth = rightColWidth;
+                  const isRtl = true;
+                  const onMove = (ev) => {
+                    ev.preventDefault();
+                    const diff = isRtl ? (startX - ev.touches[0].clientX) : (ev.touches[0].clientX - startX);
+                    const newWidth = Math.min(250, Math.max(100, startWidth + diff));
+                    setRightColWidth(newWidth);
+                  };
+                  const onUp = () => {
+                    document.removeEventListener('touchmove', onMove);
+                    document.removeEventListener('touchend', onUp);
+                  };
+                  document.addEventListener('touchmove', onMove, { passive: false });
+                  document.addEventListener('touchend', onUp);
+                }}
+              >
+                <div className="w-1 h-8 bg-gray-300 rounded-full"></div>
+              </div>
+
               {/* Left Column: Interests */}
-              <div className="flex flex-col">
+              <div className="flex-1 min-w-0 flex flex-col">
                 <label className="font-medium text-xs mb-1.5 block">⭐ מה מעניין?</label>
                 <div className="grid grid-cols-3 gap-2 border border-gray-200 rounded-lg p-2">
                 {allInterestOptions.filter(option => {
