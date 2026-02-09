@@ -1425,73 +1425,85 @@
     }
   }, [showEditLocationDialog, editingLocation]);
 
-  const areaOptions = window.BKK.areaOptions;
+  const areaOptions = window.BKK.areaOptions || [];
 
   // Memoized lookup maps to avoid O(n) .find() calls in render loops
   const interestMap = useMemo(() => {
-    const map = {};
-    (allInterestOptions || []).forEach(o => { if (o && o.id) map[o.id] = o; });
-    return map;
-  }, [allInterestOptions.length, customInterests]);
+    try {
+      const map = {};
+      if (allInterestOptions) allInterestOptions.forEach(o => { if (o && o.id) map[o.id] = o; });
+      return map;
+    } catch(e) { console.error('[MEMO] interestMap error:', e); return {}; }
+  }, [customInterests, allInterestOptions.length]);
 
   const areaMap = useMemo(() => {
-    const map = {};
-    (areaOptions || []).forEach(o => { if (o && o.id) map[o.id] = o; });
-    return map;
-  }, []);
+    try {
+      const map = {};
+      if (areaOptions) areaOptions.forEach(o => { if (o && o.id) map[o.id] = o; });
+      return map;
+    } catch(e) { console.error('[MEMO] areaMap error:', e); return {}; }
+  }, [areaOptions]);
 
   // Memoize expensive places grouping/sorting
   const groupedPlaces = useMemo(() => {
-    const activeLocations = (customLocations || []).filter(loc => loc.status !== 'blacklist');
-    const blacklistedLocations = (customLocations || []).filter(loc => loc.status === 'blacklist');
-    
-    if (activeLocations.length === 0) return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations };
-    
-    const groups = {};
-    const ungrouped = [];
-    
-    activeLocations.forEach(loc => {
-      if (placesGroupBy === 'interest') {
-        const interests = loc.interests || [];
-        if (interests.length === 0) {
-          ungrouped.push(loc);
+    try {
+      if (!customLocations || customLocations.length === 0) {
+        return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations: [] };
+      }
+      const activeLocations = customLocations.filter(loc => loc.status !== 'blacklist');
+      const blacklistedLocations = customLocations.filter(loc => loc.status === 'blacklist');
+      
+      if (activeLocations.length === 0) return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations };
+      
+      const groups = {};
+      const ungrouped = [];
+      
+      activeLocations.forEach(loc => {
+        if (placesGroupBy === 'interest') {
+          const interests = loc.interests || [];
+          if (interests.length === 0) {
+            ungrouped.push(loc);
+          } else {
+            interests.forEach(int => {
+              if (!groups[int]) groups[int] = [];
+              groups[int].push(loc);
+            });
+          }
         } else {
-          interests.forEach(int => {
-            if (!groups[int]) groups[int] = [];
-            groups[int].push(loc);
-          });
+          const area = loc.area || 'unknown';
+          if (!groups[area]) groups[area] = [];
+          groups[area].push(loc);
         }
-      } else {
-        const area = loc.area || 'unknown';
-        if (!groups[area]) groups[area] = [];
-        groups[area].push(loc);
-      }
-    });
-    
-    const sortedKeys = Object.keys(groups).sort((a, b) => {
-      if (placesGroupBy === 'interest') {
-        return (interestMap[a]?.label || a).localeCompare(interestMap[b]?.label || b, 'he');
-      } else {
-        return (areaMap[a]?.label || a).localeCompare(areaMap[b]?.label || b, 'he');
-      }
-    });
-    
-    const sortWithin = (locs) => [...locs].sort((a, b) => {
-      if (placesGroupBy === 'interest') {
-        const aArea = areaMap[a.area]?.label || '';
-        const bArea = areaMap[b.area]?.label || '';
-        return aArea.localeCompare(bArea, 'he') || a.name.localeCompare(b.name, 'he');
-      } else {
-        return (a.interests?.[0] || '').localeCompare(b.interests?.[0] || '') || a.name.localeCompare(b.name, 'he');
-      }
-    });
-    
-    const sortedGroups = {};
-    sortedKeys.forEach(key => { sortedGroups[key] = sortWithin(groups[key]); });
-    const sortedUngrouped = sortWithin(ungrouped);
-    
-    return { groups: sortedGroups, ungrouped: sortedUngrouped, sortedKeys, activeCount: activeLocations.length, blacklistedLocations };
-  }, [customLocations, placesGroupBy]);
+      });
+      
+      const sortedKeys = Object.keys(groups).sort((a, b) => {
+        if (placesGroupBy === 'interest') {
+          return ((interestMap[a] || {}).label || a).localeCompare((interestMap[b] || {}).label || b, 'he');
+        } else {
+          return ((areaMap[a] || {}).label || a).localeCompare((areaMap[b] || {}).label || b, 'he');
+        }
+      });
+      
+      const sortWithin = (locs) => [...locs].sort((a, b) => {
+        if (placesGroupBy === 'interest') {
+          const aArea = (areaMap[a.area] || {}).label || '';
+          const bArea = (areaMap[b.area] || {}).label || '';
+          return aArea.localeCompare(bArea, 'he') || a.name.localeCompare(b.name, 'he');
+        } else {
+          return (a.interests?.[0] || '').localeCompare(b.interests?.[0] || '') || a.name.localeCompare(b.name, 'he');
+        }
+      });
+      
+      const sortedGroups = {};
+      sortedKeys.forEach(key => { sortedGroups[key] = sortWithin(groups[key]); });
+      const sortedUngrouped = sortWithin(ungrouped);
+      
+      return { groups: sortedGroups, ungrouped: sortedUngrouped, sortedKeys, activeCount: activeLocations.length, blacklistedLocations };
+    } catch(e) {
+      console.error('[MEMO] groupedPlaces error:', e);
+      return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations: [] };
+    }
+  }, [customLocations, placesGroupBy, interestMap, areaMap]);
 
   // Image handling - loaded from utils.js
   const compressImage = window.BKK.compressImage;
