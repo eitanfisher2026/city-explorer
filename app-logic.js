@@ -51,7 +51,8 @@
     mapsUrl: '',
     address: '',  // Address for geocoding
     uploadedImage: null,  // Base64 image data
-    imageUrls: []  // Array of URL strings
+    imageUrls: [],  // Array of URL strings
+    inProgress: true  // Auto-check for new locations
   });
   const [customInterests, setCustomInterests] = useState([]);
   const [interestStatus, setInterestStatus] = useState({}); // { interestId: true/false }

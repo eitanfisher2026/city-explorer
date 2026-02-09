@@ -1693,69 +1693,41 @@
                         
                         {showBlacklistLocations && (
                           <div className="space-y-1 mt-2 max-h-40 overflow-y-auto">
-                            {blacklistedLocations.map(loc => (
+                            {blacklistedLocations.map(loc => {
+                              const mapUrl = loc.address?.trim() 
+                                ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.address.trim())}`
+                                : (loc.lat && loc.lng) 
+                                  ? `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`
+                                  : null;
+                              return (
                               <div
                                 key={loc.id}
                                 className="flex items-center justify-between gap-2 border border-red-300 rounded p-1.5 bg-white hover:bg-red-50"
                               >
-                                {/* Name and interest icons */}
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-1">
-                                    <span className="font-medium text-sm truncate">{loc.name}</span>
-                                    {loc.outsideArea && (
-                                      <span className="text-orange-500 text-xs" title="מחוץ לגבולות האזור">🔺</span>
+                                  <div className="flex items-center gap-1 flex-wrap">
+                                    {mapUrl ? (
+                                      <a href={mapUrl} target="_blank" rel="noopener noreferrer"
+                                        className="font-medium text-sm text-blue-600 hover:text-blue-800 hover:underline truncate"
+                                      >{loc.name}</a>
+                                    ) : (
+                                      <span className="font-medium text-sm truncate">{loc.name}</span>
                                     )}
+                                    {loc.locked && <span title="נעול" style={{ fontSize: '12px' }}>🔒</span>}
                                     {loc.interests?.map((int, idx) => {
-                                      const interestObj = allInterestOptions.find(opt => opt.id === int);
-                                      return interestObj?.icon ? (
-                                        <span 
-                                          key={idx}
-                                          title={interestObj.label}
-                                          style={{ fontSize: '13px' }}
-                                        >
-                                          {interestObj.icon}
-                                        </span>
-                                      ) : null;
+                                      const obj = allInterestOptions.find(o => o.id === int);
+                                      return obj?.icon ? <span key={idx} title={obj.label} style={{ fontSize: '13px' }}>{obj.icon}</span> : null;
                                     })}
                                   </div>
-                                  {/* Coordinates display */}
-                                  {loc.lat && loc.lng && (
-                                    <div className="text-[10px] text-gray-500 mt-0.5">
-                                      📍 {loc.lat.toFixed(5)}, {loc.lng.toFixed(5)}
-                                    </div>
-                                  )}
                                 </div>
-                                
-                                {/* Action buttons */}
                                 <div className="flex gap-0.5">
-                                  <button
-                                    onClick={() => toggleLocationStatus(loc.id)}
-                                    className="text-xs px-1 py-0.5 rounded bg-green-500 text-white hover:bg-green-600"
-                                    title="החזר לכלול"
-                                  >
-                                    ✅
-                                  </button>
-                                  <button
-                                    onClick={() => handleEditLocation(loc)}
+                                  <button onClick={() => handleEditLocation(loc)}
                                     className="text-xs px-1 py-0.5 rounded hover:bg-blue-100"
-                                    title="ערוך מקום"
-                                  >
-                                    ✏️
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      showConfirm(`למחוק את "${loc.name}"?`, () => {
-                                        deleteCustomLocation(loc.id);
-                                      });
-                                    }}
-                                    className="text-xs px-1 py-0.5 rounded hover:bg-red-100"
-                                    title="מחק מקום"
-                                  >
-                                    🗑️
-                                  </button>
+                                    title="פרטים / ערוך">✏️</button>
                                 </div>
                               </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -1781,7 +1753,7 @@
               <button
                 onClick={() => {
                   setEditingCustomInterest(null);
-                  setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '' });
+                  setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', inProgress: true, locked: false, builtIn: false });
                   setShowAddInterestDialog(true);
                 }}
                 className="bg-purple-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-purple-600"
@@ -1790,213 +1762,91 @@
               </button>
             </div>
             
-            {/* Active Interests */}
-            <div className="mb-4">
-              <h3 className="text-sm font-bold text-green-700 mb-2">✅ תחומים פעילים</h3>
-              <div className="space-y-1">
-                {/* Built-in interests that are active */}
-                {interestOptions.filter(i => interestStatus[i.id] !== false).map(interest => {
-                  const isValid = isInterestValid(interest.id);
-                  return (
-                    <div
-                      key={interest.id}
-                      className={`flex items-center justify-between gap-2 rounded-lg p-2 ${
-                        isValid 
-                          ? 'border border-green-300 bg-green-50' 
-                          : 'border-2 border-red-400 bg-red-50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 flex-1">
-                        <span className="text-lg">{interest.icon}</span>
-                        <span className="font-medium text-sm">{interest.label}</span>
-                        {!isValid && (
-                          <span className="text-red-500 text-xs" title="חסר הגדרות חיפוש - לא יופיע בתוצאות">⚠️</span>
-                        )}
-                      </div>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => {
-                            setEditingInterestConfig({
-                              id: interest.id,
-                              label: interest.label,
-                              icon: interest.icon,
-                              config: interestConfig[interest.id] || {}
-                            });
-                            setShowInterestConfigDialog(true);
-                          }}
-                          className={`text-xs px-1.5 py-0.5 rounded text-white ${isValid ? 'bg-blue-500' : 'bg-red-500 animate-pulse'}`}
-                          title={isValid ? "הגדרות חיפוש" : "⚠️ חובה להגדיר Place Types!"}
-                        >
-                          ⚙️
-                        </button>
-                        <button
-                          onClick={() => toggleInterestStatus(interest.id)}
-                          className="text-xs px-1.5 py-0.5 rounded bg-red-500 text-white"
-                          title="השבת"
-                        >
-                          ❌
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+            {/* Unified Interest List */}
+            {(() => {
+              // Helper to open interest dialog for editing
+              const openInterestDialog = (interest, isCustom = false) => {
+                const config = interestConfig[interest.id] || {};
+                setEditingCustomInterest(isCustom ? interest : { ...interest, builtIn: true });
+                setNewInterest({
+                  id: interest.id,
+                  label: interest.label || interest.name || '',
+                  icon: interest.icon || '📍',
+                  searchMode: config.textSearch ? 'text' : 'types',
+                  types: (config.types || []).join(', '),
+                  textSearch: config.textSearch || '',
+                  blacklist: (config.blacklist || []).join(', '),
+                  inProgress: interest.inProgress || false,
+                  locked: interest.locked || false,
+                  builtIn: !isCustom
+                });
+                setShowAddInterestDialog(true);
+              };
+              
+              // Render a single interest row
+              const renderInterestRow = (interest, isCustom = false, isActive = true) => {
+                const isValid = isInterestValid(interest.id);
+                const borderClass = !isActive ? 'border border-gray-300 bg-gray-50 opacity-60'
+                  : isCustom ? (isValid ? 'border-2 border-purple-400 bg-purple-50' : 'border-2 border-red-400 bg-red-50')
+                  : (isValid ? 'border border-green-300 bg-green-50' : 'border-2 border-red-400 bg-red-50');
                 
-                {/* Uncovered interests that are active */}
-                {uncoveredInterests.filter(i => interestStatus[i.id] === true).map(interest => {
-                  const isValid = isInterestValid(interest.id);
-                  return (
-                    <div
-                      key={interest.id}
-                      className={`flex items-center justify-between gap-2 rounded-lg p-2 ${
-                        isValid 
-                          ? 'border border-green-300 bg-green-50' 
-                          : 'border-2 border-red-400 bg-red-50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 flex-1">
-                        <span className="text-lg">{interest.icon}</span>
-                        <span className="font-medium text-sm">{interest.label}</span>
-                        {!isValid && (
-                          <span className="text-red-500 text-xs" title="חסר הגדרות חיפוש - לא יופיע בתוצאות">⚠️</span>
-                        )}
-                      </div>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => {
-                            setEditingInterestConfig({
-                              id: interest.id,
-                              label: interest.label,
-                              icon: interest.icon,
-                              config: interestConfig[interest.id] || {}
-                            });
-                            setShowInterestConfigDialog(true);
-                          }}
-                          className={`text-xs px-1.5 py-0.5 rounded text-white ${isValid ? 'bg-blue-500' : 'bg-red-500 animate-pulse'}`}
-                          title={isValid ? "הגדרות חיפוש" : "⚠️ חובה להגדיר Place Types!"}
-                        >
-                          ⚙️
-                        </button>
-                        <button
-                          onClick={() => toggleInterestStatus(interest.id)}
-                          className="text-xs px-1.5 py-0.5 rounded bg-red-500 text-white"
-                          title="השבת"
-                        >
-                          ❌
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-                
-                {/* Custom interests - always shown, always "active" */}
-                {customInterests.map(interest => {
-                  const isValid = isInterestValid(interest.id);
-                  return (
-                    <div
-                      key={interest.id}
-                      className={`flex items-center justify-between gap-2 rounded-lg p-2 ${
-                        isValid 
-                          ? 'border-2 border-purple-400 bg-purple-50' 
-                          : 'border-2 border-red-400 bg-red-50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 flex-1">
-                        <span className="text-lg">{interest.icon}</span>
-                        <div>
-                          <span className="font-medium text-sm">{interest.label || interest.name}</span>
-                          <span className="ml-2 text-[10px] bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded">חדש</span>
-                          {!isValid && (
-                            <span className="ml-1 text-[10px] bg-red-200 text-red-800 px-1.5 py-0.5 rounded">⚠️ חסר הגדרות</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => {
-                            setEditingCustomInterest(interest);
-                            const config = interestConfig[interest.id] || {};
-                            setNewInterest({
-                              id: interest.id,
-                              label: interest.label || interest.name,
-                              icon: interest.icon,
-                              searchMode: config.textSearch ? 'text' : 'types',
-                              types: (config.types || []).join(', '),
-                              textSearch: config.textSearch || '',
-                              blacklist: (config.blacklist || []).join(', ')
-                            });
-                            setShowAddInterestDialog(true);
-                          }}
-                          className={`text-xs px-1.5 py-0.5 rounded text-white ${isValid ? 'bg-blue-500' : 'bg-red-500 animate-pulse'}`}
-                          title={isValid ? "ערוך" : "⚠️ חובה להגדיר Place Types!"}
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={() => {
-                            showConfirm(`למחוק את "${interest.label || interest.name}"?`, () => {
-                              deleteCustomInterest(interest.id);
-                            });
-                          }}
-                          className="text-xs px-1.5 py-0.5 rounded bg-red-500 text-white"
-                          title="מחק"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            
-            {/* Inactive Interests */}
-            <div className="mb-2">
-              <h3 className="text-sm font-bold text-gray-500 mb-2">⏸️ תחומים לא פעילים</h3>
-              <div className="space-y-1">
-                {/* Built-in interests that are inactive */}
-                {interestOptions.filter(i => interestStatus[i.id] === false).map(interest => (
-                  <div
-                    key={interest.id}
-                    className="flex items-center justify-between gap-2 border border-gray-300 rounded-lg p-2 bg-gray-50 opacity-60"
-                  >
-                    <div className="flex items-center gap-2 flex-1">
-                      <span className="text-lg">{interest.icon}</span>
-                      <span className="font-medium text-sm text-gray-500">{interest.label}</span>
+                return (
+                  <div key={interest.id} className={`flex items-center justify-between gap-2 rounded-lg p-2 ${borderClass}`}>
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className="text-lg flex-shrink-0">{interest.icon}</span>
+                      <span className={`font-medium text-sm truncate ${!isActive ? 'text-gray-500' : ''}`}>{interest.label || interest.name}</span>
+                      {isCustom && <span className="text-[10px] bg-purple-200 text-purple-800 px-1 py-0.5 rounded flex-shrink-0">מותאם</span>}
+                      {!isValid && <span className="text-red-500 text-xs flex-shrink-0" title="חסר הגדרות חיפוש">⚠️</span>}
+                      {interest.inProgress && <span className="text-orange-600 flex-shrink-0" title="בעבודה" style={{ fontSize: '12px' }}>🛠️</span>}
+                      {interest.locked && <span title="נעול" style={{ fontSize: '11px' }} className="flex-shrink-0">🔒</span>}
                     </div>
                     <button
-                      onClick={() => toggleInterestStatus(interest.id)}
-                      className="text-xs px-2 py-1 rounded bg-green-500 text-white"
-                      title="הפעל"
-                    >
-                      ✅ הפעל
-                    </button>
+                      onClick={() => openInterestDialog(interest, isCustom)}
+                      className="text-xs px-1 py-0.5 rounded hover:bg-blue-100 flex-shrink-0"
+                      title="פרטים / ערוך"
+                    >✏️</button>
                   </div>
-                ))}
-                
-                {/* Uncovered interests that are inactive (default) */}
-                {uncoveredInterests.filter(i => interestStatus[i.id] !== true).map(interest => (
-                  <div
-                    key={interest.id}
-                    className="flex items-center justify-between gap-2 border border-gray-300 rounded-lg p-2 bg-gray-50 opacity-60"
-                  >
-                    <div className="flex items-center gap-2 flex-1">
-                      <span className="text-lg">{interest.icon}</span>
-                      <div>
-                        <span className="font-medium text-sm text-gray-500">{interest.label}</span>
-                        <div className="text-[10px] text-gray-400">{interest.examples}</div>
+                );
+              };
+              
+              // Collect active and inactive
+              const activeBuiltIn = interestOptions.filter(i => interestStatus[i.id] !== false);
+              const activeUncovered = uncoveredInterests.filter(i => interestStatus[i.id] === true);
+              const activeCustom = customInterests.filter(i => interestStatus[i.id] !== false);
+              const inactiveBuiltIn = interestOptions.filter(i => interestStatus[i.id] === false);
+              const inactiveUncovered = uncoveredInterests.filter(i => interestStatus[i.id] !== true);
+              const inactiveCustom = customInterests.filter(i => interestStatus[i.id] === false);
+              
+              return (
+                <>
+                  {/* Active Interests */}
+                  <div className="mb-4">
+                    <h3 className="text-sm font-bold text-green-700 mb-2">
+                      ✅ תחומים פעילים ({activeBuiltIn.length + activeUncovered.length + activeCustom.length})
+                    </h3>
+                    <div className="space-y-1">
+                      {activeBuiltIn.map(i => renderInterestRow(i, false, true))}
+                      {activeUncovered.map(i => renderInterestRow(i, false, true))}
+                      {activeCustom.map(i => renderInterestRow(i, true, true))}
+                    </div>
+                  </div>
+                  
+                  {/* Inactive Interests */}
+                  {(inactiveBuiltIn.length + inactiveUncovered.length + inactiveCustom.length) > 0 && (
+                    <div className="mb-2">
+                      <h3 className="text-sm font-bold text-gray-500 mb-2">
+                        ⏸️ תחומים לא פעילים ({inactiveBuiltIn.length + inactiveUncovered.length + inactiveCustom.length})
+                      </h3>
+                      <div className="space-y-1">
+                        {inactiveBuiltIn.map(i => renderInterestRow(i, false, false))}
+                        {inactiveUncovered.map(i => renderInterestRow(i, false, false))}
+                        {inactiveCustom.map(i => renderInterestRow(i, true, false))}
                       </div>
                     </div>
-                    <button
-                      onClick={() => toggleInterestStatus(interest.id)}
-                      className="text-xs px-2 py-1 rounded bg-green-500 text-white"
-                      title="הפעל"
-                    >
-                      ✅ הפעל
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
 
@@ -2387,8 +2237,8 @@
                   }}
                   className={`px-4 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${
                     hasNewEntries 
-                      ? 'bg-red-500 text-white animate-pulse shadow-lg' 
-                      : 'bg-gray-400 text-white hover:bg-gray-500 shadow-md'
+                      ? 'bg-red-500 text-white shadow-lg' 
+                      : 'bg-gray-400 text-white shadow-md'
                   }`}
                 >
                   🔒 לוג כניסות
