@@ -123,8 +123,8 @@
         if (mapMode === 'areas') {
           // All areas mode
           const map = L.map(container).setView([13.7500, 100.5350], 12);
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OSM', maxZoom: 18
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '© CartoDB © OSM', maxZoom: 18
           }).addTo(map);
           
           areas.forEach(area => {
@@ -158,8 +158,8 @@
           if (!lat || !lng) return;
           
           const map = L.map(container).setView([lat, lng], 15);
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OSM', maxZoom: 18
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '© CartoDB © OSM', maxZoom: 18
           }).addTo(map);
           
           // Radius circle FIRST (so marker is on top)
