@@ -83,6 +83,114 @@
   const [showEditLocationDialog, setShowEditLocationDialog] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [mapMode, setMapMode] = useState('areas'); // 'areas' or 'radius'
+  const leafletMapRef = React.useRef(null);
+
+  // Leaflet Map initialization
+  React.useEffect(() => {
+    if (!showMapModal) {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove();
+        leafletMapRef.current = null;
+      }
+      return;
+    }
+    
+    // Wait for DOM
+    const timer = setTimeout(() => {
+      const container = document.getElementById('leaflet-map-container');
+      if (!container || leafletMapRef.current) return;
+      
+      try {
+        const coords = window.BKK.areaCoordinates || {};
+        const areas = window.BKK.areaOptions || [];
+        
+        // Area colors
+        const areaColors = {
+          'sukhumvit': '#3b82f6', 'old-town': '#f59e0b', 'chinatown': '#ef4444',
+          'thonglor': '#10b981', 'ari': '#ec4899', 'riverside': '#6366f1',
+          'siam': '#8b5cf6', 'chatuchak': '#06b6d4', 'silom': '#f97316',
+          'ratchada': '#a855f7', 'onnut': '#14b8a6', 'bangrak': '#e11d48'
+        };
+        
+        if (mapMode === 'areas') {
+          // All areas mode
+          const map = L.map(container).setView([13.7500, 100.5350], 12);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OSM', maxZoom: 18
+          }).addTo(map);
+          
+          areas.forEach(area => {
+            const c = coords[area.id];
+            if (!c) return;
+            const color = areaColors[area.id] || '#6b7280';
+            L.circle([c.lat, c.lng], {
+              radius: c.radius, color: color, fillColor: color,
+              fillOpacity: 0.15, weight: 2
+            }).addTo(map).bindPopup(
+              '<div style="text-align:center;direction:rtl;font-size:13px;">' +
+              '<b>' + area.icon + ' ' + area.label + '</b><br/>' +
+              '<span style="color:#666;font-size:11px;">' + area.labelEn + '</span><br/>' +
+              '<span style="color:#999;font-size:10px;">רדיוס: ' + c.radius + ' מ\'</span></div>'
+            );
+            L.marker([c.lat, c.lng], {
+              icon: L.divIcon({
+                className: '',
+                html: '<div style="font-size:20px;text-align:center;line-height:1;">' + area.icon + '</div>',
+                iconSize: [30, 30], iconAnchor: [15, 15]
+              })
+            }).addTo(map);
+          });
+          
+          leafletMapRef.current = map;
+        } else {
+          // Radius mode
+          const lat = formData.currentLat;
+          const lng = formData.currentLng;
+          if (!lat || !lng) return;
+          
+          const map = L.map(container).setView([lat, lng], 15);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OSM', maxZoom: 18
+          }).addTo(map);
+          
+          // Center marker
+          L.marker([lat, lng]).addTo(map).bindPopup(
+            '<div style="text-align:center;direction:rtl;">' +
+            '<b>📍 ' + (formData.radiusPlaceName || 'מיקום נוכחי') + '</b><br/>' +
+            '<span style="font-size:11px;color:#666;">רדיוס: ' + formData.radiusMeters + ' מ\'</span></div>'
+          ).openPopup();
+          
+          // Radius circle
+          L.circle([lat, lng], {
+            radius: formData.radiusMeters, color: '#e11d48', fillColor: '#e11d48',
+            fillOpacity: 0.1, weight: 2, dashArray: '6,4'
+          }).addTo(map);
+          
+          // Fit bounds to circle
+          const circle = L.circle([lat, lng], { radius: formData.radiusMeters });
+          map.fitBounds(circle.getBounds().pad(0.2));
+          
+          // Also show area circles faintly for context
+          areas.forEach(area => {
+            const c = coords[area.id];
+            if (!c) return;
+            L.circle([c.lat, c.lng], {
+              radius: c.radius, color: '#94a3b8', fillColor: '#94a3b8',
+              fillOpacity: 0.04, weight: 1
+            }).addTo(map);
+          });
+          
+          leafletMapRef.current = map;
+        }
+      } catch(err) {
+        console.error('[MAP]', err);
+      }
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [showMapModal, mapMode]);
   const [modalImage, setModalImage] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');

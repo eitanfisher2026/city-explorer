@@ -118,6 +118,8 @@
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <!-- Firebase SDK - sequential loading with Promise -->
     <script>
@@ -168,7 +170,7 @@
 window.BKK = window.BKK || {};
 
 // App Version
-window.BKK.VERSION = '2.10.0';
+window.BKK.VERSION = '2.11.0';
 
 // Firebase Configuration
 window.BKK.firebaseConfig = {
@@ -262,7 +264,13 @@ window.BKK.areaOptions = [
   { id: 'chinatown', label: 'צ\'יינה טאון', labelEn: 'Chinatown', icon: '🏮' },
   { id: 'thonglor', label: 'תונגלור', labelEn: 'Thonglor', icon: '☕' },
   { id: 'ari', label: 'ארי', labelEn: 'Ari', icon: '🎨' },
-  { id: 'riverside', label: 'ריברסייד', labelEn: 'Riverside', icon: '🌊' }
+  { id: 'riverside', label: 'ריברסייד', labelEn: 'Riverside', icon: '🌊' },
+  { id: 'siam', label: 'סיאם', labelEn: 'Siam / Pratunam', icon: '🛍️' },
+  { id: 'chatuchak', label: 'צ\'אטוצ\'אק', labelEn: 'Chatuchak', icon: '🏪' },
+  { id: 'silom', label: 'סילום', labelEn: 'Silom / Sathorn', icon: '🌃' },
+  { id: 'ratchada', label: 'ראצ\'אדה', labelEn: 'Ratchada', icon: '🌙' },
+  { id: 'onnut', label: 'און נאט', labelEn: 'On Nut', icon: '🍜' },
+  { id: 'bangrak', label: 'באנג ראק', labelEn: 'Bang Rak', icon: '🎭' }
 ];
 
 // Area coordinates (center points + radius)
@@ -272,7 +280,13 @@ window.BKK.areaCoordinates = {
   'chinatown': { lat: 13.7408, lng: 100.5050, radius: 1500 },
   'thonglor': { lat: 13.7320, lng: 100.5830, radius: 2000 },
   'ari': { lat: 13.7790, lng: 100.5410, radius: 2000 },
-  'riverside': { lat: 13.7270, lng: 100.4965, radius: 2000 }
+  'riverside': { lat: 13.7270, lng: 100.4965, radius: 2000 },
+  'siam': { lat: 13.7460, lng: 100.5340, radius: 1500 },
+  'chatuchak': { lat: 13.7999, lng: 100.5500, radius: 1500 },
+  'silom': { lat: 13.7262, lng: 100.5235, radius: 1800 },
+  'ratchada': { lat: 13.7650, lng: 100.5730, radius: 1500 },
+  'onnut': { lat: 13.7060, lng: 100.6010, radius: 1800 },
+  'bangrak': { lat: 13.7280, lng: 100.5130, radius: 1000 }
 };
 
 // Help content for all views
@@ -1061,6 +1075,114 @@ const BangkokExplorer = () => {
   const [showEditLocationDialog, setShowEditLocationDialog] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [mapMode, setMapMode] = useState('areas'); // 'areas' or 'radius'
+  const leafletMapRef = React.useRef(null);
+
+  // Leaflet Map initialization
+  React.useEffect(() => {
+    if (!showMapModal) {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove();
+        leafletMapRef.current = null;
+      }
+      return;
+    }
+    
+    // Wait for DOM
+    const timer = setTimeout(() => {
+      const container = document.getElementById('leaflet-map-container');
+      if (!container || leafletMapRef.current) return;
+      
+      try {
+        const coords = window.BKK.areaCoordinates || {};
+        const areas = window.BKK.areaOptions || [];
+        
+        // Area colors
+        const areaColors = {
+          'sukhumvit': '#3b82f6', 'old-town': '#f59e0b', 'chinatown': '#ef4444',
+          'thonglor': '#10b981', 'ari': '#ec4899', 'riverside': '#6366f1',
+          'siam': '#8b5cf6', 'chatuchak': '#06b6d4', 'silom': '#f97316',
+          'ratchada': '#a855f7', 'onnut': '#14b8a6', 'bangrak': '#e11d48'
+        };
+        
+        if (mapMode === 'areas') {
+          // All areas mode
+          const map = L.map(container).setView([13.7500, 100.5350], 12);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OSM', maxZoom: 18
+          }).addTo(map);
+          
+          areas.forEach(area => {
+            const c = coords[area.id];
+            if (!c) return;
+            const color = areaColors[area.id] || '#6b7280';
+            L.circle([c.lat, c.lng], {
+              radius: c.radius, color: color, fillColor: color,
+              fillOpacity: 0.15, weight: 2
+            }).addTo(map).bindPopup(
+              '<div style="text-align:center;direction:rtl;font-size:13px;">' +
+              '<b>' + area.icon + ' ' + area.label + '</b><br/>' +
+              '<span style="color:#666;font-size:11px;">' + area.labelEn + '</span><br/>' +
+              '<span style="color:#999;font-size:10px;">רדיוס: ' + c.radius + ' מ\'</span></div>'
+            );
+            L.marker([c.lat, c.lng], {
+              icon: L.divIcon({
+                className: '',
+                html: '<div style="font-size:20px;text-align:center;line-height:1;">' + area.icon + '</div>',
+                iconSize: [30, 30], iconAnchor: [15, 15]
+              })
+            }).addTo(map);
+          });
+          
+          leafletMapRef.current = map;
+        } else {
+          // Radius mode
+          const lat = formData.currentLat;
+          const lng = formData.currentLng;
+          if (!lat || !lng) return;
+          
+          const map = L.map(container).setView([lat, lng], 15);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OSM', maxZoom: 18
+          }).addTo(map);
+          
+          // Center marker
+          L.marker([lat, lng]).addTo(map).bindPopup(
+            '<div style="text-align:center;direction:rtl;">' +
+            '<b>📍 ' + (formData.radiusPlaceName || 'מיקום נוכחי') + '</b><br/>' +
+            '<span style="font-size:11px;color:#666;">רדיוס: ' + formData.radiusMeters + ' מ\'</span></div>'
+          ).openPopup();
+          
+          // Radius circle
+          L.circle([lat, lng], {
+            radius: formData.radiusMeters, color: '#e11d48', fillColor: '#e11d48',
+            fillOpacity: 0.1, weight: 2, dashArray: '6,4'
+          }).addTo(map);
+          
+          // Fit bounds to circle
+          const circle = L.circle([lat, lng], { radius: formData.radiusMeters });
+          map.fitBounds(circle.getBounds().pad(0.2));
+          
+          // Also show area circles faintly for context
+          areas.forEach(area => {
+            const c = coords[area.id];
+            if (!c) return;
+            L.circle([c.lat, c.lng], {
+              radius: c.radius, color: '#94a3b8', fillColor: '#94a3b8',
+              fillOpacity: 0.04, weight: 1
+            }).addTo(map);
+          });
+          
+          leafletMapRef.current = map;
+        }
+      } catch(err) {
+        console.error('[MAP]', err);
+      }
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [showMapModal, mapMode]);
   const [modalImage, setModalImage] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -4581,6 +4703,11 @@ const BangkokExplorer = () => {
                     <div className="flex items-center justify-center gap-1 mb-1.5">
                       <label className="font-medium text-xs block text-center">🗺️ איזור</label>
                       <button
+                        onClick={() => { setMapMode('areas'); setShowMapModal(true); }}
+                        className="px-1 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-600 hover:bg-emerald-200"
+                        title="הצג מפת אזורים"
+                      >🗺️</button>
+                      <button
                         onClick={detectArea}
                         disabled={isLocating}
                         className={`px-1 py-0.5 rounded text-[10px] ${isLocating ? 'bg-gray-200 text-gray-400' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
@@ -4619,6 +4746,13 @@ const BangkokExplorer = () => {
                     {/* Radius slider */}
                     <div className="text-center">
                       <label className="font-medium text-[10px] block text-center mb-0.5">📍 רדיוס חיפוש</label>
+                      {formData.currentLat && (
+                        <button
+                          onClick={() => { setMapMode('radius'); setShowMapModal(true); }}
+                          className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-600 hover:bg-emerald-200 mb-0.5"
+                          title="הצג מפה עם רדיוס"
+                        >🗺️ הצג על מפה</button>
+                      )}
                       <div className="text-lg font-bold text-blue-600">{formData.radiusMeters}מ'</div>
                       <input
                         type="range"
@@ -6971,6 +7105,52 @@ const BangkokExplorer = () => {
         >
           💬
         </button>
+      )}
+
+      {/* Leaflet Map Modal */}
+      {showMapModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            {/* Header */}
+            <div className="flex items-center justify-between p-3 border-b">
+              <button
+                onClick={() => setShowMapModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-lg font-bold"
+              >✕</button>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-sm">
+                  {mapMode === 'areas' ? '🗺️ מפת כל האזורים' : '📍 רדיוס חיפוש'}
+                </h3>
+              </div>
+              <div className="flex bg-gray-100 rounded p-0.5">
+                <button
+                  onClick={() => setMapMode('areas')}
+                  className={`px-2 py-0.5 rounded text-[9px] font-bold transition ${
+                    mapMode === 'areas' ? 'bg-white shadow text-blue-600' : 'text-gray-400'
+                  }`}
+                >אזורים</button>
+                <button
+                  onClick={() => setMapMode('radius')}
+                  disabled={!formData.currentLat}
+                  className={`px-2 py-0.5 rounded text-[9px] font-bold transition ${
+                    mapMode === 'radius' ? 'bg-white shadow text-rose-600' : 'text-gray-400'
+                  } ${!formData.currentLat ? 'opacity-30 cursor-not-allowed' : ''}`}
+                >רדיוס</button>
+              </div>
+            </div>
+            {/* Map Container */}
+            <div id="leaflet-map-container" style={{ flex: 1, minHeight: '350px', maxHeight: '70vh' }}></div>
+            {/* Footer */}
+            <div className="p-2 border-t text-center">
+              <p className="text-[9px] text-gray-400">
+                {mapMode === 'areas' 
+                  ? `${(window.BKK.areaOptions || []).length} אזורים · לחץ על עיגול לפרטים` 
+                  : `${formData.radiusMeters}מ' מ-${formData.radiusPlaceName || 'מיקום נוכחי'}`
+                }
+              </p>
+            </div>
+          </div>
+        </div>
       )}
 
         {/* === DIALOGS (from dialogs.js) === */}

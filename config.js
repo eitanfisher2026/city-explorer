@@ -6,7 +6,7 @@
 window.BKK = window.BKK || {};
 
 // App Version
-window.BKK.VERSION = '2.10.0';
+window.BKK.VERSION = '2.11.0';
 
 // Firebase Configuration
 window.BKK.firebaseConfig = {
@@ -100,7 +100,13 @@ window.BKK.areaOptions = [
   { id: 'chinatown', label: 'צ\'יינה טאון', labelEn: 'Chinatown', icon: '🏮' },
   { id: 'thonglor', label: 'תונגלור', labelEn: 'Thonglor', icon: '☕' },
   { id: 'ari', label: 'ארי', labelEn: 'Ari', icon: '🎨' },
-  { id: 'riverside', label: 'ריברסייד', labelEn: 'Riverside', icon: '🌊' }
+  { id: 'riverside', label: 'ריברסייד', labelEn: 'Riverside', icon: '🌊' },
+  { id: 'siam', label: 'סיאם', labelEn: 'Siam / Pratunam', icon: '🛍️' },
+  { id: 'chatuchak', label: 'צ\'אטוצ\'אק', labelEn: 'Chatuchak', icon: '🏪' },
+  { id: 'silom', label: 'סילום', labelEn: 'Silom / Sathorn', icon: '🌃' },
+  { id: 'ratchada', label: 'ראצ\'אדה', labelEn: 'Ratchada', icon: '🌙' },
+  { id: 'onnut', label: 'און נאט', labelEn: 'On Nut', icon: '🍜' },
+  { id: 'bangrak', label: 'באנג ראק', labelEn: 'Bang Rak', icon: '🎭' }
 ];
 
 // Area coordinates (center points + radius)
@@ -110,7 +116,13 @@ window.BKK.areaCoordinates = {
   'chinatown': { lat: 13.7408, lng: 100.5050, radius: 1500 },
   'thonglor': { lat: 13.7320, lng: 100.5830, radius: 2000 },
   'ari': { lat: 13.7790, lng: 100.5410, radius: 2000 },
-  'riverside': { lat: 13.7270, lng: 100.4965, radius: 2000 }
+  'riverside': { lat: 13.7270, lng: 100.4965, radius: 2000 },
+  'siam': { lat: 13.7460, lng: 100.5340, radius: 1500 },
+  'chatuchak': { lat: 13.7999, lng: 100.5500, radius: 1500 },
+  'silom': { lat: 13.7262, lng: 100.5235, radius: 1800 },
+  'ratchada': { lat: 13.7650, lng: 100.5730, radius: 1500 },
+  'onnut': { lat: 13.7060, lng: 100.6010, radius: 1800 },
+  'bangrak': { lat: 13.7280, lng: 100.5130, radius: 1000 }
 };
 
 // Help content for all views

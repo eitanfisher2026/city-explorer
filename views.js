@@ -157,6 +157,11 @@
                     <div className="flex items-center justify-center gap-1 mb-1.5">
                       <label className="font-medium text-xs block text-center">🗺️ איזור</label>
                       <button
+                        onClick={() => { setMapMode('areas'); setShowMapModal(true); }}
+                        className="px-1 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-600 hover:bg-emerald-200"
+                        title="הצג מפת אזורים"
+                      >🗺️</button>
+                      <button
                         onClick={detectArea}
                         disabled={isLocating}
                         className={`px-1 py-0.5 rounded text-[10px] ${isLocating ? 'bg-gray-200 text-gray-400' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
@@ -195,6 +200,13 @@
                     {/* Radius slider */}
                     <div className="text-center">
                       <label className="font-medium text-[10px] block text-center mb-0.5">📍 רדיוס חיפוש</label>
+                      {formData.currentLat && (
+                        <button
+                          onClick={() => { setMapMode('radius'); setShowMapModal(true); }}
+                          className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-600 hover:bg-emerald-200 mb-0.5"
+                          title="הצג מפה עם רדיוס"
+                        >🗺️ הצג על מפה</button>
+                      )}
                       <div className="text-lg font-bold text-blue-600">{formData.radiusMeters}מ'</div>
                       <input
                         type="range"
@@ -2547,6 +2559,52 @@
         >
           💬
         </button>
+      )}
+
+      {/* Leaflet Map Modal */}
+      {showMapModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            {/* Header */}
+            <div className="flex items-center justify-between p-3 border-b">
+              <button
+                onClick={() => setShowMapModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-lg font-bold"
+              >✕</button>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-sm">
+                  {mapMode === 'areas' ? '🗺️ מפת כל האזורים' : '📍 רדיוס חיפוש'}
+                </h3>
+              </div>
+              <div className="flex bg-gray-100 rounded p-0.5">
+                <button
+                  onClick={() => setMapMode('areas')}
+                  className={`px-2 py-0.5 rounded text-[9px] font-bold transition ${
+                    mapMode === 'areas' ? 'bg-white shadow text-blue-600' : 'text-gray-400'
+                  }`}
+                >אזורים</button>
+                <button
+                  onClick={() => setMapMode('radius')}
+                  disabled={!formData.currentLat}
+                  className={`px-2 py-0.5 rounded text-[9px] font-bold transition ${
+                    mapMode === 'radius' ? 'bg-white shadow text-rose-600' : 'text-gray-400'
+                  } ${!formData.currentLat ? 'opacity-30 cursor-not-allowed' : ''}`}
+                >רדיוס</button>
+              </div>
+            </div>
+            {/* Map Container */}
+            <div id="leaflet-map-container" style={{ flex: 1, minHeight: '350px', maxHeight: '70vh' }}></div>
+            {/* Footer */}
+            <div className="p-2 border-t text-center">
+              <p className="text-[9px] text-gray-400">
+                {mapMode === 'areas' 
+                  ? `${(window.BKK.areaOptions || []).length} אזורים · לחץ על עיגול לפרטים` 
+                  : `${formData.radiusMeters}מ' מ-${formData.radiusPlaceName || 'מיקום נוכחי'}`
+                }
+              </p>
+            </div>
+          </div>
+        </div>
       )}
 
         {/* === DIALOGS (from dialogs.js) === */}
