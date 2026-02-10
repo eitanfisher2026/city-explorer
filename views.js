@@ -2099,12 +2099,22 @@
                 );
               };
               
-              // Collect active and inactive
-              const activeBuiltIn = interestOptions.filter(i => isInterestValid(i.id) && interestStatus[i.id] !== false);
-              const activeUncovered = uncoveredInterests.filter(i => isInterestValid(i.id) && interestStatus[i.id] === true);
+              // Collect active and inactive - apply config overrides to built-in
+              const overriddenBuiltIn = interestOptions.map(i => {
+                const cfg = interestConfig[i.id];
+                if (!cfg) return i;
+                return { ...i, label: cfg.labelOverride || i.label, icon: cfg.iconOverride || i.icon, inProgress: cfg.inProgress !== undefined ? cfg.inProgress : i.inProgress, locked: cfg.locked !== undefined ? cfg.locked : i.locked };
+              });
+              const overriddenUncovered = uncoveredInterests.map(i => {
+                const cfg = interestConfig[i.id];
+                if (!cfg) return i;
+                return { ...i, label: cfg.labelOverride || i.label, icon: cfg.iconOverride || i.icon, inProgress: cfg.inProgress !== undefined ? cfg.inProgress : i.inProgress, locked: cfg.locked !== undefined ? cfg.locked : i.locked };
+              });
+              const activeBuiltIn = overriddenBuiltIn.filter(i => isInterestValid(i.id) && interestStatus[i.id] !== false);
+              const activeUncovered = overriddenUncovered.filter(i => isInterestValid(i.id) && interestStatus[i.id] === true);
               const activeCustom = customInterests.filter(i => isInterestValid(i.id) && interestStatus[i.id] !== false);
-              const inactiveBuiltIn = interestOptions.filter(i => !isInterestValid(i.id) || interestStatus[i.id] === false);
-              const inactiveUncovered = uncoveredInterests.filter(i => !isInterestValid(i.id) || interestStatus[i.id] !== true);
+              const inactiveBuiltIn = overriddenBuiltIn.filter(i => !isInterestValid(i.id) || interestStatus[i.id] === false);
+              const inactiveUncovered = overriddenUncovered.filter(i => !isInterestValid(i.id) || interestStatus[i.id] !== true);
               const inactiveCustom = customInterests.filter(i => !isInterestValid(i.id) || interestStatus[i.id] === false);
               
               return (

@@ -1532,7 +1532,17 @@
   };
 
   // Combine all interests: built-in + uncovered + custom
-  const allInterestOptions = [...interestOptions, ...uncoveredInterests, ...(customInterests || [])];
+  const allInterestOptions = [...interestOptions, ...uncoveredInterests, ...(customInterests || [])].map(opt => {
+    const config = interestConfig[opt.id];
+    if (!config) return opt;
+    return {
+      ...opt,
+      label: config.labelOverride || opt.label,
+      icon: config.iconOverride || opt.icon,
+      inProgress: config.inProgress !== undefined ? config.inProgress : opt.inProgress,
+      locked: config.locked !== undefined ? config.locked : opt.locked
+    };
+  });
 
   // Save preferences whenever they change
   useEffect(() => {

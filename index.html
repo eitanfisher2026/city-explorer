@@ -2553,7 +2553,17 @@ const BangkokExplorer = () => {
   };
 
   // Combine all interests: built-in + uncovered + custom
-  const allInterestOptions = [...interestOptions, ...uncoveredInterests, ...(customInterests || [])];
+  const allInterestOptions = [...interestOptions, ...uncoveredInterests, ...(customInterests || [])].map(opt => {
+    const config = interestConfig[opt.id];
+    if (!config) return opt;
+    return {
+      ...opt,
+      label: config.labelOverride || opt.label,
+      icon: config.iconOverride || opt.icon,
+      inProgress: config.inProgress !== undefined ? config.inProgress : opt.inProgress,
+      locked: config.locked !== undefined ? config.locked : opt.locked
+    };
+  });
 
   // Save preferences whenever they change
   useEffect(() => {
@@ -6723,12 +6733,22 @@ const BangkokExplorer = () => {
                 );
               };
               
-              // Collect active and inactive
-              const activeBuiltIn = interestOptions.filter(i => isInterestValid(i.id) && interestStatus[i.id] !== false);
-              const activeUncovered = uncoveredInterests.filter(i => isInterestValid(i.id) && interestStatus[i.id] === true);
+              // Collect active and inactive - apply config overrides to built-in
+              const overriddenBuiltIn = interestOptions.map(i => {
+                const cfg = interestConfig[i.id];
+                if (!cfg) return i;
+                return { ...i, label: cfg.labelOverride || i.label, icon: cfg.iconOverride || i.icon, inProgress: cfg.inProgress !== undefined ? cfg.inProgress : i.inProgress, locked: cfg.locked !== undefined ? cfg.locked : i.locked };
+              });
+              const overriddenUncovered = uncoveredInterests.map(i => {
+                const cfg = interestConfig[i.id];
+                if (!cfg) return i;
+                return { ...i, label: cfg.labelOverride || i.label, icon: cfg.iconOverride || i.icon, inProgress: cfg.inProgress !== undefined ? cfg.inProgress : i.inProgress, locked: cfg.locked !== undefined ? cfg.locked : i.locked };
+              });
+              const activeBuiltIn = overriddenBuiltIn.filter(i => isInterestValid(i.id) && interestStatus[i.id] !== false);
+              const activeUncovered = overriddenUncovered.filter(i => isInterestValid(i.id) && interestStatus[i.id] === true);
               const activeCustom = customInterests.filter(i => isInterestValid(i.id) && interestStatus[i.id] !== false);
-              const inactiveBuiltIn = interestOptions.filter(i => !isInterestValid(i.id) || interestStatus[i.id] === false);
-              const inactiveUncovered = uncoveredInterests.filter(i => !isInterestValid(i.id) || interestStatus[i.id] !== true);
+              const inactiveBuiltIn = overriddenBuiltIn.filter(i => !isInterestValid(i.id) || interestStatus[i.id] === false);
+              const inactiveUncovered = overriddenUncovered.filter(i => !isInterestValid(i.id) || interestStatus[i.id] !== true);
               const inactiveCustom = customInterests.filter(i => !isInterestValid(i.id) || interestStatus[i.id] === false);
               
               return (
@@ -8086,8 +8106,22 @@ const BangkokExplorer = () => {
                           // EDIT MODE
                           const interestId = editingCustomInterest.id;
                           
-                          if (!newInterest.builtIn || isUnlocked) {
-                            // Custom interest OR admin editing built-in - update name/icon too
+                          if (newInterest.builtIn) {
+                            // Built-in interest - save search config + admin overrides to interestConfig
+                            const configData = { ...searchConfig };
+                            if (isUnlocked) {
+                              configData.labelOverride = newInterest.label.trim();
+                              configData.iconOverride = newInterest.icon || '';
+                              configData.inProgress = newInterest.inProgress || false;
+                              configData.locked = newInterest.locked || false;
+                            }
+                            if (isFirebaseAvailable && database) {
+                              database.ref(`settings/interestConfig/${interestId}`).set(configData);
+                            } else {
+                              setInterestConfig(prev => ({...prev, [interestId]: configData}));
+                            }
+                          } else {
+                            // Custom interest - update in customInterests
                             const updatedInterest = {
                               ...editingCustomInterest,
                               label: newInterest.label.trim(),
@@ -8107,13 +8141,6 @@ const BangkokExplorer = () => {
                               const updated = customInterests.map(ci => ci.id === interestId ? updatedInterest : ci);
                               setCustomInterests(updated);
                               localStorage.setItem('bangkok_custom_interests', JSON.stringify(updated));
-                            }
-                          } else {
-                            // Non-admin built-in interest - save search config only
-                            if (isFirebaseAvailable && database) {
-                              database.ref(`settings/interestConfig/${interestId}`).set(searchConfig);
-                            } else {
-                              setInterestConfig(prev => ({...prev, [interestId]: searchConfig}));
                             }
                           }
                           

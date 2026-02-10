@@ -844,8 +844,22 @@
                           // EDIT MODE
                           const interestId = editingCustomInterest.id;
                           
-                          if (!newInterest.builtIn || isUnlocked) {
-                            // Custom interest OR admin editing built-in - update name/icon too
+                          if (newInterest.builtIn) {
+                            // Built-in interest - save search config + admin overrides to interestConfig
+                            const configData = { ...searchConfig };
+                            if (isUnlocked) {
+                              configData.labelOverride = newInterest.label.trim();
+                              configData.iconOverride = newInterest.icon || '';
+                              configData.inProgress = newInterest.inProgress || false;
+                              configData.locked = newInterest.locked || false;
+                            }
+                            if (isFirebaseAvailable && database) {
+                              database.ref(`settings/interestConfig/${interestId}`).set(configData);
+                            } else {
+                              setInterestConfig(prev => ({...prev, [interestId]: configData}));
+                            }
+                          } else {
+                            // Custom interest - update in customInterests
                             const updatedInterest = {
                               ...editingCustomInterest,
                               label: newInterest.label.trim(),
@@ -865,13 +879,6 @@
                               const updated = customInterests.map(ci => ci.id === interestId ? updatedInterest : ci);
                               setCustomInterests(updated);
                               localStorage.setItem('bangkok_custom_interests', JSON.stringify(updated));
-                            }
-                          } else {
-                            // Non-admin built-in interest - save search config only
-                            if (isFirebaseAvailable && database) {
-                              database.ref(`settings/interestConfig/${interestId}`).set(searchConfig);
-                            } else {
-                              setInterestConfig(prev => ({...prev, [interestId]: searchConfig}));
                             }
                           }
                           
