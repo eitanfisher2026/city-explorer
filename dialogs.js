@@ -439,7 +439,7 @@
                               setShowEditLocationDialog(false);
                               setEditingLocation(null);
                             }}
-                            className="flex-1 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600"
+                            className="flex-1 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
                           >
                             🚫 דלג לצמיתות
                           </button>
@@ -742,7 +742,7 @@
                           className={`flex-1 py-2 rounded-lg text-sm font-bold ${
                             interestStatus[editingCustomInterest.id] === false 
                               ? 'bg-green-500 text-white hover:bg-green-600'
-                              : 'bg-orange-500 text-white hover:bg-orange-600'
+                              : 'bg-blue-500 text-white hover:bg-blue-600'
                           }`}
                         >
                           {interestStatus[editingCustomInterest.id] === false ? '✅ הפעל' : '⏸️ השבת'}
@@ -1256,7 +1256,7 @@
                             setShowRouteDialog(false);
                             setEditingRoute(null);
                           }}
-                          className="flex-1 py-2.5 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600"
+                          className="flex-1 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
                         >
                           📍 פתח מסלול
                         </button>
@@ -1361,7 +1361,7 @@
       {showFeedbackDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-sm shadow-2xl">
-            <div className="bg-gradient-to-r from-orange-400 to-pink-400 text-white p-3 rounded-t-2xl sm:rounded-t-xl flex justify-between items-center">
+            <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white p-3 rounded-t-2xl sm:rounded-t-xl flex justify-between items-center">
               <h3 className="text-base font-bold">💬 שלח משוב</h3>
               <button onClick={() => { setShowFeedbackDialog(false); setFeedbackText(''); }} className="text-white opacity-70 hover:opacity-100 text-xl leading-none">✕</button>
             </div>
@@ -1392,7 +1392,7 @@
                 value={feedbackText}
                 onChange={(e) => setFeedbackText(e.target.value)}
                 placeholder="ספר לנו מה חשבת..."
-                className="w-full p-3 border-2 border-gray-200 rounded-lg text-sm resize-none focus:border-orange-400 focus:outline-none"
+                className="w-full p-3 border-2 border-gray-200 rounded-lg text-sm resize-none focus:border-blue-400 focus:outline-none"
                 rows={4}
                 autoFocus
                 dir="rtl"
@@ -1403,7 +1403,7 @@
                 disabled={!feedbackText.trim()}
                 className={`w-full py-2.5 rounded-lg font-bold text-sm transition-all ${
                   feedbackText.trim()
-                    ? 'bg-orange-500 text-white hover:bg-orange-600'
+                    ? 'bg-blue-500 text-white hover:bg-blue-600'
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 }`}
               >
@@ -1518,7 +1518,7 @@
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>🗺️ מסלולים שמורים</span>
-                  <span className="font-bold text-orange-600">{(importedData.savedRoutes || []).length}</span>
+                  <span className="font-bold text-blue-600">{(importedData.savedRoutes || []).length}</span>
                 </div>
                 {importedData.interestConfig && (
                   <div className="flex justify-between text-sm">

@@ -1,14 +1,14 @@
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-pink-50" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-slate-50" dir="rtl">
       {/* Loading Overlay */}
       {!isDataLoaded && (
-        <div className="fixed inset-0 bg-gradient-to-br from-orange-50 to-pink-50 z-[100] flex flex-col items-center justify-center">
+        <div className="fixed inset-0 bg-gradient-to-br from-gray-50 to-slate-50 z-[100] flex flex-col items-center justify-center">
           <div className="text-center">
             <div className="text-5xl mb-4 animate-bounce">🗺️</div>
             <h2 className="text-xl font-bold text-gray-700 mb-2">Bangkok Explorer</h2>
             <div className="flex items-center justify-center gap-2 text-gray-500">
-              <svg className="animate-spin h-5 w-5 text-orange-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
               </svg>
@@ -19,23 +19,22 @@
       )}
 
       <div style={{
-        background: 'linear-gradient(135deg, #ea580c 0%, #db2777 50%, #7c3aed 100%)',
-        padding: '10px 16px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.15)'
+        background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
+        padding: '8px 16px',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
       }}>
         <div className="flex items-center justify-center gap-2">
-          <span style={{ fontSize: '22px' }}>📍</span>
+          <span style={{ fontSize: '16px' }}>📍</span>
           <h1 style={{ 
-            fontSize: '18px', 
-            fontWeight: '800', 
+            fontSize: '16px', 
+            fontWeight: '700', 
             color: 'white',
-            letterSpacing: '0.5px',
+            letterSpacing: '0.3px',
             margin: 0
           }}>Bangkok Explorer</h1>
           <span style={{ 
-            fontSize: '9px', 
-            color: 'rgba(255,255,255,0.6)',
-            fontWeight: '500',
+            fontSize: '8px', 
+            color: 'rgba(255,255,255,0.35)',
             alignSelf: 'flex-end',
             marginBottom: '2px'
           }}>v{window.BKK.VERSION}</span>
@@ -60,7 +59,7 @@
           <button
             onClick={() => { setCurrentView('form'); window.scrollTo(0, 0); }}
             className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
-              currentView === 'form' || currentView === 'route' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
+              currentView === 'form' || currentView === 'route' ? 'bg-slate-700 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
             <div className="truncate text-center">🗺️ מסלול</div>
@@ -137,13 +136,13 @@
                   <button
                     onClick={() => setFormData({...formData, searchMode: 'area'})}
                     className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
-                      formData.searchMode === 'area' ? 'bg-white shadow text-orange-600' : 'text-gray-500'
+                      formData.searchMode === 'area' ? 'bg-white shadow text-blue-600' : 'text-gray-500'
                     }`}
                   >🗺️ איזור</button>
                   <button
                     onClick={() => setFormData({...formData, searchMode: 'radius'})}
                     className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
-                      formData.searchMode === 'radius' ? 'bg-white shadow text-orange-600' : 'text-gray-500'
+                      formData.searchMode === 'radius' ? 'bg-white shadow text-blue-600' : 'text-gray-500'
                     }`}
                   >📍 רדיוס</button>
                 </div>
@@ -188,11 +187,11 @@
                   </div>
                 ) : (
                   /* Radius Mode */
-                  <div className="border border-orange-200 rounded-lg p-2 bg-orange-50 space-y-2">
+                  <div className="border border-blue-100 rounded-lg p-2 bg-blue-50/30 space-y-2">
                     {/* Radius slider */}
                     <div className="text-center">
                       <label className="font-medium text-[10px] block text-center mb-0.5">📍 רדיוס חיפוש</label>
-                      <div className="text-lg font-bold text-orange-600">{formData.radiusMeters}מ'</div>
+                      <div className="text-lg font-bold text-blue-600">{formData.radiusMeters}מ'</div>
                       <input
                         type="range"
                         min="100"
@@ -200,7 +199,7 @@
                         step="100"
                         value={formData.radiusMeters}
                         onChange={(e) => setFormData({...formData, radiusMeters: parseInt(e.target.value)})}
-                        className="w-full h-2 bg-orange-200 rounded-lg appearance-none cursor-pointer"
+                        className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
                         style={{ accentColor: '#ea580c' }}
                       />
                       <div className="flex justify-between text-[8px] text-gray-400 mt-0.5">
@@ -210,7 +209,7 @@
                     </div>
 
                     {/* Source toggle: GPS vs My Place - NO coord clearing */}
-                    <div className="flex bg-white rounded p-0.5 border border-orange-200">
+                    <div className="flex bg-white rounded p-0.5 border border-blue-200">
                       <button
                         onClick={() => {
                           // Restore GPS coords if available
@@ -222,7 +221,7 @@
                           }));
                         }}
                         className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
-                          formData.radiusSource === 'gps' ? 'bg-orange-500 text-white' : 'text-gray-500'
+                          formData.radiusSource === 'gps' ? 'bg-blue-500 text-white' : 'text-gray-500'
                         }`}
                       >📍 GPS</button>
                       <button
@@ -242,7 +241,7 @@
                           }
                         }}
                         className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
-                          formData.radiusSource === 'myplace' ? 'bg-orange-500 text-white' : 'text-gray-500'
+                          formData.radiusSource === 'myplace' ? 'bg-blue-500 text-white' : 'text-gray-500'
                         }`}
                       >🏠 מקום שלי</button>
                     </div>
@@ -295,7 +294,7 @@
                           value={placeSearchQuery}
                           onChange={(e) => setPlaceSearchQuery(e.target.value)}
                           placeholder="🔍 חפש מקום שלי..."
-                          className="w-full p-1.5 border border-orange-300 rounded-lg text-[10px] focus:border-orange-500 focus:outline-none"
+                          className="w-full p-1.5 border border-blue-200 rounded-lg text-[10px] focus:border-blue-400 focus:outline-none"
                           dir="rtl"
                         />
                         <div className="max-h-48 overflow-y-auto bg-white rounded border border-gray-200">
@@ -316,8 +315,8 @@
                                   }));
                                   setPlaceSearchQuery(loc.name);
                                 }}
-                                className={`w-full text-right p-1.5 text-[10px] border-b border-gray-100 hover:bg-orange-50 transition ${
-                                  formData.radiusPlaceId === loc.id ? 'bg-orange-100 font-bold' : ''
+                                className={`w-full text-right p-1.5 text-[10px] border-b border-gray-100 hover:bg-blue-50 transition ${
+                                  formData.radiusPlaceId === loc.id ? 'bg-blue-100 font-bold' : ''
                                 }`}
                               >
                                 <div className="flex items-center gap-1">
@@ -410,9 +409,9 @@
                       onClick={() => toggleInterest(option.id)}
                       title={tooltip}
                       style={{
-                        border: formData.interests.includes(option.id) ? '3px solid #f97316' : '2px solid #d1d5db',
-                        backgroundColor: formData.interests.includes(option.id) ? '#fed7aa' : '#ffffff',
-                        boxShadow: formData.interests.includes(option.id) ? '0 4px 6px -1px rgba(0, 0, 0, 0.2)' : 'none',
+                        border: formData.interests.includes(option.id) ? '2px solid #3b82f6' : '1.5px solid #e5e7eb',
+                        backgroundColor: formData.interests.includes(option.id) ? '#eff6ff' : '#ffffff',
+                        boxShadow: formData.interests.includes(option.id) ? '0 2px 4px rgba(59, 130, 246, 0.15)' : 'none',
                         position: 'relative',
                         overflow: 'hidden'
                       }}
@@ -422,7 +421,7 @@
                       <div style={{
                         fontWeight: '600',
                         fontSize: '10px',
-                        color: formData.interests.includes(option.id) ? '#c2410c' : '#374151',
+                        color: formData.interests.includes(option.id) ? '#1e40af' : '#374151',
                         wordBreak: 'break-word',
                         lineHeight: '1.2',
                         maxHeight: '2.4em',
@@ -489,7 +488,7 @@
               <p className="text-center text-gray-500 text-xs">בחר לפחות תחום עניין אחד</p>
             )}
             {formData.searchMode === 'radius' && !formData.currentLat && formData.interests.length > 0 && (
-              <p className="text-center text-orange-500 text-xs font-medium">📍 לחץ "מצא מיקום" כדי להפעיל חיפוש</p>
+              <p className="text-center text-blue-500 text-xs font-medium">📍 לחץ "מצא מיקום" כדי להפעיל חיפוש</p>
             )}
 
             {/* Show stops list ONLY after route is calculated */}
@@ -1168,12 +1167,12 @@
                 }
                 
                 return (
-                  <div key={i} className={`border-r-4 pr-3 py-2 ${isDisabled ? 'border-gray-300 opacity-50' : hasValidCoords ? 'border-orange-500' : 'border-red-500'}`}
+                  <div key={i} className={`border-r-4 pr-3 py-2 ${isDisabled ? 'border-gray-300 opacity-50' : hasValidCoords ? 'border-slate-400' : 'border-red-500'}`}
                     style={{ backgroundColor: hasValidCoords ? 'transparent' : '#fef2f2' }}
                   >
                     <div className="flex justify-between items-start gap-2">
                       <div className="flex gap-2 flex-1">
-                        <div className={`rounded-full w-6 h-6 flex items-center justify-center font-bold text-sm flex-shrink-0 ${isDisabled ? 'bg-gray-400 text-white' : hasValidCoords ? 'bg-orange-500 text-white' : 'bg-red-500 text-white'}`}>
+                        <div className={`rounded-full w-6 h-6 flex items-center justify-center font-bold text-sm flex-shrink-0 ${isDisabled ? 'bg-gray-400 text-white' : hasValidCoords ? 'bg-slate-600 text-white' : 'bg-red-500 text-white'}`}>
                           {isDisabled ? '✕' : hasValidCoords ? i + 1 : '❗'}
                         </div>
                         <div className="flex-1">
@@ -1686,7 +1685,7 @@
                 <p className="text-gray-600 mb-3 text-sm">עדיין אין מסלולים שמורים</p>
                 <button
                   onClick={() => setCurrentView('form')}
-                  className="bg-orange-500 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-orange-600"
+                  className="bg-slate-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-700"
                 >צור מסלול חדש</button>
               </div>
             ) : (
@@ -2175,7 +2174,7 @@
             
             {/* Default Radius Setting */}
             <div className="mb-3">
-              <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-400 rounded-lg p-2">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-lg p-2">
                 <h3 className="text-sm font-bold text-gray-800 mb-1">📍 רדיוס ברירת מחדל</h3>
                 <p className="text-[10px] text-gray-600 mb-1">רדיוס חיפוש מסביב למיקום נוכחי (מטרים)</p>
                 <input
@@ -2185,12 +2184,12 @@
                   step="100"
                   value={formData.radiusMeters}
                   onChange={(e) => setFormData({...formData, radiusMeters: parseInt(e.target.value)})}
-                  className="w-full h-2 bg-orange-200 rounded-lg appearance-none cursor-pointer"
+                  className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
                   style={{ accentColor: '#ea580c' }}
                 />
                 <div className="flex justify-between items-center mt-1">
                   <span className="text-[10px] text-gray-400">100מ'</span>
-                  <span className="text-sm font-bold text-orange-600">{formData.radiusMeters}מ'</span>
+                  <span className="text-sm font-bold text-blue-600">{formData.radiusMeters}מ'</span>
                   <span className="text-[10px] text-gray-400">2000מ'</span>
                 </div>
               </div>
@@ -2512,7 +2511,7 @@
                 }
               }
             }}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-orange-50 border border-orange-200 text-orange-600 hover:bg-orange-100 hover:border-orange-300 transition-all text-xs font-medium mb-2"
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300 transition-all text-xs font-medium mb-2"
           >
             <span>📤</span>
             <span>שתף עם חברים</span>
@@ -2539,7 +2538,7 @@
       {!showFeedbackDialog && (
         <button
           onClick={() => setShowFeedbackDialog(true)}
-          className="fixed bottom-20 left-4 z-40 bg-white text-gray-400 hover:text-orange-500 hover:shadow-lg w-10 h-10 rounded-full shadow-md border border-gray-200 flex items-center justify-center transition-all duration-300 text-lg"
+          className="fixed bottom-20 left-4 z-40 bg-white text-gray-400 hover:text-blue-500 hover:shadow-lg w-10 h-10 rounded-full shadow-md border border-gray-200 flex items-center justify-center transition-all duration-300 text-lg"
           title="שלח משוב"
         >
           💬

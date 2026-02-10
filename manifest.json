@@ -4,8 +4,8 @@
   "description": "Smart trip planning app for Bangkok",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#fff7ed",
-  "theme_color": "#ea580c",
+  "background_color": "#f8fafc",
+  "theme_color": "#1e293b",
   "orientation": "portrait",
   "icons": [
     {
