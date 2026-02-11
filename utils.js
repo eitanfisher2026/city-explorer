@@ -375,8 +375,7 @@ window.BKK.hashPassword = async function(password) {
 
 /**
  * Build the best Google Maps URL for a place.
- * Priority: Place ID → address → raw coords.
- * For Google Places results with Place ID, opens the full place page.
+ * Priority: Place ID → name search for Google-origin places → address → raw coords.
  */
 window.BKK.getGoogleMapsUrl = (place) => {
   if (!place) return '#';
@@ -387,6 +386,12 @@ window.BKK.getGoogleMapsUrl = (place) => {
   if (place.googlePlaceId) {
     const query = encodeURIComponent(place.name || place.address || `${place.lat},${place.lng}`);
     return `https://www.google.com/maps/search/?api=1&query=${query}&query_place_id=${place.googlePlaceId}`;
+  }
+  
+  // Google-origin place without Place ID (saved before this feature):
+  // Search by name near coords — Google will likely match the real place
+  if ((place.fromGoogle || place.googlePlace) && place.name && hasCoords) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}&center=${place.lat},${place.lng}&zoom=17`;
   }
   
   // Fallback: address
