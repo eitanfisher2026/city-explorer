@@ -1905,6 +1905,128 @@
     });
   };
 
+  // ========== ROUTE OPTIMIZATION (Nearest Neighbor + 2-opt) ==========
+  const optimizeStopOrder = (stops, startCoords, isCircular) => {
+    if (stops.length <= 2) return stops;
+    
+    // Filter stops with valid coordinates
+    const withCoords = stops.filter(s => s.lat && s.lng);
+    const noCoords = stops.filter(s => !s.lat || !s.lng);
+    
+    if (withCoords.length <= 1) return [...withCoords, ...noCoords];
+    
+    // Distance matrix (using calcDistance which is Haversine)
+    const dist = (a, b) => calcDistance(a.lat, a.lng, b.lat, b.lng);
+    
+    // --- Step 1: Nearest Neighbor from start point ---
+    const unvisited = [...withCoords];
+    const ordered = [];
+    
+    // Determine start: use startCoords if available, otherwise pick the stop closest to center
+    let currentPos;
+    if (startCoords?.lat && startCoords?.lng) {
+      currentPos = startCoords;
+    } else {
+      // Use centroid of all stops as reference, pick nearest to it
+      const avgLat = withCoords.reduce((s, p) => s + p.lat, 0) / withCoords.length;
+      const avgLng = withCoords.reduce((s, p) => s + p.lng, 0) / withCoords.length;
+      // For linear: start from the stop furthest from centroid (creates a more natural path)
+      // For circular: start from stop nearest to centroid
+      if (!isCircular) {
+        let maxDist = -1, startIdx = 0;
+        unvisited.forEach((s, i) => {
+          const d = calcDistance(avgLat, avgLng, s.lat, s.lng);
+          if (d > maxDist) { maxDist = d; startIdx = i; }
+        });
+        ordered.push(unvisited.splice(startIdx, 1)[0]);
+      } else {
+        let minDist = Infinity, startIdx = 0;
+        unvisited.forEach((s, i) => {
+          const d = calcDistance(avgLat, avgLng, s.lat, s.lng);
+          if (d < minDist) { minDist = d; startIdx = i; }
+        });
+        ordered.push(unvisited.splice(startIdx, 1)[0]);
+      }
+      currentPos = ordered[0];
+    }
+    
+    // If we have startCoords (external start point), find nearest stop to it first
+    if (startCoords?.lat && startCoords?.lng && unvisited.length > 0) {
+      let minDist = Infinity, nearIdx = 0;
+      unvisited.forEach((s, i) => {
+        const d = dist(currentPos, s);
+        if (d < minDist) { minDist = d; nearIdx = i; }
+      });
+      ordered.push(unvisited.splice(nearIdx, 1)[0]);
+      currentPos = ordered[ordered.length - 1];
+    }
+    
+    // Greedily pick nearest unvisited
+    while (unvisited.length > 0) {
+      let minDist = Infinity, nearIdx = 0;
+      unvisited.forEach((s, i) => {
+        const d = dist(currentPos, s);
+        if (d < minDist) { minDist = d; nearIdx = i; }
+      });
+      ordered.push(unvisited.splice(nearIdx, 1)[0]);
+      currentPos = ordered[ordered.length - 1];
+    }
+    
+    // --- Step 2: 2-opt improvement (uncross paths) ---
+    const totalDist = (route) => {
+      let d = 0;
+      // If start coords exist, include distance from start to first stop
+      if (startCoords?.lat && startCoords?.lng) {
+        d += dist(startCoords, route[0]);
+      }
+      for (let i = 0; i < route.length - 1; i++) {
+        d += dist(route[i], route[i + 1]);
+      }
+      // Circular: add return to start
+      if (isCircular) {
+        const returnTo = startCoords?.lat ? startCoords : route[0];
+        d += dist(route[route.length - 1], returnTo);
+      }
+      return d;
+    };
+    
+    let improved = true;
+    let passes = 0;
+    const maxPasses = 5; // 2-opt passes (each pass is O(n²))
+    
+    while (improved && passes < maxPasses) {
+      improved = false;
+      passes++;
+      for (let i = 0; i < ordered.length - 1; i++) {
+        for (let j = i + 2; j < ordered.length; j++) {
+          // Check if reversing segment [i+1..j] reduces total distance
+          // Only need to compare the 2 edges being broken/reconnected
+          const A = i === 0 && startCoords?.lat ? startCoords : ordered[i];
+          const B = ordered[i + 1];
+          const C = ordered[j];
+          const D = j + 1 < ordered.length ? ordered[j + 1] 
+            : (isCircular ? (startCoords?.lat ? startCoords : ordered[0]) : null);
+          
+          const oldDist = dist(A, B) + (D ? dist(C, D) : 0);
+          const newDist = dist(A, C) + (D ? dist(B, D) : 0);
+          
+          if (newDist < oldDist - 1) { // 1m threshold to avoid float noise
+            // Reverse segment in place
+            const reversed = ordered.slice(i + 1, j + 1).reverse();
+            ordered.splice(i + 1, j - i, ...reversed);
+            improved = true;
+          }
+        }
+      }
+    }
+    
+    console.log(`[OPTIMIZE] ${withCoords.length} stops optimized in ${passes} passes`);
+    console.log(`[OPTIMIZE] Total distance: ${Math.round(totalDist(ordered))}m (${isCircular ? 'circular' : 'linear'})`);
+    
+    // Append stops without coordinates at the end
+    return [...ordered, ...noCoords];
+  };
+
   const generateRoute = async () => {
     const isRadiusMode = formData.searchMode === 'radius';
     
@@ -2229,7 +2351,8 @@
           missing: maxStops - uniqueStops.length
         } : null,
         // Errors if any
-        errors: fetchErrors.length > 0 ? fetchErrors : null
+        errors: fetchErrors.length > 0 ? fetchErrors : null,
+        optimized: false
       };
 
       console.log('[ROUTE] Route created successfully:', {
@@ -2255,6 +2378,51 @@
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  // Compute/recompute optimized route order from existing stops
+  const computeRoute = () => {
+    if (!route || route.stops.length < 2) return;
+    if (!startPointCoords) {
+      showToast('בחר נקודת התחלה לפני חישוב מסלול', 'warning');
+      return;
+    }
+    
+    const isCircular = routeType === 'circular';
+    
+    // Filter out disabled stops for optimization, keep them at end
+    const activeStops = route.stops.filter((stop, i) => {
+      const stopId = stop.id || i;
+      return !disabledStops.includes(stopId);
+    });
+    const inactiveStops = route.stops.filter((stop, i) => {
+      const stopId = stop.id || i;
+      return disabledStops.includes(stopId);
+    });
+    
+    console.log(`[COMPUTE] Optimizing ${activeStops.length} active stops (${isCircular ? 'circular' : 'linear'})`);
+    const optimized = optimizeStopOrder(activeStops, startPointCoords, isCircular);
+    
+    // Recombine: optimized active stops first, then inactive at end
+    const newStops = [...optimized, ...inactiveStops];
+    
+    setRoute({
+      ...route,
+      stops: newStops,
+      circular: isCircular,
+      optimized: true,
+      startPoint: startPointCoords.address || formData.startPoint || '',
+      startPointCoords: startPointCoords
+    });
+    
+    // Clear disabled stops indices since order changed
+    setDisabledStops([]);
+    
+    showToast(`מסלול ${isCircular ? 'מעגלי' : 'לינארי'} חושב! ${optimized.length} עצירות`, 'success');
+    
+    setTimeout(() => {
+      document.getElementById('route-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   // Fetch more places for a specific interest

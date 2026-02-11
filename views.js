@@ -575,17 +575,39 @@
                               const isDisabled = disabledStops.includes(stopId);
                               const isCustom = stop.custom;
                               const isAddedLater = stop.addedLater;
+                              const isStartPoint = hasValidCoords && startPointCoords?.lat === stop.lat && startPointCoords?.lng === stop.lng;
                               
                               return (
                                 <div key={stop.originalIndex} className="p-1.5 rounded border relative" style={{ 
-                                  borderColor: !hasValidCoords ? '#ef4444' : isAddedLater ? '#60a5fa' : isDisabled ? '#9ca3af' : '#e5e7eb',
-                                  borderWidth: isAddedLater ? '2px' : '1px',
+                                  borderColor: isStartPoint ? '#16a34a' : !hasValidCoords ? '#ef4444' : isAddedLater ? '#60a5fa' : isDisabled ? '#9ca3af' : '#e5e7eb',
+                                  borderWidth: isStartPoint ? '2px' : isAddedLater ? '2px' : '1px',
                                   borderStyle: isAddedLater ? 'dashed' : 'solid',
-                                  backgroundColor: !hasValidCoords ? '#fef2f2' : isAddedLater ? '#eff6ff' : isDisabled ? '#f3f4f6' : '#fafafa',
+                                  backgroundColor: isStartPoint ? '#f0fdf4' : !hasValidCoords ? '#fef2f2' : isAddedLater ? '#eff6ff' : isDisabled ? '#f3f4f6' : '#fafafa',
                                   opacity: isDisabled ? 0.6 : 1
                                 }}>
                                   {/* Action buttons */}
                                   <div className="absolute top-0.5 left-0.5 flex gap-0.5">
+                                    {/* Set as start point */}
+                                    {hasValidCoords && !isDisabled && (
+                                      <button
+                                        onClick={() => {
+                                          setStartPointCoords({ lat: stop.lat, lng: stop.lng, address: stop.name });
+                                          setFormData(prev => ({...prev, startPoint: stop.name}));
+                                          if (route?.optimized) {
+                                            setRoute(prev => prev ? {...prev, optimized: false} : prev);
+                                          }
+                                          showToast(`📌 ${stop.name} נבחר כנקודת התחלה`, 'success');
+                                        }}
+                                        className={`text-[9px] px-1 py-0.5 rounded ${
+                                          startPointCoords?.lat === stop.lat && startPointCoords?.lng === stop.lng
+                                            ? 'bg-green-600 text-white ring-1 ring-green-400'
+                                            : 'bg-green-100 text-green-700 hover:bg-green-200'
+                                        }`}
+                                        title="קבע כנקודת התחלה"
+                                      >
+                                        📌
+                                      </button>
+                                    )}
                                     {/* Temporary skip button - toggles between active/paused */}
                                     <button
                                       onClick={() => toggleStopActive(stop.originalIndex)}
@@ -703,12 +725,20 @@
                                     <div className="font-bold text-[11px] flex items-center gap-1" style={{
                                       color: hasValidCoords ? '#2563eb' : '#dc2626'
                                     }}>
+                                      {route?.optimized && !isDisabled && hasValidCoords && (
+                                        <span className="bg-purple-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[8px] font-bold flex-shrink-0">
+                                          {stop.originalIndex + 1}
+                                        </span>
+                                      )}
                                       {!hasValidCoords && (
                                         <span title="אין קואורדינטות - לא יכלל במסלול" style={{ fontSize: '11px' }}>
                                           ❗
                                         </span>
                                       )}
                                       <span>{stop.name}</span>
+                                      {isStartPoint && (
+                                        <span className="text-[8px] bg-green-600 text-white px-1 py-0.5 rounded font-bold">📌 התחלה</span>
+                                      )}
                                       {stop.detectedArea && formData.searchMode === 'radius' && (
                                         <span className="text-[8px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded font-bold">
                                           {areaMap[stop.detectedArea]?.label || stop.detectedArea}
@@ -862,7 +892,10 @@
                           type="radio"
                           name="routeType"
                           checked={routeType === 'circular'}
-                          onChange={() => setRouteType('circular')}
+                          onChange={() => {
+                            setRouteType('circular');
+                            if (route?.optimized) setRoute(prev => prev ? {...prev, optimized: false} : prev);
+                          }}
                           style={{ cursor: 'pointer' }}
                         />
                         <span>מעגלי</span>
@@ -872,7 +905,10 @@
                           type="radio"
                           name="routeType"
                           checked={routeType === 'linear'}
-                          onChange={() => setRouteType('linear')}
+                          onChange={() => {
+                            setRouteType('linear');
+                            if (route?.optimized) setRoute(prev => prev ? {...prev, optimized: false} : prev);
+                          }}
                           style={{ cursor: 'pointer' }}
                         />
                         <span>לינארי</span>
@@ -881,7 +917,7 @@
                     
                     {/* Start Point Input with GPS + validate buttons */}
                     <div>
-                      <label className="text-xs text-gray-600 mb-1 block">📍 נקודת התחלה (אופציונלי)</label>
+                      <label className="text-xs font-bold text-gray-700 mb-1 block">📍 נקודת התחלה</label>
                       <div className="flex gap-1">
                         <div className="flex-1 relative">
                           <input
@@ -891,7 +927,7 @@
                               setFormData({...formData, startPoint: e.target.value});
                               setStartPointCoords(null);
                             }}
-                            placeholder="לדוגמה: BTS Asok, שם מלון..."
+                            placeholder="כתובת, שם מלון, תחנת רכבת..."
                             className="w-full p-1.5 border border-gray-300 rounded-lg text-xs"
                             style={{ direction: 'rtl', paddingLeft: (formData.startPoint?.trim() || startPointCoords) ? '28px' : '8px' }}
                           />
@@ -929,18 +965,49 @@
                       </div>
                       {startPointCoords ? (
                         <p style={{ fontSize: '10px', color: '#16a34a', marginTop: '3px', fontWeight: 'bold' }}>
-                          ✅ נקודת התחלה נקלטה ({startPointCoords.lat.toFixed(4)}, {startPointCoords.lng.toFixed(4)})
+                          ✅ {startPointCoords.address || `${startPointCoords.lat.toFixed(4)}, ${startPointCoords.lng.toFixed(4)}`}
                         </p>
                       ) : formData.startPoint?.trim() ? (
                         <p style={{ fontSize: '10px', color: '#d97706', marginTop: '3px' }}>
-                          ⚠️ לחץ 🔍 לאימות הכתובת כדי שתשמש כנקודת התחלה במפה
+                          ⚠️ לחץ 🔍 לאימות הכתובת
                         </p>
                       ) : (
-                        <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '3px', fontStyle: 'italic' }}>
-                          💡 אם לא תבחר - המסלול יתחיל מהמקום הראשון
+                        <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '3px' }}>
+                          💡 הקלד כתובת, לחץ 📍 למיקום, או בחר 📌 ממקום ברשימה
                         </p>
                       )}
                     </div>
+                    
+                    {/* Compute Route Button */}
+                    <button
+                      onClick={computeRoute}
+                      disabled={!startPointCoords}
+                      style={{
+                        width: '100%',
+                        backgroundColor: startPointCoords ? '#7c3aed' : '#d1d5db',
+                        color: startPointCoords ? 'white' : '#9ca3af',
+                        padding: '12px',
+                        borderRadius: '12px',
+                        fontWeight: 'bold',
+                        fontSize: '14px',
+                        border: 'none',
+                        boxShadow: startPointCoords ? '0 4px 6px rgba(124, 58, 237, 0.3)' : 'none',
+                        cursor: startPointCoords ? 'pointer' : 'not-allowed',
+                        marginBottom: '4px'
+                      }}
+                    >
+                      {route?.optimized ? '🔄 חשב מסלול מחדש' : '🧭 חשב מסלול'}
+                    </button>
+                    {!startPointCoords && (
+                      <p style={{ fontSize: '10px', color: '#ef4444', textAlign: 'center', marginBottom: '4px' }}>
+                        ⬆️ בחר נקודת התחלה כדי לחשב מסלול
+                      </p>
+                    )}
+                    {route?.optimized && (
+                      <p style={{ fontSize: '10px', color: '#16a34a', textAlign: 'center', marginBottom: '4px', fontWeight: 'bold' }}>
+                        ✅ המסלול מחושב ומוכן — {routeType === 'circular' ? 'מעגלי' : 'לינארי'}
+                      </p>
+                    )}
                     
                     {/* Buttons row: Open in Google + Save */}
                     <div style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
