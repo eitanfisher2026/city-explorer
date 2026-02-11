@@ -578,15 +578,17 @@
                               const isStartPoint = hasValidCoords && startPointCoords?.lat === stop.lat && startPointCoords?.lng === stop.lng;
                               
                               return (
-                                <div key={stop.originalIndex} className="p-1.5 rounded border relative" style={{ 
+                                <div key={stop.originalIndex} className="p-1.5 rounded border" style={{ 
                                   borderColor: isStartPoint ? '#16a34a' : !hasValidCoords ? '#ef4444' : isAddedLater ? '#60a5fa' : isDisabled ? '#9ca3af' : '#e5e7eb',
                                   borderWidth: isStartPoint ? '2px' : isAddedLater ? '2px' : '1px',
                                   borderStyle: isAddedLater ? 'dashed' : 'solid',
                                   backgroundColor: isStartPoint ? '#f0fdf4' : !hasValidCoords ? '#fef2f2' : isAddedLater ? '#eff6ff' : isDisabled ? '#f3f4f6' : '#fafafa',
                                   opacity: isDisabled ? 0.6 : 1
                                 }}>
+                                  {/* Top row: Action buttons (left) + Content (right) */}
+                                  <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
                                   {/* Action buttons */}
-                                  <div className="absolute top-0.5 left-0.5 flex gap-0.5">
+                                  <div className="flex gap-0.5 flex-shrink-0 flex-wrap" style={{ maxWidth: '90px' }}>
                                     {/* Set as start point */}
                                     {hasValidCoords && !isDisabled && (
                                       <button
@@ -711,11 +713,13 @@
                                     )}
                                   </div>
                                   
+                                  {/* Content area */}
+                                  <div style={{ flex: 1, minWidth: 0 }}>
                                   <a
                                     href={window.BKK.getGoogleMapsUrl(stop)}
                                     target={hasValidCoords ? "_blank" : undefined}
                                     rel={hasValidCoords ? "noopener noreferrer" : undefined}
-                                    className="block hover:bg-gray-100 transition pr-2"
+                                    className="block hover:bg-gray-100 transition"
                                     onClick={(e) => {
                                       if (!hasValidCoords) {
                                         e.preventDefault();
@@ -724,7 +728,8 @@
                                     }}
                                   >
                                     <div className="font-bold text-[11px] flex items-center gap-1" style={{
-                                      color: hasValidCoords ? '#2563eb' : '#dc2626'
+                                      color: hasValidCoords ? '#2563eb' : '#dc2626',
+                                      flexWrap: 'wrap'
                                     }}>
                                       {route?.optimized && !isDisabled && hasValidCoords && (
                                         <span className="bg-purple-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[8px] font-bold flex-shrink-0">
@@ -802,6 +807,8 @@
                                       </div>
                                     )}
                                   </a>
+                                  </div>{/* end content area */}
+                                  </div>{/* end flex row */}
                                 </div>
                               );
                             })}
@@ -947,12 +954,9 @@
                           </button>
                         )}
                         <button
-                          onClick={validateStartPoint}
-                          disabled={isLocating || !formData.startPoint?.trim()}
-                          className={`px-1.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap flex-shrink-0 ${
-                            isLocating || !formData.startPoint?.trim() ? 'bg-gray-300 text-gray-500' : 'bg-green-500 text-white hover:bg-green-600'
-                          }`}
-                          title="אמת כתובת"
+                          onClick={() => setShowAddressDialog(true)}
+                          className="px-1.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap flex-shrink-0 bg-green-500 text-white hover:bg-green-600"
+                          title="חפש כתובת"
                         >
                           🔍
                         </button>
@@ -960,9 +964,9 @@
                           onClick={getMyLocation}
                           disabled={isLocating}
                           className={`px-1.5 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap flex-shrink-0 ${isLocating ? 'bg-gray-300 text-gray-500' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
-                          title="בחר מיקום נוכחי"
+                          title="מצא מיקום נוכחי"
                         >
-                          {isLocating ? '⏳' : '📍 מיקום'}
+                          {isLocating ? '⏳' : '📍'}
                         </button>
                       </div>
                       {startPointCoords ? (
@@ -975,7 +979,7 @@
                         </p>
                       ) : (
                         <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '3px' }}>
-                          הקלד כתובת ולחץ 🔍, לחץ 📍 מיקום, או בחר 📌 ממקום ברשימה
+                          💡 לחץ 🔍 לחיפוש כתובת, 📍 למיקום נוכחי, או בחר 📌 ממקום ברשימה
                         </p>
                       )}
                     </div>
@@ -1080,34 +1084,51 @@
                         🗺️ פתח מסלול בגוגל
                       </button>
                       
-                      {/* Save Route Button - no background */}
+                      {/* Save Route Button - styled */}
                       {route.name ? (
-                        <span
+                        <button
+                          disabled
                           style={{
-                            padding: '10px',
-                            fontSize: '18px',
+                            backgroundColor: '#dcfce7',
+                            border: '2px solid #16a34a',
+                            padding: '8px 12px',
+                            borderRadius: '12px',
+                            fontSize: '13px',
+                            fontWeight: 'bold',
+                            color: '#166534',
                             display: 'flex',
-                            alignItems: 'center'
+                            alignItems: 'center',
+                            gap: '4px',
+                            cursor: 'default',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
                           }}
                           title={`נשמר: ${route.name}`}
                         >
-                          ✅
-                        </span>
+                          ✅ נשמר
+                        </button>
                       ) : (
                         <button
                           onClick={() => quickSaveRoute()}
                           style={{
-                            background: 'none',
+                            background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
                             border: 'none',
-                            padding: '10px',
-                            fontSize: '18px',
+                            padding: '8px 12px',
+                            borderRadius: '12px',
+                            fontSize: '13px',
+                            fontWeight: 'bold',
+                            color: 'white',
                             cursor: 'pointer',
                             display: 'flex',
-                            alignItems: 'center'
+                            alignItems: 'center',
+                            gap: '4px',
+                            boxShadow: '0 4px 6px rgba(124, 58, 237, 0.3)',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
                           }}
                           title="שמור מסלול"
                         >
-                          💾
+                          💾 שמור
                         </button>
                       )}
                     </div>

@@ -1139,6 +1139,7 @@ const BangkokExplorer = () => {
   const [showEditLocationDialog, setShowEditLocationDialog] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [showAddressDialog, setShowAddressDialog] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
   const [mapMode, setMapMode] = useState('areas'); // 'areas' or 'radius'
   const leafletMapRef = React.useRef(null);
@@ -5727,15 +5728,17 @@ const BangkokExplorer = () => {
                               const isStartPoint = hasValidCoords && startPointCoords?.lat === stop.lat && startPointCoords?.lng === stop.lng;
                               
                               return (
-                                <div key={stop.originalIndex} className="p-1.5 rounded border relative" style={{ 
+                                <div key={stop.originalIndex} className="p-1.5 rounded border" style={{ 
                                   borderColor: isStartPoint ? '#16a34a' : !hasValidCoords ? '#ef4444' : isAddedLater ? '#60a5fa' : isDisabled ? '#9ca3af' : '#e5e7eb',
                                   borderWidth: isStartPoint ? '2px' : isAddedLater ? '2px' : '1px',
                                   borderStyle: isAddedLater ? 'dashed' : 'solid',
                                   backgroundColor: isStartPoint ? '#f0fdf4' : !hasValidCoords ? '#fef2f2' : isAddedLater ? '#eff6ff' : isDisabled ? '#f3f4f6' : '#fafafa',
                                   opacity: isDisabled ? 0.6 : 1
                                 }}>
+                                  {/* Top row: Action buttons (left) + Content (right) */}
+                                  <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
                                   {/* Action buttons */}
-                                  <div className="absolute top-0.5 left-0.5 flex gap-0.5">
+                                  <div className="flex gap-0.5 flex-shrink-0 flex-wrap" style={{ maxWidth: '90px' }}>
                                     {/* Set as start point */}
                                     {hasValidCoords && !isDisabled && (
                                       <button
@@ -5860,11 +5863,13 @@ const BangkokExplorer = () => {
                                     )}
                                   </div>
                                   
+                                  {/* Content area */}
+                                  <div style={{ flex: 1, minWidth: 0 }}>
                                   <a
                                     href={window.BKK.getGoogleMapsUrl(stop)}
                                     target={hasValidCoords ? "_blank" : undefined}
                                     rel={hasValidCoords ? "noopener noreferrer" : undefined}
-                                    className="block hover:bg-gray-100 transition pr-2"
+                                    className="block hover:bg-gray-100 transition"
                                     onClick={(e) => {
                                       if (!hasValidCoords) {
                                         e.preventDefault();
@@ -5873,7 +5878,8 @@ const BangkokExplorer = () => {
                                     }}
                                   >
                                     <div className="font-bold text-[11px] flex items-center gap-1" style={{
-                                      color: hasValidCoords ? '#2563eb' : '#dc2626'
+                                      color: hasValidCoords ? '#2563eb' : '#dc2626',
+                                      flexWrap: 'wrap'
                                     }}>
                                       {route?.optimized && !isDisabled && hasValidCoords && (
                                         <span className="bg-purple-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[8px] font-bold flex-shrink-0">
@@ -5951,6 +5957,8 @@ const BangkokExplorer = () => {
                                       </div>
                                     )}
                                   </a>
+                                  </div>{/* end content area */}
+                                  </div>{/* end flex row */}
                                 </div>
                               );
                             })}
@@ -6096,12 +6104,9 @@ const BangkokExplorer = () => {
                           </button>
                         )}
                         <button
-                          onClick={validateStartPoint}
-                          disabled={isLocating || !formData.startPoint?.trim()}
-                          className={`px-1.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap flex-shrink-0 ${
-                            isLocating || !formData.startPoint?.trim() ? 'bg-gray-300 text-gray-500' : 'bg-green-500 text-white hover:bg-green-600'
-                          }`}
-                          title="אמת כתובת"
+                          onClick={() => setShowAddressDialog(true)}
+                          className="px-1.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap flex-shrink-0 bg-green-500 text-white hover:bg-green-600"
+                          title="חפש כתובת"
                         >
                           🔍
                         </button>
@@ -6109,9 +6114,9 @@ const BangkokExplorer = () => {
                           onClick={getMyLocation}
                           disabled={isLocating}
                           className={`px-1.5 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap flex-shrink-0 ${isLocating ? 'bg-gray-300 text-gray-500' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
-                          title="בחר מיקום נוכחי"
+                          title="מצא מיקום נוכחי"
                         >
-                          {isLocating ? '⏳' : '📍 מיקום'}
+                          {isLocating ? '⏳' : '📍'}
                         </button>
                       </div>
                       {startPointCoords ? (
@@ -6124,7 +6129,7 @@ const BangkokExplorer = () => {
                         </p>
                       ) : (
                         <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '3px' }}>
-                          הקלד כתובת ולחץ 🔍, לחץ 📍 מיקום, או בחר 📌 ממקום ברשימה
+                          💡 לחץ 🔍 לחיפוש כתובת, 📍 למיקום נוכחי, או בחר 📌 ממקום ברשימה
                         </p>
                       )}
                     </div>
@@ -6229,34 +6234,51 @@ const BangkokExplorer = () => {
                         🗺️ פתח מסלול בגוגל
                       </button>
                       
-                      {/* Save Route Button - no background */}
+                      {/* Save Route Button - styled */}
                       {route.name ? (
-                        <span
+                        <button
+                          disabled
                           style={{
-                            padding: '10px',
-                            fontSize: '18px',
+                            backgroundColor: '#dcfce7',
+                            border: '2px solid #16a34a',
+                            padding: '8px 12px',
+                            borderRadius: '12px',
+                            fontSize: '13px',
+                            fontWeight: 'bold',
+                            color: '#166534',
                             display: 'flex',
-                            alignItems: 'center'
+                            alignItems: 'center',
+                            gap: '4px',
+                            cursor: 'default',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
                           }}
                           title={`נשמר: ${route.name}`}
                         >
-                          ✅
-                        </span>
+                          ✅ נשמר
+                        </button>
                       ) : (
                         <button
                           onClick={() => quickSaveRoute()}
                           style={{
-                            background: 'none',
+                            background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
                             border: 'none',
-                            padding: '10px',
-                            fontSize: '18px',
+                            padding: '8px 12px',
+                            borderRadius: '12px',
+                            fontSize: '13px',
+                            fontWeight: 'bold',
+                            color: 'white',
                             cursor: 'pointer',
                             display: 'flex',
-                            alignItems: 'center'
+                            alignItems: 'center',
+                            gap: '4px',
+                            boxShadow: '0 4px 6px rgba(124, 58, 237, 0.3)',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
                           }}
                           title="שמור מסלול"
                         >
-                          💾
+                          💾 שמור
                         </button>
                       )}
                     </div>
@@ -9189,6 +9211,92 @@ const BangkokExplorer = () => {
           </div>
         </div>
       )}
+
+      {/* Address Search Dialog */}
+      {showAddressDialog && (() => {
+        const addrInputRef = React.useRef(null);
+        const resultsContainerRef = React.useRef(null);
+        
+        const searchAddress = async () => {
+          const q = addrInputRef.current?.value?.trim();
+          if (!q) return;
+          const resultsDiv = resultsContainerRef.current;
+          if (!resultsDiv) return;
+          
+          resultsDiv.innerHTML = '<p style="text-align:center;color:#9ca3af;font-size:12px;padding:8px">⏳ מחפש...</p>';
+          
+          try {
+            const result = await window.BKK.geocodeAddress(q);
+            if (result) {
+              const addr = result.address || result.displayName || q;
+              const display = result.displayName || result.address || q;
+              resultsDiv.innerHTML = '';
+              const btn = document.createElement('button');
+              btn.className = 'w-full p-3 text-right bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg transition';
+              btn.style.direction = 'rtl';
+              btn.innerHTML = `<div style="font-weight:bold;font-size:14px;color:#166534">📍 ${display}</div><div style="font-size:10px;color:#6b7280;margin-top:2px">${result.lat.toFixed(5)}, ${result.lng.toFixed(5)}</div>`;
+              btn.onclick = () => {
+                setFormData(prev => ({ ...prev, startPoint: display }));
+                setStartPointCoords({ lat: result.lat, lng: result.lng, address: display });
+                if (route?.optimized) setRoute(prev => prev ? {...prev, optimized: false} : prev);
+                showToast(`✅ ${display}`, 'success');
+                setShowAddressDialog(false);
+              };
+              resultsDiv.appendChild(btn);
+            } else {
+              resultsDiv.innerHTML = '<p style="text-align:center;color:#ef4444;font-size:12px;padding:8px">❌ לא נמצאו תוצאות</p>';
+            }
+          } catch (err) {
+            console.error('[ADDRESS_DIALOG] Search error:', err);
+            resultsDiv.innerHTML = '<p style="text-align:center;color:#ef4444;font-size:12px;padding:8px">❌ שגיאה בחיפוש</p>';
+          }
+        };
+        
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-3">
+            <div className="bg-white rounded-xl w-full max-w-md shadow-2xl" style={{ direction: 'rtl' }}>
+              {/* Header */}
+              <div className="bg-gradient-to-r from-green-500 to-teal-500 text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between">
+                <h3 className="text-sm font-bold">📍 חיפוש כתובת לנקודת התחלה</h3>
+                <button
+                  onClick={() => setShowAddressDialog(false)}
+                  className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              {/* Search input */}
+              <div className="p-4 space-y-3">
+                <div className="flex gap-2">
+                  <input
+                    ref={addrInputRef}
+                    type="text"
+                    onKeyDown={(e) => { if (e.key === 'Enter') searchAddress(); }}
+                    placeholder="הקלד כתובת, שם מלון, מקום..."
+                    className="flex-1 p-2.5 border border-gray-300 rounded-lg text-sm"
+                    style={{ direction: 'rtl' }}
+                    autoFocus
+                  />
+                  <button
+                    onClick={searchAddress}
+                    className="px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap bg-green-500 text-white hover:bg-green-600"
+                  >
+                    🔍 חפש
+                  </button>
+                </div>
+                
+                <p className="text-[11px] text-gray-500">
+                  💡 הקלד כתובת מלאה, שם מלון, תחנת רכבת, או כל מקום בבנגקוק
+                </p>
+                
+                {/* Results container */}
+                <div ref={resultsContainerRef} className="space-y-2 max-h-60 overflow-y-auto"></div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Image Modal */}
       {showImageModal && modalImage && (

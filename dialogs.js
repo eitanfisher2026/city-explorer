@@ -1351,6 +1351,92 @@
         </div>
       )}
 
+      {/* Address Search Dialog */}
+      {showAddressDialog && (() => {
+        const addrInputRef = React.useRef(null);
+        const resultsContainerRef = React.useRef(null);
+        
+        const searchAddress = async () => {
+          const q = addrInputRef.current?.value?.trim();
+          if (!q) return;
+          const resultsDiv = resultsContainerRef.current;
+          if (!resultsDiv) return;
+          
+          resultsDiv.innerHTML = '<p style="text-align:center;color:#9ca3af;font-size:12px;padding:8px">⏳ מחפש...</p>';
+          
+          try {
+            const result = await window.BKK.geocodeAddress(q);
+            if (result) {
+              const addr = result.address || result.displayName || q;
+              const display = result.displayName || result.address || q;
+              resultsDiv.innerHTML = '';
+              const btn = document.createElement('button');
+              btn.className = 'w-full p-3 text-right bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg transition';
+              btn.style.direction = 'rtl';
+              btn.innerHTML = `<div style="font-weight:bold;font-size:14px;color:#166534">📍 ${display}</div><div style="font-size:10px;color:#6b7280;margin-top:2px">${result.lat.toFixed(5)}, ${result.lng.toFixed(5)}</div>`;
+              btn.onclick = () => {
+                setFormData(prev => ({ ...prev, startPoint: display }));
+                setStartPointCoords({ lat: result.lat, lng: result.lng, address: display });
+                if (route?.optimized) setRoute(prev => prev ? {...prev, optimized: false} : prev);
+                showToast(`✅ ${display}`, 'success');
+                setShowAddressDialog(false);
+              };
+              resultsDiv.appendChild(btn);
+            } else {
+              resultsDiv.innerHTML = '<p style="text-align:center;color:#ef4444;font-size:12px;padding:8px">❌ לא נמצאו תוצאות</p>';
+            }
+          } catch (err) {
+            console.error('[ADDRESS_DIALOG] Search error:', err);
+            resultsDiv.innerHTML = '<p style="text-align:center;color:#ef4444;font-size:12px;padding:8px">❌ שגיאה בחיפוש</p>';
+          }
+        };
+        
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-3">
+            <div className="bg-white rounded-xl w-full max-w-md shadow-2xl" style={{ direction: 'rtl' }}>
+              {/* Header */}
+              <div className="bg-gradient-to-r from-green-500 to-teal-500 text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between">
+                <h3 className="text-sm font-bold">📍 חיפוש כתובת לנקודת התחלה</h3>
+                <button
+                  onClick={() => setShowAddressDialog(false)}
+                  className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              {/* Search input */}
+              <div className="p-4 space-y-3">
+                <div className="flex gap-2">
+                  <input
+                    ref={addrInputRef}
+                    type="text"
+                    onKeyDown={(e) => { if (e.key === 'Enter') searchAddress(); }}
+                    placeholder="הקלד כתובת, שם מלון, מקום..."
+                    className="flex-1 p-2.5 border border-gray-300 rounded-lg text-sm"
+                    style={{ direction: 'rtl' }}
+                    autoFocus
+                  />
+                  <button
+                    onClick={searchAddress}
+                    className="px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap bg-green-500 text-white hover:bg-green-600"
+                  >
+                    🔍 חפש
+                  </button>
+                </div>
+                
+                <p className="text-[11px] text-gray-500">
+                  💡 הקלד כתובת מלאה, שם מלון, תחנת רכבת, או כל מקום בבנגקוק
+                </p>
+                
+                {/* Results container */}
+                <div ref={resultsContainerRef} className="space-y-2 max-h-60 overflow-y-auto"></div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Image Modal */}
       {showImageModal && modalImage && (
         <div 
