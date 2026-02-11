@@ -5740,12 +5740,13 @@ const BangkokExplorer = () => {
                                     {hasValidCoords && !isDisabled && (
                                       <button
                                         onClick={() => {
+                                          const displayText = stop.description || stop.name || `${stop.lat.toFixed(5)}, ${stop.lng.toFixed(5)}`;
                                           setStartPointCoords({ lat: stop.lat, lng: stop.lng, address: stop.name });
-                                          setFormData(prev => ({...prev, startPoint: stop.name}));
+                                          setFormData(prev => ({...prev, startPoint: displayText}));
                                           if (route?.optimized) {
                                             setRoute(prev => prev ? {...prev, optimized: false} : prev);
                                           }
-                                          showToast(`📌 ${stop.name} נבחר כנקודת התחלה`, 'success');
+                                          showToast(`📌 ${stop.name} — נקודת התחלה`, 'success');
                                         }}
                                         className={`text-[9px] px-1 py-0.5 rounded ${
                                           startPointCoords?.lat === stop.lat && startPointCoords?.lng === stop.lng
@@ -6003,11 +6004,11 @@ const BangkokExplorer = () => {
                       backgroundColor: '#f59e0b',
                       color: 'white',
                       textAlign: 'center',
-                      padding: '10px',
+                      padding: '8px',
                       borderRadius: '12px',
                       fontWeight: 'bold',
                       textDecoration: 'none',
-                      fontSize: '14px',
+                      fontSize: '13px',
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
                       marginBottom: '4px'
                     }}
@@ -6067,7 +6068,7 @@ const BangkokExplorer = () => {
                     {/* Start Point Input with GPS + validate buttons */}
                     <div>
                       <label className="text-xs font-bold text-gray-700 mb-1 block">📍 נקודת התחלה</label>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 items-center">
                         <div className="flex-1 relative">
                           <input
                             type="text"
@@ -6078,25 +6079,26 @@ const BangkokExplorer = () => {
                             }}
                             placeholder="כתובת, שם מלון, תחנת רכבת..."
                             className="w-full p-1.5 border border-gray-300 rounded-lg text-xs"
-                            style={{ direction: 'rtl', paddingLeft: (formData.startPoint?.trim() || startPointCoords) ? '28px' : '8px' }}
+                            style={{ direction: 'rtl', paddingLeft: '8px', paddingRight: '8px' }}
                           />
-                          {(formData.startPoint?.trim() || startPointCoords) && (
-                            <button
-                              onClick={() => {
-                                setFormData({...formData, startPoint: ''});
-                                setStartPointCoords(null);
-                              }}
-                              className="absolute left-1 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-gray-300 text-gray-600 hover:bg-red-400 hover:text-white text-[10px] font-bold"
-                              title="נקה נקודת התחלה"
-                            >
-                              ✕
-                            </button>
-                          )}
                         </div>
+                        {(formData.startPoint?.trim() || startPointCoords) && (
+                          <button
+                            onClick={() => {
+                              setFormData({...formData, startPoint: ''});
+                              setStartPointCoords(null);
+                              if (route?.optimized) setRoute(prev => prev ? {...prev, optimized: false} : prev);
+                            }}
+                            className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-400 text-white hover:bg-red-500 text-[10px] font-bold flex-shrink-0"
+                            title="נקה"
+                          >
+                            ✕
+                          </button>
+                        )}
                         <button
                           onClick={validateStartPoint}
                           disabled={isLocating || !formData.startPoint?.trim()}
-                          className={`px-1.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap ${
+                          className={`px-1.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap flex-shrink-0 ${
                             isLocating || !formData.startPoint?.trim() ? 'bg-gray-300 text-gray-500' : 'bg-green-500 text-white hover:bg-green-600'
                           }`}
                           title="אמת כתובת"
@@ -6106,10 +6108,10 @@ const BangkokExplorer = () => {
                         <button
                           onClick={getMyLocation}
                           disabled={isLocating}
-                          className={`px-1.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap ${isLocating ? 'bg-gray-300 text-gray-500' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
-                          title="מיקום נוכחי"
+                          className={`px-1.5 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap flex-shrink-0 ${isLocating ? 'bg-gray-300 text-gray-500' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+                          title="בחר מיקום נוכחי"
                         >
-                          {isLocating ? '⏳' : '📍'}
+                          {isLocating ? '⏳' : '📍 מיקום'}
                         </button>
                       </div>
                       {startPointCoords ? (
@@ -6122,7 +6124,7 @@ const BangkokExplorer = () => {
                         </p>
                       ) : (
                         <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '3px' }}>
-                          💡 הקלד כתובת, לחץ 📍 למיקום, או בחר 📌 ממקום ברשימה
+                          הקלד כתובת ולחץ 🔍, לחץ 📍 מיקום, או בחר 📌 ממקום ברשימה
                         </p>
                       )}
                     </div>
@@ -6135,34 +6137,38 @@ const BangkokExplorer = () => {
                         width: '100%',
                         backgroundColor: startPointCoords ? '#7c3aed' : '#d1d5db',
                         color: startPointCoords ? 'white' : '#9ca3af',
-                        padding: '12px',
+                        padding: '8px',
                         borderRadius: '12px',
                         fontWeight: 'bold',
-                        fontSize: '14px',
+                        fontSize: '13px',
                         border: 'none',
                         boxShadow: startPointCoords ? '0 4px 6px rgba(124, 58, 237, 0.3)' : 'none',
-                        cursor: startPointCoords ? 'pointer' : 'not-allowed',
-                        marginBottom: '4px'
+                        cursor: startPointCoords ? 'pointer' : 'not-allowed'
                       }}
                     >
                       {route?.optimized ? '🔄 חשב מסלול מחדש' : '🧭 חשב מסלול'}
                     </button>
                     {!startPointCoords && (
-                      <p style={{ fontSize: '10px', color: '#ef4444', textAlign: 'center', marginBottom: '4px' }}>
+                      <p style={{ fontSize: '10px', color: '#ef4444', textAlign: 'center', marginBottom: '2px' }}>
                         ⬆️ בחר נקודת התחלה כדי לחשב מסלול
                       </p>
                     )}
                     {route?.optimized && (
-                      <p style={{ fontSize: '10px', color: '#16a34a', textAlign: 'center', marginBottom: '4px', fontWeight: 'bold' }}>
-                        ✅ המסלול מחושב ומוכן — {routeType === 'circular' ? 'מעגלי' : 'לינארי'}
+                      <p style={{ fontSize: '10px', color: '#16a34a', textAlign: 'center', marginBottom: '2px', fontWeight: 'bold' }}>
+                        ✅ המסלול מחושב — {routeType === 'circular' ? 'מעגלי' : 'לינארי'}
                       </p>
                     )}
                     
                     {/* Buttons row: Open in Google + Save */}
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
+                    <div style={{ display: 'flex', gap: '6px', marginBottom: '4px', marginTop: '4px' }}>
                       {/* Open in Google Maps Button */}
                       <button
+                        disabled={!route?.optimized}
                         onClick={() => {
+                          if (!route?.optimized) {
+                            showToast('חשב מסלול קודם', 'warning');
+                            return;
+                          }
                           // Build Google Maps URL based on routeType
                           const activeStops = route.stops.filter((stop, i) => {
                             const isActive = !disabledStops.includes(stop.id || i);
@@ -6208,16 +6214,16 @@ const BangkokExplorer = () => {
                         }}
                         style={{
                           flex: 1,
-                          backgroundColor: '#22c55e',
-                          color: 'white',
+                          backgroundColor: route?.optimized ? '#22c55e' : '#d1d5db',
+                          color: route?.optimized ? 'white' : '#9ca3af',
                           textAlign: 'center',
-                          padding: '10px',
+                          padding: '8px',
                           borderRadius: '12px',
                           fontWeight: 'bold',
-                          fontSize: '14px',
+                          fontSize: '13px',
                           border: 'none',
-                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
-                          cursor: 'pointer'
+                          boxShadow: route?.optimized ? '0 4px 6px -1px rgba(0, 0, 0, 0.3)' : 'none',
+                          cursor: route?.optimized ? 'pointer' : 'not-allowed'
                         }}
                       >
                         🗺️ פתח מסלול בגוגל
