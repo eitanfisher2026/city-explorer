@@ -578,17 +578,15 @@
                               const isStartPoint = hasValidCoords && startPointCoords?.lat === stop.lat && startPointCoords?.lng === stop.lng;
                               
                               return (
-                                <div key={stop.originalIndex} className="p-1.5 rounded border" style={{ 
+                                <div key={stop.originalIndex} className="p-1.5 rounded border relative" style={{ 
                                   borderColor: isStartPoint ? '#16a34a' : !hasValidCoords ? '#ef4444' : isAddedLater ? '#60a5fa' : isDisabled ? '#9ca3af' : '#e5e7eb',
                                   borderWidth: isStartPoint ? '2px' : isAddedLater ? '2px' : '1px',
                                   borderStyle: isAddedLater ? 'dashed' : 'solid',
                                   backgroundColor: isStartPoint ? '#f0fdf4' : !hasValidCoords ? '#fef2f2' : isAddedLater ? '#eff6ff' : isDisabled ? '#f3f4f6' : '#fafafa',
                                   opacity: isDisabled ? 0.6 : 1
                                 }}>
-                                  {/* Top row: Action buttons (left) + Content (right) */}
-                                  <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
-                                  {/* Action buttons */}
-                                  <div className="flex gap-0.5 flex-shrink-0 flex-wrap" style={{ maxWidth: '90px' }}>
+                                  {/* Action buttons - absolute left */}
+                                  <div className="absolute top-0.5 left-0.5 flex gap-0.5">
                                     {/* Set as start point */}
                                     {hasValidCoords && !isDisabled && (
                                       <button
@@ -619,45 +617,6 @@
                                     >
                                       {isDisabled ? '⏸️' : '✕'}
                                     </button>
-                                    
-                                    {(() => {
-                                      // Check if this place is in blacklist
-                                      const blacklisted = customLocations.find(loc => 
-                                        loc.name.toLowerCase() === stop.name.toLowerCase() && 
-                                        loc.status === 'blacklist'
-                                      );
-                                      
-                                      if (blacklisted) {
-                                        // Show GREEN undo button - removes from blacklist
-                                        return (
-                                          <button
-                                            onClick={() => {
-                                              deleteCustomLocation(blacklisted.id);
-                                              showToast(`"${stop.name}" חזר לרשימה הרגילה`, 'success');
-                                            }}
-                                            className="text-[9px] px-1 py-0.5 rounded bg-green-500 text-white hover:bg-green-600"
-                                            title="בטל דילוג קבוע"
-                                          >
-                                            ✅
-                                          </button>
-                                        );
-                                      }
-                                      
-                                      // Show permanent skip button (for non-custom places, regardless of isDisabled)
-                                      if (!isCustom) {
-                                        return (
-                                          <button
-                                            onClick={() => skipPlacePermanently(stop)}
-                                            className="text-[9px] px-1 py-0.5 rounded bg-red-500 text-white hover:bg-red-600"
-                                            title="דלג לצמיתות"
-                                          >
-                                            🚫
-                                          </button>
-                                        );
-                                      }
-                                      
-                                      return null;
-                                    })()}
                                     
                                     {!isCustom && (
                                       (() => {
@@ -713,13 +672,11 @@
                                     )}
                                   </div>
                                   
-                                  {/* Content area */}
-                                  <div style={{ flex: 1, minWidth: 0 }}>
                                   <a
                                     href={window.BKK.getGoogleMapsUrl(stop)}
                                     target={hasValidCoords ? "_blank" : undefined}
                                     rel={hasValidCoords ? "noopener noreferrer" : undefined}
-                                    className="block hover:bg-gray-100 transition"
+                                    className="block hover:bg-gray-100 transition pr-2"
                                     onClick={(e) => {
                                       if (!hasValidCoords) {
                                         e.preventDefault();
@@ -782,19 +739,6 @@
                                           🖼️
                                         </button>
                                       )}
-                                      {/* Interest icons */}
-                                      {stop.interests?.map((int, idx) => {
-                                        const intObj = interestMap[int];
-                                        return intObj?.icon ? (
-                                          <span 
-                                            key={idx}
-                                            title={intObj.label}
-                                            style={{ fontSize: '11px' }}
-                                          >
-                                            {intObj.icon?.startsWith?.('data:') ? <img src={intObj.icon} alt="" style={{ width: '14px', height: '14px', objectFit: 'contain', display: 'inline' }} /> : intObj.icon}
-                                          </span>
-                                        ) : null;
-                                      })}
                                     </div>
                                     <div className="text-[10px]" style={{
                                       color: hasValidCoords ? '#6b7280' : '#991b1b'
@@ -807,8 +751,6 @@
                                       </div>
                                     )}
                                   </a>
-                                  </div>{/* end content area */}
-                                  </div>{/* end flex row */}
                                 </div>
                               );
                             })}

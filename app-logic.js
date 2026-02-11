@@ -1647,8 +1647,10 @@
 
   // Save preferences whenever they change
   useEffect(() => {
+    // Don't save if data hasn't loaded yet - prevents overwriting saved interests with empty state
+    if (!isDataLoaded) return;
     localStorage.setItem('bangkok_preferences', JSON.stringify(formData));
-  }, [formData]);
+  }, [formData, isDataLoaded]);
 
   // Version check - auto-check on load + manual check
   const checkForUpdates = async (silent = false) => {

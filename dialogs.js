@@ -1353,14 +1353,11 @@
 
       {/* Address Search Dialog */}
       {showAddressDialog && (() => {
-        const addrInputRef = React.useRef(null);
-        const resultsContainerRef = React.useRef(null);
-        
         const searchAddress = async () => {
-          const q = addrInputRef.current?.value?.trim();
-          if (!q) return;
-          const resultsDiv = resultsContainerRef.current;
-          if (!resultsDiv) return;
+          const input = document.getElementById('addr-search-input');
+          const resultsDiv = document.getElementById('addr-search-results');
+          const q = input?.value?.trim();
+          if (!q || !resultsDiv) return;
           
           resultsDiv.innerHTML = '<p style="text-align:center;color:#9ca3af;font-size:12px;padding:8px">⏳ מחפש...</p>';
           
@@ -1409,7 +1406,7 @@
               <div className="p-4 space-y-3">
                 <div className="flex gap-2">
                   <input
-                    ref={addrInputRef}
+                    id="addr-search-input"
                     type="text"
                     onKeyDown={(e) => { if (e.key === 'Enter') searchAddress(); }}
                     placeholder="הקלד כתובת, שם מלון, מקום..."
@@ -1430,7 +1427,7 @@
                 </p>
                 
                 {/* Results container */}
-                <div ref={resultsContainerRef} className="space-y-2 max-h-60 overflow-y-auto"></div>
+                <div id="addr-search-results" className="space-y-2 max-h-60 overflow-y-auto"></div>
               </div>
             </div>
           </div>
