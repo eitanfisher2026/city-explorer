@@ -690,13 +690,16 @@
                                   
                                   <a
                                     href={window.BKK.getGoogleMapsUrl(stop)}
-                                    target={hasValidCoords ? "_blank" : undefined}
+                                    target={hasValidCoords && (stop.googlePlaceId || !stop.custom) ? "_blank" : undefined}
                                     rel={hasValidCoords ? "noopener noreferrer" : undefined}
                                     className="block hover:bg-gray-100 transition pr-2"
                                     onClick={(e) => {
                                       if (!hasValidCoords) {
                                         e.preventDefault();
                                         showToast('למקום זה אין קואורדינטות. לחץ על ✏️ כדי לערוך.', 'warning');
+                                      } else if (stop.custom && !stop.googlePlaceId) {
+                                        e.preventDefault();
+                                        setShowPlaceCard(stop);
                                       }
                                     }}
                                   >
@@ -1209,13 +1212,16 @@
                             )}
                             <a
                               href={window.BKK.getGoogleMapsUrl(stop)}
-                              target={hasValidCoords ? "_blank" : undefined}
+                              target={hasValidCoords && (stop.googlePlaceId || !stop.custom) ? "_blank" : undefined}
                               rel={hasValidCoords ? "noopener noreferrer" : undefined}
                               className={`font-bold text-sm ${isDisabled ? 'line-through text-gray-500' : hasValidCoords ? 'text-blue-600 hover:text-blue-800' : 'text-red-600'}`}
                               onClick={(e) => {
                                 if (!hasValidCoords) {
                                   e.preventDefault();
                                   showToast('למקום זה אין קואורדינטות. ערוך את המקום כדי להוסיף.', 'warning');
+                                } else if (stop.custom && !stop.googlePlaceId) {
+                                  e.preventDefault();
+                                  setShowPlaceCard(stop);
                                 }
                               }}
                             >
