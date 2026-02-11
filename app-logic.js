@@ -1518,14 +1518,33 @@
         typeFiltered: typeFilteredCount,
         blacklistFiltered: blacklistFilteredCount,
         relevanceFiltered: relevanceFilteredCount,
-        final: transformed.length
+        beforeDistFilter: transformed.length
       });
       
-      addDebugLog('API', `Got ${transformed.length} results (filtered ${blacklistFilteredCount} blacklist, ${typeFilteredCount} type, ${relevanceFilteredCount} irrelevant)`, {
-        names: transformed.slice(0, 5).map(p => p.name)
+      // Filter 4: Distance check - remove places too far from search center
+      const maxDistance = searchRadius * 2.5; // Allow 2.5x the area radius
+      const distanceFiltered = transformed.filter(place => {
+        const dist = calcDistance(center.lat, center.lng, place.lat, place.lng);
+        if (dist > maxDistance) {
+          console.log('[DYNAMIC] ❌ Filtered out (too far):', {
+            name: place.name,
+            distance: Math.round(dist) + 'm',
+            maxAllowed: Math.round(maxDistance) + 'm'
+          });
+          return false;
+        }
+        return true;
       });
       
-      return transformed;
+      if (distanceFiltered.length < transformed.length) {
+        console.log(`[DYNAMIC] Distance filter removed ${transformed.length - distanceFiltered.length} far places`);
+      }
+      
+      addDebugLog('API', `Got ${distanceFiltered.length} results (filtered ${blacklistFilteredCount} blacklist, ${typeFilteredCount} type, ${relevanceFilteredCount} irrelevant, ${transformed.length - distanceFiltered.length} too far)`, {
+        names: distanceFiltered.slice(0, 5).map(p => p.name)
+      });
+      
+      return distanceFiltered;
     } catch (error) {
       console.error('[DYNAMIC] Error fetching Google Places:', {
         error: error.message,
