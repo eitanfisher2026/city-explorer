@@ -1215,7 +1215,7 @@
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours'
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours'
           },
           body: JSON.stringify({
             textQuery: searchQuery,
@@ -1257,7 +1257,7 @@
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours'
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours'
           },
           body: JSON.stringify({
             includedTypes: placeTypes.slice(0, 10),
@@ -1302,7 +1302,7 @@
                 headers: {
                   'Content-Type': 'application/json',
                   'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-                  'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours'
+                  'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours'
                 },
                 body: JSON.stringify({
                   includedTypes: [singleType],
@@ -1361,6 +1361,7 @@
                 interests: validInterests,
                 googleTypes: placeTypesFromGoogle,
                 primaryType: place.primaryType || null,
+                googlePlaceId: place.id || null,
                 openNow: openingHours?.openNow ?? null,
                 todayHours: hoursOnly || '',
                 custom: false
@@ -1477,6 +1478,7 @@
             ratingCount: place.userRatingCount || 0,
             googleTypes: place.types || [],
             primaryType: place.primaryType || '',
+            googlePlaceId: place.id || null,
             address: place.formattedAddress || '',
             openNow: openingHours?.openNow ?? null,
             todayHours: hoursOnly || '',
@@ -1532,7 +1534,7 @@
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-          'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.primaryTypeDisplayName,places.currentOpeningHours'
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.primaryTypeDisplayName,places.currentOpeningHours'
         },
         body: JSON.stringify({
           textQuery: searchQuery,
@@ -1582,6 +1584,7 @@
         rating: bestMatch.rating,
         ratingCount: bestMatch.userRatingCount,
         location: bestMatch.location,
+        googlePlaceId: bestMatch.id || null,
         allResults: data.places.map(p => ({
           name: p.displayName?.text,
           types: p.types,
@@ -3577,7 +3580,7 @@
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-            'X-Goog-FieldMask': 'places.displayName,places.location,places.formattedAddress'
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.formattedAddress'
           },
           body: JSON.stringify({
             textQuery: searchQuery,
@@ -3598,6 +3601,7 @@
           lat: location.latitude,
           lng: location.longitude,
           address: formattedAddress,
+          googlePlaceId: place.id || null,
           mapsUrl: `https://maps.google.com/?q=${location.latitude},${location.longitude}`
         });
         
@@ -3633,7 +3637,7 @@
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-            'X-Goog-FieldMask': 'places.displayName,places.location,places.formattedAddress'
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.formattedAddress'
           },
           body: JSON.stringify({
             textQuery: searchQuery,
@@ -3654,6 +3658,7 @@
           lat: location.latitude,
           lng: location.longitude,
           address: formattedAddress,
+          googlePlaceId: place.id || null,
           mapsUrl: `https://maps.google.com/?q=${location.latitude},${location.longitude}`
         });
         

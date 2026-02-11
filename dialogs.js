@@ -350,9 +350,7 @@
                   <div className="flex gap-2">
                     {newLocation.lat && newLocation.lng ? (
                       <a
-                        href={newLocation.address?.trim() 
-                          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(newLocation.address.trim())}`
-                          : `https://www.google.com/maps/search/?api=1&query=${newLocation.lat},${newLocation.lng}`}
+                        href={window.BKK.getGoogleMapsUrl(newLocation)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex-1 py-2 bg-green-500 text-white rounded-lg text-sm font-bold hover:bg-green-600 text-center"
@@ -513,7 +511,7 @@
                   <>
                     {newLocation.lat && newLocation.lng && (
                       <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${newLocation.lat},${newLocation.lng}`}
+                        href={window.BKK.getGoogleMapsUrl(newLocation)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex-1 py-2.5 rounded-lg text-sm font-bold text-center bg-green-500 text-white hover:bg-green-600"
@@ -1205,7 +1203,7 @@
                       if (s.description) line += `\n   ${s.description}`;
                       if (s.todayHours) line += `\n   🕐 ${s.todayHours}`;
                       if (s.rating) line += `\n   ⭐ ${s.rating}`;
-                      const mapsUrl = s.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address)}` : (s.lat && s.lng ? `https://www.google.com/maps?q=${s.lat},${s.lng}` : '');
+                      const mapsUrl = (() => { const u = window.BKK.getGoogleMapsUrl(s); return u === '#' ? '' : u; })();
                       if (mapsUrl) line += `\n   🗺️ ${mapsUrl}`;
                       return line;
                     }).join('\n\n');

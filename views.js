@@ -689,7 +689,7 @@
                                   </div>
                                   
                                   <a
-                                    href={hasValidCoords ? `https://www.google.com/maps/search/?api=1&query=${stop.address?.trim() ? encodeURIComponent(stop.address.trim()) : `${stop.lat},${stop.lng}`}` : '#'}
+                                    href={window.BKK.getGoogleMapsUrl(stop)}
                                     target={hasValidCoords ? "_blank" : undefined}
                                     rel={hasValidCoords ? "noopener noreferrer" : undefined}
                                     className="block hover:bg-gray-100 transition pr-2"
@@ -970,7 +970,7 @@
 
                           if (activeStops.length === 1 && !hasStartPoint) {
                             // Single stop, no start point - just show location
-                            mapUrl = `https://www.google.com/maps/search/?api=1&query=${activeStops[0].lat},${activeStops[0].lng}`;
+                            mapUrl = window.BKK.getGoogleMapsUrl(activeStops[0]);
                           } else {
                             // Multiple stops or has start point - create route
                             if (routeType === 'circular') {
@@ -1208,7 +1208,7 @@
                               </span>
                             )}
                             <a
-                              href={hasValidCoords ? `https://www.google.com/maps/search/?api=1&query=${stop.address?.trim() ? encodeURIComponent(stop.address.trim()) : `${stop.lat},${stop.lng}`}` : '#'}
+                              href={window.BKK.getGoogleMapsUrl(stop)}
                               target={hasValidCoords ? "_blank" : undefined}
                               rel={hasValidCoords ? "noopener noreferrer" : undefined}
                               className={`font-bold text-sm ${isDisabled ? 'line-through text-gray-500' : hasValidCoords ? 'text-blue-600 hover:text-blue-800' : 'text-red-600'}`}
@@ -1492,7 +1492,7 @@
                     let destination, waypointsStr, mapUrl;
 
                     if (activeStops.length === 1 && !hasStartPoint) {
-                      mapUrl = `https://www.google.com/maps/search/?api=1&query=${activeStops[0].lat},${activeStops[0].lng}`;
+                      mapUrl = window.BKK.getGoogleMapsUrl(activeStops[0]);
                     } else {
                       if (routeType === 'circular') {
                         destination = origin;
@@ -1855,11 +1855,7 @@
                               </div>
                               <div className="p-1">
                                 {locs.map(loc => {
-                                  const mapUrl = loc.address?.trim() 
-                                    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.address.trim())}`
-                                    : (loc.lat && loc.lng) 
-                                      ? `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`
-                                      : null;
+                                  const mapUrl = (() => { const u = window.BKK.getGoogleMapsUrl(loc); return u === '#' ? null : u; })();
                                   return (
                                     <div key={loc.id}
                                       className={`flex items-center justify-between gap-2 border-2 rounded p-1.5 mb-0.5 ${isLocationValid(loc) ? "border-gray-200 bg-white" : "border-red-400 bg-red-50"}`}
@@ -1905,11 +1901,7 @@
                             </div>
                             <div className="p-1">
                               {groupedPlaces.ungrouped.map(loc => {
-                                const mapUrl = loc.address?.trim() 
-                                  ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.address.trim())}`
-                                  : (loc.lat && loc.lng) 
-                                    ? `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`
-                                    : null;
+                                const mapUrl = (() => { const u = window.BKK.getGoogleMapsUrl(loc); return u === '#' ? null : u; })();
                                 return (
                                   <div key={loc.id}
                                     className={`flex items-center justify-between gap-2 border-2 rounded p-1.5 mb-0.5 ${isLocationValid(loc) ? "border-gray-200 bg-white" : "border-red-400 bg-red-50"}`}
@@ -1961,11 +1953,7 @@
                         {showBlacklistLocations && (
                           <div className="mt-2 max-h-40 overflow-y-auto">
                             {groupedPlaces.blacklistedLocations.map(loc => {
-                              const mapUrl = loc.address?.trim() 
-                                ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.address.trim())}`
-                                : (loc.lat && loc.lng) 
-                                  ? `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`
-                                  : null;
+                              const mapUrl = (() => { const u = window.BKK.getGoogleMapsUrl(loc); return u === '#' ? null : u; })();
                               return (
                               <div
                                 key={loc.id}

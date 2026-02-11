@@ -964,6 +964,39 @@ window.BKK.hashPassword = async function(password) {
   return hashArray.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
 };
 
+/**
+ * Build the best Google Maps URL for a place.
+ * Priority: Place ID → address → name (Google places only) → raw coords.
+ */
+window.BKK.getGoogleMapsUrl = (place) => {
+  if (!place) return '#';
+  const hasCoords = place.lat && place.lng;
+  if (!hasCoords && !place.address?.trim()) return '#';
+  
+  // Best: use Place ID → opens the actual Google Maps place page
+  if (place.googlePlaceId) {
+    const query = encodeURIComponent(place.name || place.address || `${place.lat},${place.lng}`);
+    return `https://www.google.com/maps/search/?api=1&query=${query}&query_place_id=${place.googlePlaceId}`;
+  }
+  
+  // Fallback: address (works well for custom places with reverse-geocoded address)
+  if (place.address?.trim()) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address.trim())}`;
+  }
+  
+  // Fallback: search by name + coords (only for Google Places results, not custom names)
+  if (place.googlePlace && place.name && hasCoords) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}/@${place.lat},${place.lng},17z`;
+  }
+  
+  // Last resort: raw coordinates
+  if (hasCoords) {
+    return `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
+  }
+  
+  return '#';
+};
+
 console.log('[UTILS] Loaded successfully');
 
 
@@ -2236,7 +2269,7 @@ const BangkokExplorer = () => {
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours'
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours'
           },
           body: JSON.stringify({
             textQuery: searchQuery,
@@ -2278,7 +2311,7 @@ const BangkokExplorer = () => {
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours'
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours'
           },
           body: JSON.stringify({
             includedTypes: placeTypes.slice(0, 10),
@@ -2323,7 +2356,7 @@ const BangkokExplorer = () => {
                 headers: {
                   'Content-Type': 'application/json',
                   'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-                  'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours'
+                  'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours'
                 },
                 body: JSON.stringify({
                   includedTypes: [singleType],
@@ -2382,6 +2415,7 @@ const BangkokExplorer = () => {
                 interests: validInterests,
                 googleTypes: placeTypesFromGoogle,
                 primaryType: place.primaryType || null,
+                googlePlaceId: place.id || null,
                 openNow: openingHours?.openNow ?? null,
                 todayHours: hoursOnly || '',
                 custom: false
@@ -2498,6 +2532,7 @@ const BangkokExplorer = () => {
             ratingCount: place.userRatingCount || 0,
             googleTypes: place.types || [],
             primaryType: place.primaryType || '',
+            googlePlaceId: place.id || null,
             address: place.formattedAddress || '',
             openNow: openingHours?.openNow ?? null,
             todayHours: hoursOnly || '',
@@ -2553,7 +2588,7 @@ const BangkokExplorer = () => {
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-          'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.primaryTypeDisplayName,places.currentOpeningHours'
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.primaryTypeDisplayName,places.currentOpeningHours'
         },
         body: JSON.stringify({
           textQuery: searchQuery,
@@ -2603,6 +2638,7 @@ const BangkokExplorer = () => {
         rating: bestMatch.rating,
         ratingCount: bestMatch.userRatingCount,
         location: bestMatch.location,
+        googlePlaceId: bestMatch.id || null,
         allResults: data.places.map(p => ({
           name: p.displayName?.text,
           types: p.types,
@@ -4598,7 +4634,7 @@ const BangkokExplorer = () => {
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-            'X-Goog-FieldMask': 'places.displayName,places.location,places.formattedAddress'
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.formattedAddress'
           },
           body: JSON.stringify({
             textQuery: searchQuery,
@@ -4619,6 +4655,7 @@ const BangkokExplorer = () => {
           lat: location.latitude,
           lng: location.longitude,
           address: formattedAddress,
+          googlePlaceId: place.id || null,
           mapsUrl: `https://maps.google.com/?q=${location.latitude},${location.longitude}`
         });
         
@@ -4654,7 +4691,7 @@ const BangkokExplorer = () => {
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-            'X-Goog-FieldMask': 'places.displayName,places.location,places.formattedAddress'
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.formattedAddress'
           },
           body: JSON.stringify({
             textQuery: searchQuery,
@@ -4675,6 +4712,7 @@ const BangkokExplorer = () => {
           lat: location.latitude,
           lng: location.longitude,
           address: formattedAddress,
+          googlePlaceId: place.id || null,
           mapsUrl: `https://maps.google.com/?q=${location.latitude},${location.longitude}`
         });
         
@@ -5444,7 +5482,7 @@ const BangkokExplorer = () => {
                                   </div>
                                   
                                   <a
-                                    href={hasValidCoords ? `https://www.google.com/maps/search/?api=1&query=${stop.address?.trim() ? encodeURIComponent(stop.address.trim()) : `${stop.lat},${stop.lng}`}` : '#'}
+                                    href={window.BKK.getGoogleMapsUrl(stop)}
                                     target={hasValidCoords ? "_blank" : undefined}
                                     rel={hasValidCoords ? "noopener noreferrer" : undefined}
                                     className="block hover:bg-gray-100 transition pr-2"
@@ -5725,7 +5763,7 @@ const BangkokExplorer = () => {
 
                           if (activeStops.length === 1 && !hasStartPoint) {
                             // Single stop, no start point - just show location
-                            mapUrl = `https://www.google.com/maps/search/?api=1&query=${activeStops[0].lat},${activeStops[0].lng}`;
+                            mapUrl = window.BKK.getGoogleMapsUrl(activeStops[0]);
                           } else {
                             // Multiple stops or has start point - create route
                             if (routeType === 'circular') {
@@ -5963,7 +6001,7 @@ const BangkokExplorer = () => {
                               </span>
                             )}
                             <a
-                              href={hasValidCoords ? `https://www.google.com/maps/search/?api=1&query=${stop.address?.trim() ? encodeURIComponent(stop.address.trim()) : `${stop.lat},${stop.lng}`}` : '#'}
+                              href={window.BKK.getGoogleMapsUrl(stop)}
                               target={hasValidCoords ? "_blank" : undefined}
                               rel={hasValidCoords ? "noopener noreferrer" : undefined}
                               className={`font-bold text-sm ${isDisabled ? 'line-through text-gray-500' : hasValidCoords ? 'text-blue-600 hover:text-blue-800' : 'text-red-600'}`}
@@ -6247,7 +6285,7 @@ const BangkokExplorer = () => {
                     let destination, waypointsStr, mapUrl;
 
                     if (activeStops.length === 1 && !hasStartPoint) {
-                      mapUrl = `https://www.google.com/maps/search/?api=1&query=${activeStops[0].lat},${activeStops[0].lng}`;
+                      mapUrl = window.BKK.getGoogleMapsUrl(activeStops[0]);
                     } else {
                       if (routeType === 'circular') {
                         destination = origin;
@@ -6610,11 +6648,7 @@ const BangkokExplorer = () => {
                               </div>
                               <div className="p-1">
                                 {locs.map(loc => {
-                                  const mapUrl = loc.address?.trim() 
-                                    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.address.trim())}`
-                                    : (loc.lat && loc.lng) 
-                                      ? `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`
-                                      : null;
+                                  const mapUrl = (() => { const u = window.BKK.getGoogleMapsUrl(loc); return u === '#' ? null : u; })();
                                   return (
                                     <div key={loc.id}
                                       className={`flex items-center justify-between gap-2 border-2 rounded p-1.5 mb-0.5 ${isLocationValid(loc) ? "border-gray-200 bg-white" : "border-red-400 bg-red-50"}`}
@@ -6660,11 +6694,7 @@ const BangkokExplorer = () => {
                             </div>
                             <div className="p-1">
                               {groupedPlaces.ungrouped.map(loc => {
-                                const mapUrl = loc.address?.trim() 
-                                  ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.address.trim())}`
-                                  : (loc.lat && loc.lng) 
-                                    ? `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`
-                                    : null;
+                                const mapUrl = (() => { const u = window.BKK.getGoogleMapsUrl(loc); return u === '#' ? null : u; })();
                                 return (
                                   <div key={loc.id}
                                     className={`flex items-center justify-between gap-2 border-2 rounded p-1.5 mb-0.5 ${isLocationValid(loc) ? "border-gray-200 bg-white" : "border-red-400 bg-red-50"}`}
@@ -6716,11 +6746,7 @@ const BangkokExplorer = () => {
                         {showBlacklistLocations && (
                           <div className="mt-2 max-h-40 overflow-y-auto">
                             {groupedPlaces.blacklistedLocations.map(loc => {
-                              const mapUrl = loc.address?.trim() 
-                                ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.address.trim())}`
-                                : (loc.lat && loc.lng) 
-                                  ? `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`
-                                  : null;
+                              const mapUrl = (() => { const u = window.BKK.getGoogleMapsUrl(loc); return u === '#' ? null : u; })();
                               return (
                               <div
                                 key={loc.id}
@@ -7733,9 +7759,7 @@ const BangkokExplorer = () => {
                   <div className="flex gap-2">
                     {newLocation.lat && newLocation.lng ? (
                       <a
-                        href={newLocation.address?.trim() 
-                          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(newLocation.address.trim())}`
-                          : `https://www.google.com/maps/search/?api=1&query=${newLocation.lat},${newLocation.lng}`}
+                        href={window.BKK.getGoogleMapsUrl(newLocation)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex-1 py-2 bg-green-500 text-white rounded-lg text-sm font-bold hover:bg-green-600 text-center"
@@ -7896,7 +7920,7 @@ const BangkokExplorer = () => {
                   <>
                     {newLocation.lat && newLocation.lng && (
                       <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${newLocation.lat},${newLocation.lng}`}
+                        href={window.BKK.getGoogleMapsUrl(newLocation)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex-1 py-2.5 rounded-lg text-sm font-bold text-center bg-green-500 text-white hover:bg-green-600"
@@ -8588,7 +8612,7 @@ const BangkokExplorer = () => {
                       if (s.description) line += `\n   ${s.description}`;
                       if (s.todayHours) line += `\n   🕐 ${s.todayHours}`;
                       if (s.rating) line += `\n   ⭐ ${s.rating}`;
-                      const mapsUrl = s.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address)}` : (s.lat && s.lng ? `https://www.google.com/maps?q=${s.lat},${s.lng}` : '');
+                      const mapsUrl = (() => { const u = window.BKK.getGoogleMapsUrl(s); return u === '#' ? '' : u; })();
                       if (mapsUrl) line += `\n   🗺️ ${mapsUrl}`;
                       return line;
                     }).join('\n\n');

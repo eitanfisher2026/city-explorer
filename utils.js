@@ -373,5 +373,38 @@ window.BKK.hashPassword = async function(password) {
   return hashArray.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
 };
 
+/**
+ * Build the best Google Maps URL for a place.
+ * Priority: Place ID → address → name (Google places only) → raw coords.
+ */
+window.BKK.getGoogleMapsUrl = (place) => {
+  if (!place) return '#';
+  const hasCoords = place.lat && place.lng;
+  if (!hasCoords && !place.address?.trim()) return '#';
+  
+  // Best: use Place ID → opens the actual Google Maps place page
+  if (place.googlePlaceId) {
+    const query = encodeURIComponent(place.name || place.address || `${place.lat},${place.lng}`);
+    return `https://www.google.com/maps/search/?api=1&query=${query}&query_place_id=${place.googlePlaceId}`;
+  }
+  
+  // Fallback: address (works well for custom places with reverse-geocoded address)
+  if (place.address?.trim()) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address.trim())}`;
+  }
+  
+  // Fallback: search by name + coords (only for Google Places results, not custom names)
+  if (place.googlePlace && place.name && hasCoords) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}/@${place.lat},${place.lng},17z`;
+  }
+  
+  // Last resort: raw coordinates
+  if (hasCoords) {
+    return `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
+  }
+  
+  return '#';
+};
+
 console.log('[UTILS] Loaded successfully');
 
