@@ -85,7 +85,7 @@
             }`}
           >
             <div className="text-center">📍</div>
-            <div className="truncate text-center text-[8px]">מקומות {customLocations.length > 0 ? `(${customLocations.length})` : ''}</div>
+            <div className="truncate text-center text-[8px]">מקומות {customLocations.filter(l => l.status !== 'blacklist').length > 0 ? `(${customLocations.filter(l => l.status !== 'blacklist').length})` : ''}</div>
           </button>
           <button
             onClick={() => { setCurrentView('myInterests'); window.scrollTo(0, 0); }}
@@ -94,7 +94,13 @@
             }`}
           >
             <div className="text-center">🏷️</div>
-            <div className="truncate text-center text-[8px]">תחומים {Object.values(interestStatus).filter(Boolean).length > 0 ? `(${Object.values(interestStatus).filter(Boolean).length})` : ''}</div>
+            <div className="truncate text-center text-[8px]">תחומים {(() => {
+              const builtIn = (window.BKK.interestOptions || []).filter(i => isInterestValid(i.id) && interestStatus[i.id] !== false);
+              const uncov = (window.BKK.uncoveredInterests || []).filter(i => isInterestValid(i.id) && interestStatus[i.id] === true);
+              const cust = (customInterests || []).filter(i => isInterestValid(i.id) && interestStatus[i.id] !== false);
+              const total = builtIn.length + uncov.length + cust.length;
+              return total > 0 ? `(${total})` : '';
+            })()}</div>
           </button>
           <button
             onClick={() => {
@@ -1864,7 +1870,7 @@
             {/* Custom Locations Section - Split by status */}
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="text-base font-bold">מקומות ({customLocations.length})</h3>
+                <h3 className="text-base font-bold">מקומות ({customLocations.filter(l => l.status !== 'blacklist').length})</h3>
                 <div className="flex items-center gap-2">
                   {/* Group by toggle */}
                   <div className="flex bg-gray-200 rounded-lg p-0.5">
@@ -2071,7 +2077,12 @@
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold">🏷️ התחומים שלי</h2>
                 <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                  {Object.values(interestStatus).filter(Boolean).length} פעילים
+                  {(() => {
+                    const b = (window.BKK.interestOptions || []).filter(i => isInterestValid(i.id) && interestStatus[i.id] !== false).length;
+                    const u = (window.BKK.uncoveredInterests || []).filter(i => isInterestValid(i.id) && interestStatus[i.id] === true).length;
+                    const c = (customInterests || []).filter(i => isInterestValid(i.id) && interestStatus[i.id] !== false).length;
+                    return b + u + c;
+                  })()} פעילים
                 </span>
               </div>
               <div className="flex gap-1">

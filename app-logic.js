@@ -4,8 +4,8 @@
       const saved = localStorage.getItem('bangkok_preferences');
       if (saved) {
         const prefs = JSON.parse(saved);
-        // Add maxStops if not present (for backward compatibility)
-        if (!prefs.maxStops) prefs.maxStops = 15;
+        // Add maxStops if not present or upgrade from old default
+        if (!prefs.maxStops || prefs.maxStops === 10) prefs.maxStops = 15;
         // Add fetchMoreCount if not present
         if (!prefs.fetchMoreCount) prefs.fetchMoreCount = 3;
         // Add radius search fields if not present
