@@ -317,8 +317,10 @@
         {/* Form View */}
 
         {/* === VIEWS (from views.js) === */}
-        {currentView === 'form' && !wizardMode && (
+        {currentView === 'form' && (!wizardMode || wizardStep === 3) && (
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-3 space-y-3">
+            {/* Form inputs - hidden in wizard step 3 */}
+            {!wizardMode && (
             <div className="flex items-center justify-center gap-2">
               <h2 className="text-base font-bold text-center">תכנן את הטיול</h2>
               <button
@@ -327,6 +329,13 @@
                 title="עזרה"
               >
                 ❓
+              </button>
+              <button
+                onClick={() => { setWizardMode(true); setWizardStep(1); localStorage.setItem('bangkok_wizard_mode', 'true'); setRoute(null); }}
+                style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '10px', cursor: 'pointer', textDecoration: 'underline' }}
+                title="עבור למצב מהיר"
+              >
+                🚀 מצב מהיר
               </button>
             </div>
 
@@ -718,6 +727,8 @@
             )}
             {formData.searchMode === 'radius' && !formData.currentLat && formData.interests.length > 0 && (
               <p className="text-center text-blue-500 text-xs font-medium">📍 לחץ "מצא מיקום" כדי להפעיל חיפוש</p>
+            )}
+
             )}
 
             {/* Show stops list ONLY after route is calculated */}
@@ -1380,7 +1391,7 @@
             </p>
             
             {/* Stats - show breakdown of place sources */}
-            {route.stats && (route.stats.custom > 0 || route.stats.fetched > 0) && (
+            {!wizardMode && route.stats && (route.stats.custom > 0 || route.stats.fetched > 0) && (
               <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-lg p-3 mb-4">
                 <div className="text-xs font-bold text-gray-700 mb-2">📊 מקורות המקומות:</div>
                 <div className="flex gap-2 flex-wrap">
@@ -1442,6 +1453,7 @@
             <div className="space-y-3 mb-6">
               <div className="flex justify-between items-center mb-3">
                 <h3 className="font-bold">תחנות ({route.stops.length}):</h3>
+                {!wizardMode && (
                 <button
                   onClick={() => {
                     setNewLocation(prev => ({...prev, area: formData.area}));
@@ -1451,6 +1463,7 @@
                 >
                   ➕ הוסף מקום
                 </button>
+                )}
               </div>
               {route.stops.map((stop, i) => {
                 const stopId = (stop.name || '').toLowerCase().trim();
@@ -1630,8 +1643,8 @@
                             );
                           }
                           
-                          // Show permanent skip button (for non-custom places)
-                          if (!isCustom) {
+                          // Show permanent skip button (for non-custom places) - hidden in wizard
+                          if (!isCustom && !wizardMode) {
                             return (
                               <button
                                 onClick={() => skipPlacePermanently(stop)}
