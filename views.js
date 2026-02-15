@@ -78,9 +78,9 @@
 
             {/* Step 1: Choose Area */}
             {wizardStep === 1 && (
-              <div className="bg-white rounded-xl shadow-lg p-4">
-                <h2 style={{ textAlign: 'center', fontSize: '20px', fontWeight: 'bold', marginBottom: '4px' }}>📍 איפה מטיילים?</h2>
-                <p style={{ textAlign: 'center', fontSize: '12px', color: '#6b7280', marginBottom: '16px' }}>בחר אזור בבנגקוק</p>
+              <div className="bg-white rounded-xl shadow-lg p-3">
+                <h2 style={{ textAlign: 'center', fontSize: '18px', fontWeight: 'bold', marginBottom: '2px' }}>📍 איפה מטיילים?</h2>
+                <p style={{ textAlign: 'center', fontSize: '11px', color: '#6b7280', marginBottom: '10px' }}>בחר אזור בבנגקוק</p>
                 
                 {/* Map button */}
                 <div style={{ textAlign: 'center', marginBottom: '12px' }}>
@@ -91,19 +91,19 @@
                 </div>
 
                 {/* Area Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', marginBottom: '10px' }}>
                   {(window.BKK.areaOptions || []).map(area => (
                     <button
                       key={area.id}
                       onClick={() => setFormData({...formData, area: area.id, searchMode: 'area'})}
                       style={{
-                        padding: '12px 8px', borderRadius: '12px', border: formData.area === area.id && formData.searchMode === 'area' ? '2px solid #2563eb' : '2px solid #e5e7eb',
+                        padding: '8px 6px', borderRadius: '10px', border: formData.area === area.id && formData.searchMode === 'area' ? '2px solid #2563eb' : '1.5px solid #e5e7eb',
                         background: formData.area === area.id && formData.searchMode === 'area' ? '#eff6ff' : 'white',
                         cursor: 'pointer', textAlign: 'right', direction: 'rtl', transition: 'all 0.2s'
                       }}
                     >
-                      <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#1f2937' }}>{area.label}</div>
-                      <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>{area.desc || area.labelEn}</div>
+                      <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#1f2937' }}>{area.label}</div>
+                      <div style={{ fontSize: '9px', color: '#6b7280', marginTop: '1px' }}>{area.desc || area.labelEn}</div>
                     </button>
                   ))}
                 </div>
@@ -122,33 +122,33 @@
                     }
                   }}
                   style={{
-                    width: '100%', padding: '14px', borderRadius: '12px', cursor: 'pointer', textAlign: 'center', direction: 'rtl',
-                    border: formData.searchMode === 'radius' && formData.radiusMeters !== 15000 ? '2px solid #2563eb' : '2px solid #e5e7eb',
+                    width: '100%', padding: '10px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', direction: 'rtl',
+                    border: formData.searchMode === 'radius' && formData.radiusMeters !== 15000 ? '2px solid #2563eb' : '1.5px solid #e5e7eb',
                     background: formData.searchMode === 'radius' && formData.radiusMeters !== 15000 ? '#eff6ff' : 'white',
-                    marginBottom: '8px', transition: 'all 0.2s'
+                    marginBottom: '6px', transition: 'all 0.2s'
                   }}
                 >
-                  <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#2563eb' }}>📍 קרוב אליי</div>
-                  <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>חיפוש לפי GPS (1 ק"מ)</div>
+                  <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#2563eb' }}>📍 קרוב אליי</div>
+                  <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '1px' }}>חיפוש לפי GPS (1 ק"מ)</div>
                 </button>
 
                 {/* All Bangkok option */}
                 <button
                   onClick={() => setFormData({...formData, searchMode: 'radius', radiusMeters: 15000, currentLat: 13.7563, currentLng: 100.5018, radiusPlaceName: 'כל בנגקוק'})}
                   style={{
-                    width: '100%', padding: '14px', borderRadius: '12px', cursor: 'pointer', textAlign: 'center', direction: 'rtl',
-                    border: formData.searchMode === 'radius' && formData.radiusMeters === 15000 ? '2px solid #8b5cf6' : '2px solid #e5e7eb',
+                    width: '100%', padding: '10px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', direction: 'rtl',
+                    border: formData.searchMode === 'radius' && formData.radiusMeters === 15000 ? '2px solid #8b5cf6' : '1.5px solid #e5e7eb',
                     background: formData.searchMode === 'radius' && formData.radiusMeters === 15000 ? 'linear-gradient(135deg, #f5f3ff, #ede9fe)' : 'white',
-                    marginBottom: '12px', transition: 'all 0.2s'
+                    marginBottom: '8px', transition: 'all 0.2s'
                   }}
                 >
-                  <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#7c3aed' }}>🌏 כל בנגקוק</div>
-                  <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>חיפוש בכל העיר</div>
+                  <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#7c3aed' }}>🌏 כל בנגקוק</div>
+                  <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '1px' }}>חיפוש בכל העיר</div>
                 </button>
 
                 {/* Continue button */}
                 <button
-                  onClick={() => setWizardStep(2)}
+                  onClick={() => { setWizardStep(2); window.scrollTo(0, 0); }}
                   disabled={!formData.area && formData.searchMode !== 'radius'}
                   style={{
                     width: '100%', padding: '14px', borderRadius: '12px', border: 'none', cursor: formData.area || formData.searchMode === 'radius' ? 'pointer' : 'not-allowed',
@@ -205,20 +205,20 @@
                 {/* Selected count + buttons */}
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                   <button
-                    onClick={() => setWizardStep(1)}
+                    onClick={() => { setWizardStep(1); window.scrollTo(0, 0); }}
                     style={{ flex: '0 0 auto', padding: '12px 20px', borderRadius: '12px', border: '2px solid #e5e7eb', background: 'white', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold', color: '#6b7280' }}
                   >חזרה →</button>
                   <button
-                    onClick={() => { generateRoute(); setWizardStep(3); }}
+                    onClick={() => { generateRoute(); setWizardStep(3); window.scrollTo(0, 0); }}
                     disabled={formData.interests.length === 0}
                     style={{
                       flex: 1, padding: '14px', borderRadius: '12px', border: 'none',
                       cursor: formData.interests.length > 0 ? 'pointer' : 'not-allowed',
                       background: formData.interests.length > 0 ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#d1d5db',
-                      color: 'white', fontSize: '16px', fontWeight: 'bold',
+                      color: 'white', fontSize: '14px', fontWeight: 'bold',
                       boxShadow: formData.interests.length > 0 ? '0 4px 6px rgba(37,99,235,0.3)' : 'none'
                     }}
-                  >🔍 מצא נקודות עניין {formData.interests.length > 0 ? `(${formData.interests.length} תחומים)` : ''}</button>
+                  >🔍 מצא נקודות עניין {formData.interests.length > 0 ? `(${formData.interests.length})` : ''}</button>
                 </div>
               </div>
             )}
@@ -300,11 +300,11 @@
         {wizardMode && wizardStep === 3 && (
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
             <button
-              onClick={() => { setWizardStep(2); setRoute(null); setCurrentView('form'); }}
+              onClick={() => { setWizardStep(2); setRoute(null); setCurrentView('form'); window.scrollTo(0, 0); }}
               style={{ padding: '8px 16px', borderRadius: '10px', border: '2px solid #e5e7eb', background: 'white', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', color: '#6b7280' }}
             >חזרה →</button>
             <button
-              onClick={() => { setWizardStep(1); setRoute(null); setCurrentView('form'); setFormData(prev => ({...prev, interests: []})); }}
+              onClick={() => { setWizardStep(1); setRoute(null); setCurrentView('form'); setFormData(prev => ({...prev, interests: []})); window.scrollTo(0, 0); }}
               style={{ padding: '8px 16px', borderRadius: '10px', border: '2px solid #e5e7eb', background: 'white', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', color: '#6b7280' }}
             >🔄 התחל מחדש</button>
             <div style={{ flex: 1 }}></div>
@@ -746,9 +746,9 @@
                 </div>
                 {/* Icon legend - especially useful in wizard mode */}
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', padding: '4px 8px', background: '#f0f9ff', borderRadius: '6px', marginBottom: '6px', fontSize: '10px', color: '#4b5563', direction: 'rtl', justifyContent: 'center' }}>
-                  <span>⏸️ = השהה מקום</span>
+                  <span>⏸️ = דלג על מקום</span>
                   <span>▶️ = החזר מקום</span>
-                  <span>📌 = נקודת התחלה</span>
+                  <span>📌 = קבע כנקודת התחלה</span>
                 </div>
                 <div className="max-h-96 overflow-y-auto" style={{ contain: 'content' }}>
                   {(() => {
@@ -846,7 +846,7 @@
                                     <button
                                       onClick={() => toggleStopActive(stop.originalIndex)}
                                       className={`text-[9px] px-1 py-0.5 rounded ${isDisabled ? 'bg-green-500 text-white' : 'bg-gray-400 text-white'}`}
-                                      title={isDisabled ? 'החזר למסלול' : 'השהה'}
+                                      title={isDisabled ? 'החזר מקום' : 'דלג על מקום'}
                                     >
                                       {isDisabled ? '▶️' : '⏸️'}
                                     </button>

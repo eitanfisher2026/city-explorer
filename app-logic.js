@@ -2061,6 +2061,10 @@
   const generateRoute = async () => {
     const isRadiusMode = formData.searchMode === 'radius';
     
+    // Clear old start point to avoid stale data
+    setStartPointCoords(null);
+    setFormData(prev => ({...prev, startPoint: ''}));
+    
     if (isRadiusMode) {
       if (!formData.currentLat || !formData.currentLng) {
         showToast('אנא מצא את המיקום הנוכחי שלך תחילה', 'warning');
@@ -2331,10 +2335,14 @@
       // Route name and area info
       let areaName, interestsText;
       if (isRadiusMode) {
-        const sourceName = formData.radiusSource === 'myplace' && formData.radiusPlaceId
-          ? customLocations.find(l => l.id === formData.radiusPlaceId)?.name || 'מקום שלי'
-          : 'מיקום נוכחי';
-        areaName = `${formData.radiusMeters}מ' מ-${sourceName}`;
+        if (formData.radiusPlaceName === 'כל בנגקוק') {
+          areaName = 'כל בנגקוק';
+        } else {
+          const sourceName = formData.radiusSource === 'myplace' && formData.radiusPlaceId
+            ? customLocations.find(l => l.id === formData.radiusPlaceId)?.name || 'מקום שלי'
+            : formData.radiusPlaceName || 'מיקום נוכחי';
+          areaName = `${formData.radiusMeters}מ' מ-${sourceName}`;
+        }
       } else {
         const selectedArea = areaOptions.find(a => a.id === formData.area);
         areaName = selectedArea?.label || 'בנקוק';
