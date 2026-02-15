@@ -328,7 +328,7 @@
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title="עזרה"
               >
-                ℹ️
+                עזרה
               </button>
               <button
                 onClick={() => { setWizardMode(true); setWizardStep(1); localStorage.setItem('bangkok_wizard_mode', 'true'); setRoute(null); }}
@@ -747,8 +747,8 @@
                   <h3 className="font-bold text-blue-900 text-sm">מקומות ב{route.areaName} ({route.stops.length}):</h3>
                   <button
                     onClick={() => showHelpFor('placesListing')}
-                    style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#3b82f6', color: 'white', fontSize: '11px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', lineHeight: '1' }}
-                  >i</button>
+                    style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}
+                  >עזרה</button>
                 </div>
                 {/* Help link instead of inline legend */}
                 <div className="max-h-96 overflow-y-auto" style={{ contain: 'content' }}>
@@ -1391,7 +1391,7 @@
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title="עזרה"
               >
-                ℹ️
+                עזרה
               </button>
             </div>
             <p className="text-sm text-gray-600 mb-2">
@@ -1977,7 +1977,7 @@
                   onClick={() => showHelpFor('saved')}
                   className="text-gray-400 hover:text-blue-500 text-sm"
                   title="עזרה"
-                style={{ width: "18px", height: "18px", borderRadius: "50%", background: "#3b82f6", color: "white", fontSize: "11px", fontWeight: "bold", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer", lineHeight: "1" }}>i</button>
+                style={{ background: "none", border: "none", color: "#3b82f6", fontSize: "11px", cursor: "pointer", textDecoration: "underline" }}>עזרה</button>
               </div>
               <div className="flex items-center gap-2">
                 {/* Sort toggle */}
@@ -2079,7 +2079,7 @@
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title="עזרה"
               >
-                ℹ️
+                עזרה
               </button>
             </div>
             
@@ -2292,7 +2292,7 @@
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold">🏷️ התחומים שלי</h2>
-                <button onClick={() => showHelpFor('myInterests')} className="text-blue-400 hover:text-blue-600 text-sm" title="עזרה"style={{ width: "18px", height: "18px", borderRadius: "50%", background: "#3b82f6", color: "white", fontSize: "11px", fontWeight: "bold", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer", lineHeight: "1" }}>i</button>
+                <button onClick={() => showHelpFor('myInterests')} className="text-blue-400 hover:text-blue-600 text-sm" title="עזרה"style={{ background: "none", border: "none", color: "#3b82f6", fontSize: "11px", cursor: "pointer", textDecoration: "underline" }}>עזרה</button>
                 <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">
                   {(window.BKK.interestOptions || []).length + (window.BKK.uncoveredInterests || []).length + (customInterests || []).length} סה"כ
                 </span>
@@ -2443,7 +2443,7 @@
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title="עזרה"
               >
-                ℹ️
+                עזרה
               </button>
             </div>
             

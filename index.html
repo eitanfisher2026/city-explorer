@@ -296,19 +296,16 @@ window.BKK.helpContent = {
     content: `**בנגקוק אקספלורר** עוזר לך לגלות מקומות מעניינים בבנגקוק ולתכנן מסלול טיול.
 
 **שני מצבי שימוש:**
-• **מצב מהיר** (ברירת מחדל) — 3 שלבים: בחר אזור ← בחר תחומים ← קבל תוצאות
+• **מצב מהיר** (ברירת מחדל) — בחר אזור ← בחר תחומים ← קבל תוצאות
 • **מצב מתקדם** — שליטה מלאה: הוסף מקומות, ערוך, שמור מסלולים
 
-**3 צעדים פשוטים:**
-1. **בחר איזור** (או "הכל" לכל בנגקוק, או GPS לקרוב אליך)
-2. **בחר מה מעניין אותך** — מקדשים, אוכל, גרפיטי...
-3. **לחץ "מצא נקודות עניין"**
+**איך מתחילים:**
+1. בחר אזור (או "הכל" לכל בנגקוק, או GPS לקרוב אליך) ותחומי עניין, ולחץ "מצא נקודות עניין"
+2. ברשימת התוצאות: דלג על מקומות שלא מתאימים (⏸️) ובחר 📌 נקודת התחלה
+3. בחר סוג מסלול (מעגלי / לינארי) ולחץ "חשב מסלול"
+4. לחץ "פתח מסלול בגוגל" לניווט!
 
-**בתוצאות:**
-• ⏸️ דלג על מקום  •  ▶️ החזר מקום
-• 📌 קבע נקודת התחלה  •  🧭 חשב מסלול
-
-**טיפ:** לחץ על שם מקום כדי לפתוח בגוגל מפות!`
+**טיפ:** לחץ על שם מקום כדי לפתוח אותו בגוגל מפות`
   },
   placesListing: {
     title: 'רשימת המקומות',
@@ -328,9 +325,12 @@ window.BKK.helpContent = {
 
 **לחיצה על שם המקום** פותחת אותו בגוגל מפות.
 
+**נקודת התחלה:**
+בחר 📌 ממקום ברשימה, או השתמש ב-🔍 (חיפוש כתובת) / 📍 (מיקום GPS) בתחתית העמוד.
+לשינוי — בחר מקום אחר או לחץ ✕ ליד שורת "נקודת התחלה" למטה.
+
 **חישוב מסלול:**
-בחר נקודת התחלה (📌 ממקום ברשימה, 🔍 חיפוש כתובת, או 📍 מיקום GPS), ולחץ "חשב מסלול".
-סוגי מסלול: **לינארי** (מנקודה לנקודה) או **מעגלי** (חוזר להתחלה).
+בחר לינארי (מנקודה לנקודה) או מעגלי (חוזר להתחלה), ולחץ "חשב מסלול".
 אחרי חישוב לחץ "פתח מסלול בגוגל" לניווט.`
   },
   route: {
@@ -5503,7 +5503,7 @@ const BangkokExplorer = () => {
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title="עזרה"
               >
-                ℹ️
+                עזרה
               </button>
               <button
                 onClick={() => { setWizardMode(true); setWizardStep(1); localStorage.setItem('bangkok_wizard_mode', 'true'); setRoute(null); }}
@@ -5922,8 +5922,8 @@ const BangkokExplorer = () => {
                   <h3 className="font-bold text-blue-900 text-sm">מקומות ב{route.areaName} ({route.stops.length}):</h3>
                   <button
                     onClick={() => showHelpFor('placesListing')}
-                    style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#3b82f6', color: 'white', fontSize: '11px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', lineHeight: '1' }}
-                  >i</button>
+                    style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}
+                  >עזרה</button>
                 </div>
                 {/* Help link instead of inline legend */}
                 <div className="max-h-96 overflow-y-auto" style={{ contain: 'content' }}>
@@ -6566,7 +6566,7 @@ const BangkokExplorer = () => {
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title="עזרה"
               >
-                ℹ️
+                עזרה
               </button>
             </div>
             <p className="text-sm text-gray-600 mb-2">
@@ -7152,7 +7152,7 @@ const BangkokExplorer = () => {
                   onClick={() => showHelpFor('saved')}
                   className="text-gray-400 hover:text-blue-500 text-sm"
                   title="עזרה"
-                style={{ width: "18px", height: "18px", borderRadius: "50%", background: "#3b82f6", color: "white", fontSize: "11px", fontWeight: "bold", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer", lineHeight: "1" }}>i</button>
+                style={{ background: "none", border: "none", color: "#3b82f6", fontSize: "11px", cursor: "pointer", textDecoration: "underline" }}>עזרה</button>
               </div>
               <div className="flex items-center gap-2">
                 {/* Sort toggle */}
@@ -7254,7 +7254,7 @@ const BangkokExplorer = () => {
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title="עזרה"
               >
-                ℹ️
+                עזרה
               </button>
             </div>
             
@@ -7467,7 +7467,7 @@ const BangkokExplorer = () => {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold">🏷️ התחומים שלי</h2>
-                <button onClick={() => showHelpFor('myInterests')} className="text-blue-400 hover:text-blue-600 text-sm" title="עזרה"style={{ width: "18px", height: "18px", borderRadius: "50%", background: "#3b82f6", color: "white", fontSize: "11px", fontWeight: "bold", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer", lineHeight: "1" }}>i</button>
+                <button onClick={() => showHelpFor('myInterests')} className="text-blue-400 hover:text-blue-600 text-sm" title="עזרה"style={{ background: "none", border: "none", color: "#3b82f6", fontSize: "11px", cursor: "pointer", textDecoration: "underline" }}>עזרה</button>
                 <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">
                   {(window.BKK.interestOptions || []).length + (window.BKK.uncoveredInterests || []).length + (customInterests || []).length} סה"כ
                 </span>
@@ -7618,7 +7618,7 @@ const BangkokExplorer = () => {
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title="עזרה"
               >
-                ℹ️
+                עזרה
               </button>
             </div>
             
@@ -9672,7 +9672,7 @@ const BangkokExplorer = () => {
           <div className="bg-white rounded-xl max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col shadow-2xl">
             <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-3 flex items-center justify-between">
               <h3 className="text-base font-bold flex items-center gap-2">
-                <span>❓</span>
+                <span>ℹ️</span>
                 {helpContent[helpContext]?.title || 'עזרה'}
               </h3>
               <button

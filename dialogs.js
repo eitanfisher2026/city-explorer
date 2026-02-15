@@ -1617,7 +1617,7 @@
           <div className="bg-white rounded-xl max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col shadow-2xl">
             <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-3 flex items-center justify-between">
               <h3 className="text-base font-bold flex items-center gap-2">
-                <span>❓</span>
+                <span>ℹ️</span>
                 {helpContent[helpContext]?.title || 'עזרה'}
               </h3>
               <button
