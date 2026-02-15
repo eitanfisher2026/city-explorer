@@ -374,19 +374,35 @@
                 {formData.searchMode === 'area' ? (
                   /* Area Mode - GRID layout */
                   <div>
-                    <button
-                      onClick={detectArea}
-                      disabled={isLocating}
-                      className={`w-full mb-1.5 py-1 rounded-lg text-[9px] font-bold border transition ${
-                        isLocating 
-                          ? 'bg-gray-100 text-gray-400 border-gray-200' 
-                          : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
-                      }`}
-                    >
-                      {isLocating ? '⏳ מאתר...' : '📍 זהה לפי מיקום'}
-                    </button>
+                    <div style={{ display: 'flex', gap: '4px', marginBottom: '4px' }}>
+                      <button
+                        onClick={() => { setMapMode('areas'); setShowMapModal(true); }}
+                        className="flex-1 py-1 rounded-lg text-[9px] font-bold border transition bg-green-50 text-green-600 border-green-200 hover:bg-green-100"
+                      >🗺️ מפה</button>
+                      <button
+                        onClick={detectArea}
+                        disabled={isLocating}
+                        className={`flex-1 py-1 rounded-lg text-[9px] font-bold border transition ${
+                          isLocating 
+                            ? 'bg-gray-100 text-gray-400 border-gray-200' 
+                            : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
+                        }`}
+                      >
+                        {isLocating ? '⏳ מאתר...' : '📍 זהה מיקום'}
+                      </button>
+                    </div>
                     <div className="border border-gray-200 rounded-lg p-1">
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+                        <button
+                          onClick={() => setFormData({...formData, searchMode: 'radius', radiusMeters: 15000, currentLat: 13.7563, currentLng: 100.5018, radiusPlaceName: 'כל בנגקוק'})}
+                          style={{
+                            border: formData.searchMode === 'radius' && formData.radiusMeters === 15000 ? '2px solid #7c3aed' : '1.5px solid #e5e7eb',
+                            backgroundColor: formData.searchMode === 'radius' && formData.radiusMeters === 15000 ? '#ede9fe' : '#ffffff',
+                            padding: '4px 2px', borderRadius: '6px', textAlign: 'center', lineHeight: '1.1', gridColumn: 'span 2'
+                          }}
+                        >
+                          <div style={{ fontWeight: '700', fontSize: '10px', color: '#7c3aed' }}>🌏 הכל</div>
+                        </button>
                         {areaOptions.map(area => (
                           <button
                             key={area.id}
@@ -745,7 +761,7 @@
                   </button>
                 </div>
                 {/* Icon legend - especially useful in wizard mode */}
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', padding: '4px 8px', background: '#f0f9ff', borderRadius: '6px', marginBottom: '6px', fontSize: '10px', color: '#4b5563', direction: 'rtl', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', padding: '4px 8px', background: '#f0f9ff', borderRadius: '6px', marginBottom: '6px', fontSize: '10px', color: '#4b5563', direction: 'rtl', justifyContent: 'flex-start' }}>
                   <span>⏸️ = דלג על מקום</span>
                   <span>▶️ = החזר מקום</span>
                   <span>📌 = קבע כנקודת התחלה</span>
@@ -1147,7 +1163,7 @@
                             value={formData.startPoint}
                             readOnly
                             onClick={() => setShowAddressDialog(true)}
-                            placeholder="לחץ 🔍 לחיפוש או 📌 מהרשימה"
+                            placeholder="בחר נקודת התחלה"
                             className="w-full p-1.5 border border-gray-300 rounded-lg text-xs cursor-pointer hover:border-blue-400"
                             style={{ direction: 'rtl', paddingLeft: '8px', paddingRight: '8px', backgroundColor: startPointCoords ? '#f0fdf4' : '#fff' }}
                           />
@@ -1183,7 +1199,7 @@
                       </div>
                       {!startPointCoords && !formData.startPoint?.trim() && (
                         <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '3px' }}>
-                          💡 לחץ 🔍 לחיפוש כתובת, 📍 למיקום נוכחי, או בחר 📌 ממקום ברשימה
+                          💡 לחץ 🔍 לחיפוש כתובת, 📍 למיקום נוכחי, או 📌 ממקום ברשימה
                         </p>
                       )}
                     </div>
@@ -2797,47 +2813,22 @@
         )}
 
         {/* Footer */}
-        <div className="text-center py-4 mt-6 border-t border-gray-200">
-          <button
-            onClick={() => {
-              const shareData = {
-                title: 'Bangkok Explorer 🗺️',
-                text: 'אפליקציה חכמה לתכנון טיולים בבנגקוק! מצא מקומות מעניינים ובנה מסלול מותאם אישית 🌏',
-                url: window.location.href
-              };
-              if (navigator.share) {
-                navigator.share(shareData)
-                  .then(() => showToast('תודה על השיתוף! 🙏', 'success'))
-                  .catch((err) => { if (err.name !== 'AbortError') console.error('Share error:', err); });
-              } else {
-                try {
-                  const ta = document.createElement('textarea');
-                  ta.value = window.location.href;
-                  ta.style.cssText = 'position:fixed;left:-9999px';
-                  document.body.appendChild(ta);
-                  ta.select();
-                  document.execCommand('copy');
-                  document.body.removeChild(ta);
-                  showToast('הקישור הועתק! 📋', 'success');
-                } catch (e) {
-                  showToast('העתק: ' + window.location.href, 'info');
-                }
-              }
-            }}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300 transition-all text-xs font-medium mb-2"
-          >
-            <span>📤</span>
-            <span>שתף עם חברים</span>
-          </button>
-          <p className="text-sm font-bold text-gray-500">© 2026 Eitan Fisher</p>
-          <p className="text-[10px] text-gray-400 mt-0.5">Bangkok Explorer v{window.BKK.VERSION}</p>
-          <div className="flex gap-2 mt-1 justify-center">
+        <div className="text-center py-3 mt-4 border-t border-gray-200">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <button
-              onClick={applyUpdate}
-              className="text-[10px] bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 font-bold"
-            >
-              🔄 רענן ובדוק עדכונים
-            </button>
+              onClick={() => {
+                const shareData = { title: 'Bangkok Explorer', text: 'אפליקציה לתכנון טיולים בבנגקוק', url: window.location.href };
+                if (navigator.share) { navigator.share(shareData).catch(() => {}); }
+                else { try { navigator.clipboard.writeText(window.location.href); showToast('הקישור הועתק! 📋', 'success'); } catch(e) { showToast(window.location.href, 'info'); } }
+              }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}
+            >📤 שתף</button>
+            <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
+            <span style={{ fontSize: '9px', color: '#9ca3af' }}>v{window.BKK.VERSION}</span>
+            <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
+            <span style={{ fontSize: '9px', color: '#9ca3af' }}>© Eitan Fisher</span>
+            <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
+            <button onClick={applyUpdate} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}>🔄 רענן</button>
           </div>
         </div>
 
