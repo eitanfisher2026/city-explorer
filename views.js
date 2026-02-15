@@ -320,7 +320,7 @@
         {currentView === 'form' && (!wizardMode || wizardStep === 3) && (
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-3 space-y-3">
             {/* Form inputs - hidden in wizard step 3 */}
-            {!wizardMode && (
+            {!wizardMode && (<>
             <div className="flex items-center justify-center gap-2">
               <h2 className="text-base font-bold text-center">תכנן את הטיול</h2>
               <button
@@ -729,7 +729,7 @@
               <p className="text-center text-blue-500 text-xs font-medium">📍 לחץ "מצא מיקום" כדי להפעיל חיפוש</p>
             )}
 
-            )}
+            </>)}
 
             {/* Show stops list ONLY after route is calculated */}
             {route && (
