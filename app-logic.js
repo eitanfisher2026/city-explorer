@@ -1780,7 +1780,7 @@
       
       activeLocations.forEach(loc => {
         if (placesGroupBy === 'interest') {
-          const interests = loc.interests || [];
+          const interests = (loc.interests || []).filter(i => i !== '_manual');
           if (interests.length === 0) {
             ungrouped.push(loc);
           } else {

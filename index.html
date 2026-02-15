@@ -361,16 +361,15 @@ window.BKK.helpContent = {
   },
   myInterests: {
     title: 'התחומים שלי',
-    content: `**תחומי העניין** קובעים אילו סוגי מקומות תמצא בחיפוש.
+    content: `**תחומי העניין** קובעים אילו סוגי מקומות יופיעו בחיפוש (מקדשים, אוכל, גרפיטי וכו').
 
-**פעיל ✅** — מופיע בחיפוש. לחץ ⏸️ להסתרה.
-**מושהה ⏸️** — מוסתר מהחיפוש. לחץ ▶️ להחזרה.
+**להוסיף תחום חדש:** לחץ "➕ הוסף תחום", בחר שם ואייקון, והגדר מה לחפש.
 
-**אפשר גם:**
-• ➕ ליצור תחום חדש משלך
-• ⚙️ לערוך הגדרות חיפוש של תחום
+**לשנות סטטוס:** לחץ "השבת" כדי להסתיר תחום מהחיפוש, או "הפעל" להחזיר.
 
-**שים לב:** תחום עם מסגרת אדומה חסר הגדרות חיפוש ולא יעבוד.`
+**לערוך הגדרות:** לחץ ✏️ ליד תחום כדי לשנות את שם, אייקון, או הגדרות חיפוש.
+
+**תחום עם מסגרת אדומה** — חסר הגדרות חיפוש ולא יעבוד עד שתגדיר.`
   },
   interestConfig: {
     title: 'הגדרות תחום',
@@ -476,17 +475,16 @@ window.BKK.helpContent = {
   },
   addInterest: {
     title: 'הוספת/עריכת תחום עניין',
-    content: `**תחום עניין מותאם** — קטגוריה חדשה שאתה יוצר, למשל "בתי קולנוע" או "גגות".
+    content: `**איך מוסיפים תחום חדש:**
+1. בחר **שם** ו**אייקון** (אימוג'י)
+2. בחר **סוג חיפוש:**
+   • **Category** — לפי סוג מקום בגוגל (למשל: museum, restaurant)
+   • **Text** — חיפוש חופשי (למשל: "rooftop bar")
+3. לחץ **הוסף** — התחום יופיע ברשימת התחומים
 
-**שדות בסיס:** שם + אייקון (אימוג'י).
+**מילות סינון** — מקומות עם מילים אלו בשם לא ייכללו (למשל: cannabis).
 
-**הגדרות חיפוש (חובה):**
-• **Category** — חיפוש לפי סוג מקום בגוגל (למשל: museum, restaurant)
-• **Text** — חיפוש חופשי (למשל: "rooftop bar")
-
-**מילות סינון** — מקומות עם מילים אלו בשם לא ייכללו.
-
-**שים לב:** בלי הגדרות חיפוש התחום לא יעבוד (יסומן באדום).`
+**חובה** להגדיר Category או Text — בלי זה התחום לא יעבוד.`
   }
 };
 
@@ -2742,7 +2740,7 @@ const BangkokExplorer = () => {
       
       activeLocations.forEach(loc => {
         if (placesGroupBy === 'interest') {
-          const interests = loc.interests || [];
+          const interests = (loc.interests || []).filter(i => i !== '_manual');
           if (interests.length === 0) {
             ungrouped.push(loc);
           } else {
@@ -7117,7 +7115,7 @@ const BangkokExplorer = () => {
                         {groupedPlaces.ungrouped.length > 0 && (
                           <div className="border border-gray-200 rounded-lg overflow-hidden mb-1.5">
                             <div className="bg-gray-100 px-2 py-1 text-xs font-bold text-gray-500">
-                              ללא תחום ({groupedPlaces.ungrouped.length})
+                              ללא תחום / נוספו ידנית ({groupedPlaces.ungrouped.length})
                             </div>
                             <div className="p-1">
                               {groupedPlaces.ungrouped.map(loc => {
@@ -7219,13 +7217,9 @@ const BangkokExplorer = () => {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold">🏷️ התחומים שלי</h2>
-                <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                  {(() => {
-                    const b = (window.BKK.interestOptions || []).filter(i => isInterestValid(i.id) && interestStatus[i.id] !== false).length;
-                    const u = (window.BKK.uncoveredInterests || []).filter(i => isInterestValid(i.id) && interestStatus[i.id] === true).length;
-                    const c = (customInterests || []).filter(i => isInterestValid(i.id) && interestStatus[i.id] !== false).length;
-                    return b + u + c;
-                  })()} פעילים
+                <button onClick={() => showHelpFor('myInterests')} className="text-blue-400 hover:text-blue-600 text-sm" title="עזרה">❓</button>
+                <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">
+                  {(window.BKK.interestOptions || []).length + (window.BKK.uncoveredInterests || []).length + (customInterests || []).length} סה"כ
                 </span>
               </div>
               <div className="flex gap-1">

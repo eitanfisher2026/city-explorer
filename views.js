@@ -1978,7 +1978,7 @@
                         {groupedPlaces.ungrouped.length > 0 && (
                           <div className="border border-gray-200 rounded-lg overflow-hidden mb-1.5">
                             <div className="bg-gray-100 px-2 py-1 text-xs font-bold text-gray-500">
-                              ללא תחום ({groupedPlaces.ungrouped.length})
+                              ללא תחום / נוספו ידנית ({groupedPlaces.ungrouped.length})
                             </div>
                             <div className="p-1">
                               {groupedPlaces.ungrouped.map(loc => {
@@ -2080,13 +2080,9 @@
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold">🏷️ התחומים שלי</h2>
-                <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                  {(() => {
-                    const b = (window.BKK.interestOptions || []).filter(i => isInterestValid(i.id) && interestStatus[i.id] !== false).length;
-                    const u = (window.BKK.uncoveredInterests || []).filter(i => isInterestValid(i.id) && interestStatus[i.id] === true).length;
-                    const c = (customInterests || []).filter(i => isInterestValid(i.id) && interestStatus[i.id] !== false).length;
-                    return b + u + c;
-                  })()} פעילים
+                <button onClick={() => showHelpFor('myInterests')} className="text-blue-400 hover:text-blue-600 text-sm" title="עזרה">❓</button>
+                <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">
+                  {(window.BKK.interestOptions || []).length + (window.BKK.uncoveredInterests || []).length + (customInterests || []).length} סה"כ
                 </span>
               </div>
               <div className="flex gap-1">
