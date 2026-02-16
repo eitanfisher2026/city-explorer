@@ -1494,17 +1494,17 @@
                     onClick={searchManualPlace}
                     className="px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap bg-purple-500 text-white hover:bg-purple-600"
                   >
-                    🔍 Search
+                    {`🔍 ${t('general.search')}`}
                   </button>
                 </div>
                 
                 <p className="text-[11px] text-gray-500">
-                  💡 Search and click to add to route. You can add multiple places.
+                  {t('general.searchAndAddHint')}
                 </p>
                 
                 {manualStops.length > 0 && (
                   <div className="text-[11px] text-purple-600 font-bold">
-                    {`📍 ${manualStops.length} places added manually`}
+                    {`📍 ${manualStops.length} ${t('general.placesAddedManually')}`}
                   </div>
                 )}
                 
@@ -1583,7 +1583,7 @@
                     onClick={searchAddress}
                     className="px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap bg-green-500 text-white hover:bg-green-600"
                   >
-                    🔍 Search
+                    {`🔍 ${t('general.search')}`}
                   </button>
                 </div>
                 

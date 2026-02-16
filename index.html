@@ -460,6 +460,8 @@ general: {
   interestsHeader: 'תחומים',
   searchTip: 'לחץ 🔍 לחיפוש כתובת, 📍 למיקום נוכחי, או 📌 ממקום ברשימה',
   stopsCount: 'תחנות',
+  searchAndAddHint: '💡 חפש ולחץ להוסיף למסלול. אפשר להוסיף מספר מקומות.',
+  placesAddedManually: 'מקומות נוספו ידנית',
   clickToUpload: 'לחץ להעלאה',
   image: 'תמונה',
   links: 'קישורים',
@@ -511,9 +513,9 @@ wizard: {
   step3Title: 'תוצאות',
   myLocation: 'המיקום שלי',
   locationFound: '📍 מיקום נמצא!',
-  findPlaces: 'מצא נקודות עניין',
+  findPlaces: 'מצא מקומות',
   findPlacesCount: '🔍 מצא נקודות עניין ({count} מקומות)',
-  showMap: '🗺️ הצג מפה',
+  showMap: 'הצג מפה',
   allAreasMap: '🗺️ מפת כל האזורים',
 },
 
@@ -1039,6 +1041,8 @@ general: {
   interestsHeader: 'Interests',
   searchTip: 'Click 🔍 to search address, 📍 for location, or 📌 from your places',
   stopsCount: 'stops',
+  searchAndAddHint: '💡 Search and click to add to route. You can add multiple places.',
+  placesAddedManually: 'places added manually',
   clickToUpload: 'Click to upload',
   image: 'Image',
   links: 'Links',
@@ -1088,9 +1092,9 @@ wizard: {
   step3Title: 'Results',
   myLocation: 'My location',
   locationFound: '📍 Location found!',
-  findPlaces: 'Find points of interest',
+  findPlaces: 'Find places',
   findPlacesCount: '🔍 Find points of interest ({count} places)',
-  showMap: '🗺️ Show map',
+  showMap: 'Show map',
   allAreasMap: '🗺️ All areas map',
 },
 
@@ -6782,7 +6786,7 @@ const CityExplorer = () => {
                       color: 'white', fontSize: '14px', fontWeight: 'bold',
                       boxShadow: formData.interests.length > 0 ? '0 4px 6px rgba(37,99,235,0.3)' : 'none'
                     }}
-                  >🔍 Find places {formData.interests.length > 0 ? `(${formData.interests.length})` : ''}</button>
+                  >{`🔍 ${t('wizard.findPlaces')}`}</button>
                 </div>
               </div>
             )}
@@ -7684,7 +7688,7 @@ const CityExplorer = () => {
                       marginBottom: '4px'
                     }}
                   >
-                    {`🗺️ ${t("wizard.showMap")}`}
+                    {`${t("wizard.showMap")}`}
                   </a>
                   
                   
@@ -8319,7 +8323,7 @@ const CityExplorer = () => {
                   marginBottom: '4px'
                 }}
               >
-                {`🗺️ ${t("wizard.showMap")}`}
+                {`${t("wizard.showMap")}`}
               </a>
               
               {/* URL limit note */}
@@ -11090,17 +11094,17 @@ const CityExplorer = () => {
                     onClick={searchManualPlace}
                     className="px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap bg-purple-500 text-white hover:bg-purple-600"
                   >
-                    🔍 Search
+                    {`🔍 ${t('general.search')}`}
                   </button>
                 </div>
                 
                 <p className="text-[11px] text-gray-500">
-                  💡 Search and click to add to route. You can add multiple places.
+                  {t('general.searchAndAddHint')}
                 </p>
                 
                 {manualStops.length > 0 && (
                   <div className="text-[11px] text-purple-600 font-bold">
-                    {`📍 ${manualStops.length} places added manually`}
+                    {`📍 ${manualStops.length} ${t('general.placesAddedManually')}`}
                   </div>
                 )}
                 
@@ -11179,7 +11183,7 @@ const CityExplorer = () => {
                     onClick={searchAddress}
                     className="px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap bg-green-500 text-white hover:bg-green-600"
                   >
-                    🔍 Search
+                    {`🔍 ${t('general.search')}`}
                   </button>
                 </div>
                 

@@ -250,7 +250,7 @@
                       color: 'white', fontSize: '14px', fontWeight: 'bold',
                       boxShadow: formData.interests.length > 0 ? '0 4px 6px rgba(37,99,235,0.3)' : 'none'
                     }}
-                  >🔍 Find places {formData.interests.length > 0 ? `(${formData.interests.length})` : ''}</button>
+                  >{`🔍 ${t('wizard.findPlaces')}`}</button>
                 </div>
               </div>
             )}
@@ -1152,7 +1152,7 @@
                       marginBottom: '4px'
                     }}
                   >
-                    {`🗺️ ${t("wizard.showMap")}`}
+                    {`${t("wizard.showMap")}`}
                   </a>
                   
                   
@@ -1787,7 +1787,7 @@
                   marginBottom: '4px'
                 }}
               >
-                {`🗺️ ${t("wizard.showMap")}`}
+                {`${t("wizard.showMap")}`}
               </a>
               
               {/* URL limit note */}
