@@ -8413,7 +8413,7 @@ const CityExplorer = () => {
                                           {loc.inProgress && <span className="text-orange-600" title={t("general.inProgress")} style={{ fontSize: '14px' }}>🛠️</span>}
                                           {loc.outsideArea && <span className="text-orange-500 text-xs" title={t("general.outsideBoundary")}>🔺</span>}
                                           {loc.missingCoordinates && <span className="text-red-500 text-xs" title={t("general.noLocation")}>⚠️</span>}
-                                          {!isLocationValid(loc) && <span className="text-red-500 text-[9px]" title=t("places.missingDetailsLong")>❌</span>}
+                                          {!isLocationValid(loc) && <span className="text-red-500 text-[9px]" title={t("places.missingDetailsLong")}>❌</span>}
                                           {placesGroupBy === 'area' && loc.interests?.map((int, idx) => {
                                             const obj2 = interestMap[int];
                                             return obj2?.icon ? <span key={idx} title={obj2.label} style={{ fontSize: '13px' }}>{obj2.icon}</span> : null;
@@ -8457,7 +8457,7 @@ const CityExplorer = () => {
                                         )}
                                         {loc.locked && isUnlocked && <span title={t("general.locked")} style={{ fontSize: '12px' }}>🔒</span>}
                                         {loc.inProgress && <span className="text-orange-600" title={t("general.inProgress")} style={{ fontSize: '14px' }}>🛠️</span>}
-                                        {!isLocationValid(loc) && <span className="text-red-500 text-[9px]" title=t("places.missingDetails")>❌</span>}
+                                        {!isLocationValid(loc) && <span className="text-red-500 text-[9px]" title={t("places.missingDetails")}>❌</span>}
                                       </div>
                                     </div>
                                     <button onClick={() => handleEditLocation(loc)}
