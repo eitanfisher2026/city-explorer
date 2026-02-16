@@ -1815,8 +1815,10 @@
       if (!customLocations || customLocations.length === 0) {
         return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations: [] };
       }
-      const activeLocations = customLocations.filter(loc => loc.status !== 'blacklist');
-      const blacklistedLocations = customLocations.filter(loc => loc.status === 'blacklist');
+      // Filter by current city (locations without cityId are treated as 'bangkok')
+      const cityLocations = customLocations.filter(loc => (loc.cityId || 'bangkok') === selectedCityId);
+      const activeLocations = cityLocations.filter(loc => loc.status !== 'blacklist');
+      const blacklistedLocations = cityLocations.filter(loc => loc.status === 'blacklist');
       
       if (activeLocations.length === 0) return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations };
       
@@ -1870,7 +1872,7 @@
       console.error('[MEMO] groupedPlaces error:', e);
       return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations: [] };
     }
-  }, [customLocations, placesGroupBy, interestMap, areaMap]);
+  }, [customLocations, placesGroupBy, interestMap, areaMap, selectedCityId]);
 
   // Image handling - loaded from utils.js
   const compressImage = window.BKK.compressImage;
@@ -1926,8 +1928,11 @@
     // Now we only collect CUSTOM locations - Google Places will be fetched in generateRoute
     const isRadiusMode = formData.searchMode === 'radius' || formData.searchMode === 'all';
     
-    // Filter custom locations that match current area/radius and selected interests
+    // Filter custom locations that match current city, area/radius and selected interests
     const matchingCustomLocations = customLocations.filter(loc => {
+      // Filter by current city (locations without cityId are treated as 'bangkok')
+      if ((loc.cityId || 'bangkok') !== selectedCityId) return false;
+      
       // CRITICAL: Skip blacklisted locations!
       if (loc.status === 'blacklist') return false;
       
@@ -2816,7 +2821,7 @@
   // Filter out places that exist in custom locations with status='blacklist' (exact name match)
   const filterBlacklist = (places) => {
     const blacklistedNames = customLocations
-      .filter(loc => loc.status === 'blacklist')
+      .filter(loc => loc.status === 'blacklist' && (loc.cityId || 'bangkok') === selectedCityId)
       .map(loc => loc.name.toLowerCase().trim());
     
     if (blacklistedNames.length === 0) return places;
@@ -2834,7 +2839,7 @@
   // Filter out Google places that already exist in custom locations (exact name match)
   const filterDuplicatesOfCustom = (places) => {
     const customNames = customLocations
-      .filter(loc => loc.status !== 'blacklist')
+      .filter(loc => loc.status !== 'blacklist' && (loc.cityId || 'bangkok') === selectedCityId)
       .map(loc => loc.name.toLowerCase().trim());
     
     if (customNames.length === 0) return places;
@@ -2884,7 +2889,8 @@
       notes: '',
       savedAt: new Date().toISOString(),
       inProgress: true,
-      locked: false
+      locked: false,
+      cityId: selectedCityId
     };
 
     if (isFirebaseAvailable && database) {
@@ -3260,7 +3266,8 @@
       status: 'active',
       inProgress: false,
       addedAt: new Date().toISOString(),
-      fromGoogle: true // Mark as added from Google
+      fromGoogle: true, // Mark as added from Google
+      cityId: selectedCityId // Associate with current city
     };
     
     // Save to Firebase (or localStorage fallback)
@@ -3353,7 +3360,8 @@
       status: 'blacklist', // Start as blacklisted!
       inProgress: false,
       addedAt: new Date().toISOString(),
-      fromGoogle: true
+      fromGoogle: true,
+      cityId: selectedCityId
     };
     
     // Save to Firebase (or localStorage fallback)
@@ -3717,7 +3725,8 @@
       status: 'active',
       inProgress: newLocation.inProgress || false,
       locked: newLocation.locked || false,
-      addedAt: new Date().toISOString()
+      addedAt: new Date().toISOString(),
+      cityId: selectedCityId
     };
     
     // Save to Firebase (or localStorage fallback)

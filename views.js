@@ -2017,11 +2017,14 @@
 
         {currentView === 'saved' && (
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-3">
+            {(() => {
+              const citySavedRoutes = savedRoutes.filter(r => (r.cityId || 'bangkok') === selectedCityId);
+              return (<>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold">🗺️ מסלולים שמורים</h2>
                 <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                  {savedRoutes.length}
+                  {citySavedRoutes.length}
                 </span>
                 <button
                   onClick={() => showHelpFor('saved')}
@@ -2044,10 +2047,10 @@
               </div>
             </div>
             
-            {savedRoutes.length === 0 ? (
+            {citySavedRoutes.length === 0 ? (
               <div className="text-center py-8">
                 <div className="text-4xl mb-2">🗺️</div>
-                <p className="text-gray-600 mb-3 text-sm">עדיין אין מסלולים שמורים</p>
+                <p className="text-gray-600 mb-3 text-sm">אין מסלולים שמורים ב{window.BKK.selectedCity?.name || 'עיר זו'}</p>
                 <button
                   onClick={() => setCurrentView('form')}
                   className="bg-slate-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-700"
@@ -2056,7 +2059,7 @@
             ) : (
               <div className="space-y-1">
                 {(() => {
-                  const sorted = [...savedRoutes].sort((a, b) => {
+                  const sorted = [...citySavedRoutes].sort((a, b) => {
                     if (routesSortBy === 'name') return (a.name || '').localeCompare(b.name || '', 'he');
                     return (a.areaName || '').localeCompare(b.areaName || '', 'he');
                   });
@@ -2115,6 +2118,8 @@
                 })()}
               </div>
             )}
+              </>);
+            })()}
           </div>
         )}
 
@@ -2995,11 +3000,17 @@
                   }`}
                 >🗺️ אזורים</button>
                 <button
-                  onClick={() => setMapMode('radius')}
-                  disabled={!formData.currentLat}
+                  onClick={() => {
+                    if (!formData.currentLat) {
+                      showToast('📍 לחץ GPS או הגדר מיקום כדי להשתמש במצב רדיוס', 'warning');
+                      return;
+                    }
+                    setMapMode('radius');
+                  }}
                   className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
                     mapMode === 'radius' ? 'bg-rose-500 text-white shadow' : 'text-gray-500 hover:bg-gray-200'
-                  } ${!formData.currentLat ? 'opacity-30 cursor-not-allowed' : ''}`}
+                  } ${!formData.currentLat ? 'opacity-30' : ''}`}
+                  title={!formData.currentLat ? 'צריך להגדיר מיקום GPS קודם' : 'הצג רדיוס חיפוש'}
                 >📍 רדיוס</button>
               </div>
             </div>

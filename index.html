@@ -2792,8 +2792,10 @@ const CityExplorer = () => {
       if (!customLocations || customLocations.length === 0) {
         return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations: [] };
       }
-      const activeLocations = customLocations.filter(loc => loc.status !== 'blacklist');
-      const blacklistedLocations = customLocations.filter(loc => loc.status === 'blacklist');
+      // Filter by current city (locations without cityId are treated as 'bangkok')
+      const cityLocations = customLocations.filter(loc => (loc.cityId || 'bangkok') === selectedCityId);
+      const activeLocations = cityLocations.filter(loc => loc.status !== 'blacklist');
+      const blacklistedLocations = cityLocations.filter(loc => loc.status === 'blacklist');
       
       if (activeLocations.length === 0) return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations };
       
@@ -2847,7 +2849,7 @@ const CityExplorer = () => {
       console.error('[MEMO] groupedPlaces error:', e);
       return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations: [] };
     }
-  }, [customLocations, placesGroupBy, interestMap, areaMap]);
+  }, [customLocations, placesGroupBy, interestMap, areaMap, selectedCityId]);
 
   // Image handling - loaded from utils.js
   const compressImage = window.BKK.compressImage;
@@ -2903,8 +2905,11 @@ const CityExplorer = () => {
     // Now we only collect CUSTOM locations - Google Places will be fetched in generateRoute
     const isRadiusMode = formData.searchMode === 'radius' || formData.searchMode === 'all';
     
-    // Filter custom locations that match current area/radius and selected interests
+    // Filter custom locations that match current city, area/radius and selected interests
     const matchingCustomLocations = customLocations.filter(loc => {
+      // Filter by current city (locations without cityId are treated as 'bangkok')
+      if ((loc.cityId || 'bangkok') !== selectedCityId) return false;
+      
       // CRITICAL: Skip blacklisted locations!
       if (loc.status === 'blacklist') return false;
       
@@ -3793,7 +3798,7 @@ const CityExplorer = () => {
   // Filter out places that exist in custom locations with status='blacklist' (exact name match)
   const filterBlacklist = (places) => {
     const blacklistedNames = customLocations
-      .filter(loc => loc.status === 'blacklist')
+      .filter(loc => loc.status === 'blacklist' && (loc.cityId || 'bangkok') === selectedCityId)
       .map(loc => loc.name.toLowerCase().trim());
     
     if (blacklistedNames.length === 0) return places;
@@ -3811,7 +3816,7 @@ const CityExplorer = () => {
   // Filter out Google places that already exist in custom locations (exact name match)
   const filterDuplicatesOfCustom = (places) => {
     const customNames = customLocations
-      .filter(loc => loc.status !== 'blacklist')
+      .filter(loc => loc.status !== 'blacklist' && (loc.cityId || 'bangkok') === selectedCityId)
       .map(loc => loc.name.toLowerCase().trim());
     
     if (customNames.length === 0) return places;
@@ -3861,7 +3866,8 @@ const CityExplorer = () => {
       notes: '',
       savedAt: new Date().toISOString(),
       inProgress: true,
-      locked: false
+      locked: false,
+      cityId: selectedCityId
     };
 
     if (isFirebaseAvailable && database) {
@@ -4237,7 +4243,8 @@ const CityExplorer = () => {
       status: 'active',
       inProgress: false,
       addedAt: new Date().toISOString(),
-      fromGoogle: true // Mark as added from Google
+      fromGoogle: true, // Mark as added from Google
+      cityId: selectedCityId // Associate with current city
     };
     
     // Save to Firebase (or localStorage fallback)
@@ -4330,7 +4337,8 @@ const CityExplorer = () => {
       status: 'blacklist', // Start as blacklisted!
       inProgress: false,
       addedAt: new Date().toISOString(),
-      fromGoogle: true
+      fromGoogle: true,
+      cityId: selectedCityId
     };
     
     // Save to Firebase (or localStorage fallback)
@@ -4694,7 +4702,8 @@ const CityExplorer = () => {
       status: 'active',
       inProgress: newLocation.inProgress || false,
       locked: newLocation.locked || false,
-      addedAt: new Date().toISOString()
+      addedAt: new Date().toISOString(),
+      cityId: selectedCityId
     };
     
     // Save to Firebase (or localStorage fallback)
@@ -7256,11 +7265,14 @@ const CityExplorer = () => {
 
         {currentView === 'saved' && (
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-3">
+            {(() => {
+              const citySavedRoutes = savedRoutes.filter(r => (r.cityId || 'bangkok') === selectedCityId);
+              return (<>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold">🗺️ מסלולים שמורים</h2>
                 <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                  {savedRoutes.length}
+                  {citySavedRoutes.length}
                 </span>
                 <button
                   onClick={() => showHelpFor('saved')}
@@ -7283,10 +7295,10 @@ const CityExplorer = () => {
               </div>
             </div>
             
-            {savedRoutes.length === 0 ? (
+            {citySavedRoutes.length === 0 ? (
               <div className="text-center py-8">
                 <div className="text-4xl mb-2">🗺️</div>
-                <p className="text-gray-600 mb-3 text-sm">עדיין אין מסלולים שמורים</p>
+                <p className="text-gray-600 mb-3 text-sm">אין מסלולים שמורים ב{window.BKK.selectedCity?.name || 'עיר זו'}</p>
                 <button
                   onClick={() => setCurrentView('form')}
                   className="bg-slate-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-700"
@@ -7295,7 +7307,7 @@ const CityExplorer = () => {
             ) : (
               <div className="space-y-1">
                 {(() => {
-                  const sorted = [...savedRoutes].sort((a, b) => {
+                  const sorted = [...citySavedRoutes].sort((a, b) => {
                     if (routesSortBy === 'name') return (a.name || '').localeCompare(b.name || '', 'he');
                     return (a.areaName || '').localeCompare(b.areaName || '', 'he');
                   });
@@ -7354,6 +7366,8 @@ const CityExplorer = () => {
                 })()}
               </div>
             )}
+              </>);
+            })()}
           </div>
         )}
 
@@ -8234,11 +8248,17 @@ const CityExplorer = () => {
                   }`}
                 >🗺️ אזורים</button>
                 <button
-                  onClick={() => setMapMode('radius')}
-                  disabled={!formData.currentLat}
+                  onClick={() => {
+                    if (!formData.currentLat) {
+                      showToast('📍 לחץ GPS או הגדר מיקום כדי להשתמש במצב רדיוס', 'warning');
+                      return;
+                    }
+                    setMapMode('radius');
+                  }}
                   className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
                     mapMode === 'radius' ? 'bg-rose-500 text-white shadow' : 'text-gray-500 hover:bg-gray-200'
-                  } ${!formData.currentLat ? 'opacity-30 cursor-not-allowed' : ''}`}
+                  } ${!formData.currentLat ? 'opacity-30' : ''}`}
+                  title={!formData.currentLat ? 'צריך להגדיר מיקום GPS קודם' : 'הצג רדיוס חיפוש'}
                 >📍 רדיוס</button>
               </div>
             </div>
