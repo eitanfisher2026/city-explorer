@@ -101,6 +101,8 @@
   const [showImageModal, setShowImageModal] = useState(false);
   const [showAddressDialog, setShowAddressDialog] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
+  const [settingsTab, setSettingsTab] = useState('cities'); // 'cities' or 'general'
+  const [editingArea, setEditingArea] = useState(null); // area being edited on map
   const [mapMode, setMapMode] = useState('areas'); // 'areas' or 'radius'
   const leafletMapRef = React.useRef(null);
   

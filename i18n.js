@@ -645,6 +645,11 @@ settings: {
   noPassword: '🔓 ללא סיסמה - גישה פתוחה לכולם',
   newPasswordPlaceholder: 'סיסמה חדשה...',
   lockedSettings: 'הגדרות נעולות',
+  citiesAndAreas: 'ערים ואזורים',
+  generalSettings: 'הגדרות כלליות',
+  editArea: 'עריכת אזור',
+  editOnMap: 'ערוך על המפה',
+  radius: 'רדיוס',
   enterPassword: 'הזן סיסמה לפתיחת ההגדרות',
 },
 
@@ -1218,6 +1223,11 @@ settings: {
   noPassword: '🔓 No password - open access',
   newPasswordPlaceholder: 'New password...',
   lockedSettings: 'Locked settings',
+  citiesAndAreas: 'Cities & Areas',
+  generalSettings: 'General Settings',
+  editArea: 'Edit area',
+  editOnMap: 'Edit on map',
+  radius: 'Radius',
   enterPassword: 'Enter password to unlock',
 },
 

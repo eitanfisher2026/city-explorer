@@ -818,6 +818,11 @@ settings: {
   noPassword: '🔓 ללא סיסמה - גישה פתוחה לכולם',
   newPasswordPlaceholder: 'סיסמה חדשה...',
   lockedSettings: 'הגדרות נעולות',
+  citiesAndAreas: 'ערים ואזורים',
+  generalSettings: 'הגדרות כלליות',
+  editArea: 'עריכת אזור',
+  editOnMap: 'ערוך על המפה',
+  radius: 'רדיוס',
   enterPassword: 'הזן סיסמה לפתיחת ההגדרות',
 },
 
@@ -1391,6 +1396,11 @@ settings: {
   noPassword: '🔓 No password - open access',
   newPasswordPlaceholder: 'New password...',
   lockedSettings: 'Locked settings',
+  citiesAndAreas: 'Cities & Areas',
+  generalSettings: 'General Settings',
+  editArea: 'Edit area',
+  editOnMap: 'Edit on map',
+  radius: 'Radius',
   enterPassword: 'Enter password to unlock',
 },
 
@@ -2343,6 +2353,8 @@ const CityExplorer = () => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [showAddressDialog, setShowAddressDialog] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
+  const [settingsTab, setSettingsTab] = useState('cities'); // 'cities' or 'general'
+  const [editingArea, setEditingArea] = useState(null); // area being edited on map
   const [mapMode, setMapMode] = useState('areas'); // 'areas' or 'radius'
   const leafletMapRef = React.useRef(null);
   
@@ -6853,9 +6865,10 @@ const CityExplorer = () => {
               }
               window.scrollTo(0, 0);
             }}
-            className={`flex-1 min-w-0 py-1.5 px-1 rounded-lg font-medium transition text-[9px] sm:text-xs leading-tight ${
+            className={`hidden sm:flex flex-1 min-w-0 py-1.5 px-1 rounded-lg font-medium transition text-[9px] sm:text-xs leading-tight ${
               currentView === 'settings' ? 'bg-slate-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
+            style={{ flexDirection: 'column', alignItems: 'center' }}
           >
             <div className="text-center relative inline-flex items-center justify-center w-full">
               {(isUnlocked || !adminPassword) ? '🔓' : '🔒'}
@@ -9053,6 +9066,25 @@ const CityExplorer = () => {
               </div>
             </div>
 
+            {/* Settings Sub-Tabs */}
+            <div className="flex gap-2 mb-3">
+              <button
+                onClick={() => setSettingsTab('cities')}
+                className={`flex-1 py-2 rounded-lg font-bold text-sm transition ${
+                  settingsTab === 'cities' ? 'bg-rose-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >{`🌍 ${t('settings.citiesAndAreas')}`}</button>
+              <button
+                onClick={() => setSettingsTab('general')}
+                className={`flex-1 py-2 rounded-lg font-bold text-sm transition ${
+                  settingsTab === 'general' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >{`⚙️ ${t('settings.generalSettings')}`}</button>
+            </div>
+
+            {/* ===== CITIES & AREAS TAB ===== */}
+            {settingsTab === 'cities' && (<div>
+
             {/* City & Area Management */}
             <div className="mb-3">
               <div className="bg-gradient-to-r from-rose-50 to-orange-50 border-2 border-rose-400 rounded-lg p-2">
@@ -9115,7 +9147,40 @@ const CityExplorer = () => {
                       <div key={area.id} style={{ padding: '5px 6px', borderBottom: i < (window.BKK.selectedCity.areas.length - 1) ? '1px solid #f3f4f6' : 'none', fontSize: '11px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <span style={{ fontWeight: 'bold', flex: 1, color: '#1f2937' }}>{tLabel(area)}</span>
-                          <span style={{ fontSize: '9px', color: '#6b7280' }}>{tLabel(area)}</span>
+                          <span style={{ fontSize: '9px', color: '#6b7280' }}>{tDesc(area)}</span>
+                          {isUnlocked && (
+                            <button
+                              onClick={() => {
+                                setEditingArea(area);
+                                setTimeout(() => {
+                                  const container = document.getElementById('area-edit-map');
+                                  if (!container || !window.L) return;
+                                  if (window._editMap) { window._editMap.remove(); }
+                                  const map = L.map(container).setView([area.lat, area.lng], 13);
+                                  L.tileLayer('https://{s}.basemaps.cartocdn.com/voyager_labels_under/{z}/{x}/{y}{r}.png', {
+                                    attribution: '© CartoDB © OSM', maxZoom: 19
+                                  }).addTo(map);
+                                  const circle = L.circle([area.lat, area.lng], { radius: area.radius, color: '#10b981', fillOpacity: 0.15, weight: 2 }).addTo(map);
+                                  const marker = L.marker([area.lat, area.lng], { draggable: true }).addTo(map);
+                                  marker.on('dragend', () => {
+                                    const pos = marker.getLatLng();
+                                    area.lat = Math.round(pos.lat * 10000) / 10000;
+                                    area.lng = Math.round(pos.lng * 10000) / 10000;
+                                    const areaCoord = window.BKK.areaCoordinates?.[area.id];
+                                    if (areaCoord) { areaCoord.lat = area.lat; areaCoord.lng = area.lng; }
+                                    circle.setLatLng(pos);
+                                    setFormData(prev => ({...prev}));
+                                  });
+                                  window._editMap = map;
+                                  window._editCircle = circle;
+                                  window._editMarker = marker;
+                                  map.fitBounds(circle.getBounds().pad(0.3));
+                                }, 200);
+                              }}
+                              style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '4px', border: '1px solid #10b981', background: '#ecfdf5', color: '#059669', cursor: 'pointer' }}
+                              title={t('settings.editOnMap')}
+                            >🗺️</button>
+                          )}
                         </div>
                         {isUnlocked && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px', flexWrap: 'wrap' }}>
@@ -9151,6 +9216,73 @@ const CityExplorer = () => {
                 </div>
               </div>
             </div>
+
+            {/* Area Map Editor */}
+            {editingArea && (
+              <div className="mb-3">
+                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-400 rounded-lg p-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-bold text-gray-800">{`📍 ${t('settings.editArea')}: ${tLabel(editingArea)}`}</h3>
+                    <button onClick={() => setEditingArea(null)} className="text-gray-400 hover:text-red-500 text-lg font-bold">✕</button>
+                  </div>
+                  <div id="area-edit-map" style={{ height: '300px', borderRadius: '8px', border: '1px solid #d1d5db', marginBottom: '8px' }}></div>
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <label className="text-xs text-gray-600 flex items-center gap-1">
+                      {t('settings.radius')}:
+                      <input type="range" min="500" max="10000" step="100" value={editingArea.radius}
+                        onChange={(e) => {
+                          const newRadius = parseInt(e.target.value);
+                          editingArea.radius = newRadius;
+                          const areaCoord = window.BKK.areaCoordinates?.[editingArea.id];
+                          if (areaCoord) areaCoord.radius = newRadius;
+                          if (window._editCircle) window._editCircle.setRadius(newRadius);
+                          setFormData(prev => ({...prev}));
+                        }}
+                        style={{ width: '120px' }}
+                      />
+                      <span className="font-bold text-sm">{editingArea.radius}m</span>
+                    </label>
+                    <label className="text-xs text-gray-600 flex items-center gap-1">
+                      Lat: <input type="number" step="0.001" value={editingArea.lat} className="w-24 text-xs p-1 border rounded"
+                        onChange={(e) => {
+                          editingArea.lat = parseFloat(e.target.value);
+                          const areaCoord = window.BKK.areaCoordinates?.[editingArea.id];
+                          if (areaCoord) areaCoord.lat = editingArea.lat;
+                          if (window._editCircle) window._editCircle.setLatLng([editingArea.lat, editingArea.lng]);
+                          if (window._editMarker) window._editMarker.setLatLng([editingArea.lat, editingArea.lng]);
+                          if (window._editMap) window._editMap.setView([editingArea.lat, editingArea.lng]);
+                          setFormData(prev => ({...prev}));
+                        }}
+                      />
+                    </label>
+                    <label className="text-xs text-gray-600 flex items-center gap-1">
+                      Lng: <input type="number" step="0.001" value={editingArea.lng} className="w-24 text-xs p-1 border rounded"
+                        onChange={(e) => {
+                          editingArea.lng = parseFloat(e.target.value);
+                          const areaCoord = window.BKK.areaCoordinates?.[editingArea.id];
+                          if (areaCoord) areaCoord.lng = editingArea.lng;
+                          if (window._editCircle) window._editCircle.setLatLng([editingArea.lat, editingArea.lng]);
+                          if (window._editMarker) window._editMarker.setLatLng([editingArea.lat, editingArea.lng]);
+                          if (window._editMap) window._editMap.setView([editingArea.lat, editingArea.lng]);
+                          setFormData(prev => ({...prev}));
+                        }}
+                      />
+                    </label>
+                    <button
+                      onClick={() => {
+                        showToast(`${tLabel(editingArea)}: ${editingArea.lat.toFixed(4)}, ${editingArea.lng.toFixed(4)}, ${editingArea.radius}m`, 'success');
+                      }}
+                      className="px-3 py-1 bg-emerald-500 text-white rounded-lg text-xs font-bold hover:bg-emerald-600"
+                    >{t('general.save')}</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            </div>)}
+
+            {/* ===== GENERAL SETTINGS TAB ===== */}
+            {settingsTab === 'general' && (<div>
 
             {/* Max Stops Setting */}
             <div className="mb-3">
@@ -9499,6 +9631,7 @@ const CityExplorer = () => {
               </div>
             </div>
             
+            </div>)}
             
           </div>
         )}
