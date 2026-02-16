@@ -1809,16 +1809,23 @@
     } catch(e) { console.error('[MEMO] areaMap error:', e); return {}; }
   }, [areaOptions]);
 
+  // City-filtered custom locations and saved routes
+  const cityCustomLocations = useMemo(() => {
+    return customLocations.filter(loc => (loc.cityId || 'bangkok') === selectedCityId);
+  }, [customLocations, selectedCityId]);
+
+  const citySavedRoutes = useMemo(() => {
+    return savedRoutes.filter(r => (r.cityId || 'bangkok') === selectedCityId);
+  }, [savedRoutes, selectedCityId]);
+
   // Memoize expensive places grouping/sorting
   const groupedPlaces = useMemo(() => {
     try {
-      if (!customLocations || customLocations.length === 0) {
+      if (!cityCustomLocations || cityCustomLocations.length === 0) {
         return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations: [] };
       }
-      // Filter by current city (locations without cityId are treated as 'bangkok')
-      const cityLocations = customLocations.filter(loc => (loc.cityId || 'bangkok') === selectedCityId);
-      const activeLocations = cityLocations.filter(loc => loc.status !== 'blacklist');
-      const blacklistedLocations = cityLocations.filter(loc => loc.status === 'blacklist');
+      const activeLocations = cityCustomLocations.filter(loc => loc.status !== 'blacklist');
+      const blacklistedLocations = cityCustomLocations.filter(loc => loc.status === 'blacklist');
       
       if (activeLocations.length === 0) return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations };
       
@@ -1872,7 +1879,7 @@
       console.error('[MEMO] groupedPlaces error:', e);
       return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations: [] };
     }
-  }, [customLocations, placesGroupBy, interestMap, areaMap, selectedCityId]);
+  }, [cityCustomLocations, placesGroupBy, interestMap, areaMap]);
 
   // Image handling - loaded from utils.js
   const compressImage = window.BKK.compressImage;

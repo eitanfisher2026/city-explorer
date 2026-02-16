@@ -304,6 +304,16 @@ window.BKK.selectCity = function(cityId) {
 
 // Default: load saved city or Bangkok
 (function() {
+  // Restore city active/inactive states
+  try {
+    var states = JSON.parse(localStorage.getItem('city_active_states') || '{}');
+    Object.keys(states).forEach(function(cityId) {
+      if (window.BKK.cities[cityId]) {
+        window.BKK.cities[cityId].active = states[cityId];
+      }
+    });
+  } catch(e) {}
+  
   var savedCity = 'bangkok';
   try { savedCity = localStorage.getItem('city_explorer_city') || 'bangkok'; } catch(e) {}
   if (!window.BKK.cities[savedCity]) savedCity = 'bangkok';

@@ -274,7 +274,7 @@
             }`}
           >
             <div className="text-center">💾</div>
-            <div className="truncate text-center text-[8px]">שמורים {savedRoutes.length > 0 ? `(${savedRoutes.length})` : ''}</div>
+            <div className="truncate text-center text-[8px]">שמורים {citySavedRoutes.length > 0 ? `(${citySavedRoutes.length})` : ''}</div>
           </button>
           <button
             onClick={() => { setCurrentView('myPlaces'); window.scrollTo(0, 0); }}
@@ -283,7 +283,7 @@
             }`}
           >
             <div className="text-center">📍</div>
-            <div className="truncate text-center text-[8px]">מקומות {customLocations.filter(l => l.status !== 'blacklist').length > 0 ? `(${customLocations.filter(l => l.status !== 'blacklist').length})` : ''}</div>
+            <div className="truncate text-center text-[8px]">מקומות {cityCustomLocations.filter(l => l.status !== 'blacklist').length > 0 ? `(${cityCustomLocations.filter(l => l.status !== 'blacklist').length})` : ''}</div>
           </button>
           <button
             onClick={() => { setCurrentView('myInterests'); window.scrollTo(0, 0); }}
@@ -598,7 +598,7 @@
                           )}
                         </div>
                         <div className="max-h-48 overflow-y-auto bg-white rounded border border-gray-200">
-                          {customLocations
+                          {cityCustomLocations
                             .filter(loc => loc.lat && loc.lng && loc.status !== 'blacklist')
                             .filter(loc => !placeSearchQuery || loc.name.toLowerCase().includes(placeSearchQuery.toLowerCase()))
                             .slice(0, 30)
@@ -625,7 +625,7 @@
                               </button>
                             ))
                           }
-                          {customLocations.filter(loc => loc.lat && loc.lng && loc.status !== 'blacklist').length === 0 && (
+                          {cityCustomLocations.filter(loc => loc.lat && loc.lng && loc.status !== 'blacklist').length === 0 && (
                             <div className="p-2 text-center text-[10px] text-gray-400">אין מקומות עם קואורדינטות</div>
                           )}
                         </div>
@@ -1999,17 +1999,17 @@
                 <p className="font-bold">לא נמצאו תוצאות עבור "{searchQuery}"</p>
                 <p className="text-sm mt-2">נסה לחפש משהו אחר</p>
               </div>
-            ) : customLocations.length === 0 ? (
+            ) : cityCustomLocations.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
                 <div className="text-6xl mb-4">📍</div>
-                <p className="font-bold">עדיין אין מקומות מותאמים אישית</p>
+                <p className="font-bold">אין מקומות ב{window.BKK.selectedCity?.name || 'עיר זו'}</p>
                 <p className="text-sm mt-2">הוסף מקומות כדי לחפש בהם</p>
               </div>
             ) : (
               <div className="text-center py-12 text-gray-500">
                 <div className="text-6xl mb-4">🔍</div>
                 <p className="font-bold">התחל להקליד כדי לחפש</p>
-                <p className="text-sm mt-2">יש לך {customLocations.length} מקומות מותאמים אישית</p>
+                <p className="text-sm mt-2">יש לך {cityCustomLocations.length} מקומות ב{window.BKK.selectedCity?.name || 'עיר זו'}</p>
               </div>
             )}
           </div>
@@ -2017,9 +2017,6 @@
 
         {currentView === 'saved' && (
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-3">
-            {(() => {
-              const citySavedRoutes = savedRoutes.filter(r => (r.cityId || 'bangkok') === selectedCityId);
-              return (<>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold">🗺️ מסלולים שמורים</h2>
@@ -2118,8 +2115,6 @@
                 })()}
               </div>
             )}
-              </>);
-            })()}
           </div>
         )}
 
@@ -2141,7 +2136,7 @@
             {/* Custom Locations Section - Split by status */}
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="text-base font-bold">מקומות ({customLocations.filter(l => l.status !== 'blacklist').length})</h3>
+                <h3 className="text-base font-bold">מקומות ({cityCustomLocations.filter(l => l.status !== 'blacklist').length})</h3>
                 <div className="flex items-center gap-2">
                   {/* Group by toggle */}
                   <div className="flex bg-gray-200 rounded-lg p-0.5">
@@ -2174,10 +2169,10 @@
                 </div>
               </div>
               
-              {customLocations.length === 0 ? (
+              {cityCustomLocations.length === 0 ? (
                 <div className="text-center py-6 bg-gray-50 rounded-lg">
                   <div className="text-3xl mb-2">📍</div>
-                  <p className="text-gray-600 text-sm">עדיין אין מקומות מותאמים אישית</p>
+                  <p className="text-gray-600 text-sm">אין מקומות ב{window.BKK.selectedCity?.name || 'עיר זו'}</p>
                   <p className="text-xs text-gray-500 mt-1">לחץ "הוסף מקום" כדי ליצור</p>
                 </div>
               ) : (
@@ -2527,6 +2522,12 @@
                         <button
                           onClick={() => {
                             city.active = city.active === false ? true : false;
+                            // Persist to localStorage
+                            try {
+                              const states = JSON.parse(localStorage.getItem('city_active_states') || '{}');
+                              states[city.id] = city.active;
+                              localStorage.setItem('city_active_states', JSON.stringify(states));
+                            } catch(e) {}
                             showToast(city.name + (city.active ? ' ✅ פעיל' : ' ⏸️ מושבת'), 'info');
                             setFormData(prev => ({...prev})); // force re-render
                           }}
