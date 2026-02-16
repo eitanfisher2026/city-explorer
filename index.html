@@ -314,8 +314,8 @@ general: {
   enabled: '✅ פעיל',
   disabled: '⏸️ מושבת',
   enable: '✅ הפעל',
-  enableAlt: '▶️ הפעל',
-  disable: '⏸️ השבת',
+  enableAlt: 'הפעל',
+  disable: 'השבת',
   enableCity: 'הפעל עיר',
   disableCity: 'השבת עיר',
   included: '✅ כלול',
@@ -698,6 +698,12 @@ interests: {
   privateInterest: 'תחום פרטי',
   myPlacesOnly: 'רק מקומות שלי, בלי פנייה לגוגל',
   interestStatus: 'סטטוס תחומים',
+  categorySearch: 'חיפוש קטגוריה (types)',
+  textSearch: 'חיפוש טקסט (query)',
+  textQuery: 'טקסט חיפוש',
+  placeTypes: 'סוגי מקומות (מופרדים בפסיק)',
+  seeTypesList: 'ראה רשימת סוגים',
+  blacklistWords: 'מילות סינון (מופרדות בפסיק)',
 },
 
 // --- Toasts & Messages ---
@@ -878,9 +884,7 @@ general: {
   dangerArea: 'Dangerous',
   enabled: '✅ Active',
   disabled: '⏸️ Disabled',
-  enable: '✅ Enable',
-  enableAlt: '▶️ Enable',
-  disable: '⏸️ Disable',
+  enableAlt: 'Enable',
   enableCity: 'Enable city',
   disableCity: 'Disable city',
   included: '✅ Included',
@@ -1257,6 +1261,12 @@ interests: {
   privateInterest: 'Private interest',
   myPlacesOnly: 'My places only, no Google',
   interestStatus: 'Interest status',
+  categorySearch: 'Category Search (types)',
+  textSearch: 'Text Search (query)',
+  textQuery: 'Text Query',
+  placeTypes: 'Place Types (comma separated)',
+  seeTypesList: 'See types list',
+  blacklistWords: 'Blacklist Words (comma separated)',
 },
 
 toast: {
@@ -6668,7 +6678,7 @@ const CityExplorer = () => {
                     marginBottom: '4px', transition: 'all 0.2s'
                   }}
                 >
-                  <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#2563eb' }}>📍 Near me</div>
+                  <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#2563eb' }}>{`📍 ${t("general.nearMe")}`}</div>
                   <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '1px' }}>GPS (1km)</div>
                 </button>
 
@@ -7534,7 +7544,7 @@ const CityExplorer = () => {
                                         <span title={t("form.myPlace")} style={{ fontSize: '11px' }}>🎖️</span>
                                       )}
                                       {isAddedLater && !wizardMode && (
-                                        <span className="text-blue-500 font-bold" title={t("general.addedViaMore")} style={{ fontSize: '9px' }}>+more</span>
+                                        <span className="text-blue-500 font-bold" title={t("general.addedViaMore")} style={{ fontSize: '9px' }}>{`+${t('general.more')}`}</span>
                                       )}
                                       {/* Camera icon for custom locations with image */}
                                       {isCustom && stop.uploadedImage && !wizardMode && (
@@ -8151,7 +8161,7 @@ const CityExplorer = () => {
                                     {stop.notes && (
                                       <div className="text-gray-400 italic">💭 {stop.notes}</div>
                                     )}
-                                    <div className="text-gray-400 mt-2 text-[9px]">👆 Click for full details</div>
+                                    <div className="text-gray-400 mt-2 text-[9px]">{`👆 ${t("general.clickForDetails")}`}</div>
                                   </div>
                                 </div>
                               </div>
@@ -9210,10 +9220,10 @@ const CityExplorer = () => {
                 </button>
                 <div className="mt-2 text-[10px] text-gray-500 flex flex-wrap gap-1">
                   <span className="bg-cyan-100 px-1.5 py-0.5 rounded">{`📍 ${t("nav.myPlaces")}`}</span>
-                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">🏷️ Interests</span>
+                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">{`🏷️ ${t("general.interestsHeader")}`}</span>
                   <span className="bg-cyan-100 px-1.5 py-0.5 rounded">{`💾 ${t("nav.saved")}`}</span>
-                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">⚙️ Search settings</span>
-                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">👑 Permissions</span>
+                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">{`⚙️ ${t("general.searchSettings")}`}</span>
+                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">{`👑 ${t("general.permissions")}`}</span>
                 </div>
               </div>
             </div>
@@ -9462,7 +9472,7 @@ const CityExplorer = () => {
                   
                   {/* Info Box */}
                   <div className="bg-blue-100 border border-blue-300 rounded-lg p-2 text-[10px]">
-                    <p className="text-blue-900 font-bold mb-1">💡 Uses:</p>
+                    <p className="text-blue-900 font-bold mb-1">{`💡 ${t('general.uses')}:`}</p>
                     <ul className="text-blue-800 space-y-0.5 mr-3">
                       <li>{t("general.transferDevices")}</li>
                       <li>{t("general.dataBackup")}</li>
@@ -9487,13 +9497,13 @@ const CityExplorer = () => {
                 else { try { navigator.clipboard.writeText(window.location.href); showToast(t('route.linkCopied'), 'success'); } catch(e) { showToast(window.location.href, 'info'); } }
               }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}
-            >📤 Share</button>
+            >{`📤 ${t("general.share")}`}</button>
             <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
             <span style={{ fontSize: '9px', color: '#9ca3af' }}>v{window.BKK.VERSION}</span>
             <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
             <span style={{ fontSize: '9px', color: '#9ca3af' }}>© Eitan Fisher</span>
             <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
-            <button onClick={applyUpdate} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}>🔄 Refresh</button>
+            <button onClick={applyUpdate} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}>{`🔄 ${t("general.refresh")}`}</button>
           </div>
         </div>
 
@@ -9771,7 +9781,7 @@ const CityExplorer = () => {
 
                 {/* Image - Compact */}
                 <div>
-                  <label className="block text-xs font-bold mb-1">📷 Image</label>
+                  <label className="block text-xs font-bold mb-1">{`📷 ${t("general.image")}`}</label>
                   {newLocation.uploadedImage ? (
                     <div className="relative">
                       <img 
@@ -9813,7 +9823,7 @@ const CityExplorer = () => {
 
                 {/* Links - Compact */}
                 <div>
-                  <label className="block text-xs font-bold mb-1">🔗 Links</label>
+                  <label className="block text-xs font-bold mb-1">{`🔗 ${t("general.links")}`}</label>
                   <div className="space-y-1">
                     {(newLocation.imageUrls || []).map((url, idx) => (
                       <div key={idx} className="flex gap-1">
@@ -9878,7 +9888,7 @@ const CityExplorer = () => {
 
                 {/* Coordinates - SUPER COMPACT */}
                 <div className="bg-blue-50 border border-blue-300 rounded-lg p-2">
-                  <label className="block text-xs font-bold mb-1.5">📍 Coordinates</label>
+                  <label className="block text-xs font-bold mb-1.5">{`📍 ${t("general.coordinates")}`}</label>
                   
                   {/* Lat/Lng Inputs */}
                   <div className="grid grid-cols-2 gap-1.5 mb-1.5">
@@ -10177,7 +10187,7 @@ const CityExplorer = () => {
                   }}
                   className="px-5 py-2.5 rounded-lg bg-green-500 text-white text-sm font-bold hover:bg-green-600"
                 >
-                  ✓ Close
+                  {`✓ ${t("general.close")}`}
                 </button>
               </div>
                 );
@@ -10290,21 +10300,21 @@ const CityExplorer = () => {
                   <label className="block text-xs font-bold mb-2 text-blue-800">{`🔍 ${t("general.searchSettings")}`}</label>
                   
                   <div className="mb-2">
-                    <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>Search Mode:</label>
+                    <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>{`${t("general.searchMode")}:`}</label>
                     <select
                       value={newInterest.searchMode || 'types'}
                       onChange={(e) => setNewInterest({...newInterest, searchMode: e.target.value})}
                       className="w-full p-1.5 text-sm border rounded"
                       style={{ direction: 'ltr' }}
                     >
-                      <option value="types">Category Search (types)</option>
-                      <option value="text">Text Search (query)</option>
+                      <option value="types">{t('interests.categorySearch')}</option>
+                      <option value="text">{t('interests.textSearch')}</option>
                     </select>
                   </div>
                   
                   {newInterest.searchMode === 'text' ? (
                     <div className="mb-2">
-                      <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>Text Query:</label>
+                      <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>{`${t('interests.textQuery')}:`}</label>
                       <input
                         type="text"
                         value={newInterest.textSearch || ''}
@@ -10319,7 +10329,7 @@ const CityExplorer = () => {
                     </div>
                   ) : (
                     <div className="mb-2">
-                      <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>Place Types (comma separated):</label>
+                      <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>{`${t('interests.placeTypes')}:`}</label>
                       <input
                         type="text"
                         value={newInterest.types || ''}
@@ -10329,13 +10339,13 @@ const CityExplorer = () => {
                         style={{ direction: 'ltr' }}
                       />
                       <p className="text-[9px] text-gray-500 mt-0.5" style={{ direction: 'ltr' }}>
-                        <a href="https://developers.google.com/maps/documentation/places/web-service/place-types" target="_blank" className="text-blue-500 underline">See types list</a>
+                        <a href="https://developers.google.com/maps/documentation/places/web-service/place-types" target="_blank" className="text-blue-500 underline">{t('interests.seeTypesList')}</a>
                       </p>
                     </div>
                   )}
                   
                   <div>
-                    <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>Blacklist Words (comma separated):</label>
+                    <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>{`${t('interests.blacklistWords')}:`}</label>
                     <input
                       type="text"
                       value={newInterest.blacklist || ''}
@@ -10556,7 +10566,7 @@ const CityExplorer = () => {
                   }}
                   className="px-5 py-2.5 rounded-lg bg-green-500 text-white text-sm font-bold hover:bg-green-600"
                 >
-                  ✓ Close
+                  {`✓ ${t("general.close")}`}
                 </button>
               </div>
 
@@ -10735,14 +10745,14 @@ const CityExplorer = () => {
               <div className="bg-blue-50 rounded-lg p-3 space-y-1.5">
                 {/* Area */}
                 <div className="text-xs text-gray-700">
-                  <span className="font-bold">📍 Area:</span> {editingRoute.areaName || t('general.noArea')}
+                  <span className="font-bold">{`📍 ${t('general.area')}:`}</span> {editingRoute.areaName || t('general.noArea')}
                 </div>
                 {/* Interests */}
                 {(() => {
                   const ids = [...new Set((editingRoute.stops || []).flatMap(s => s.interests || []))];
                   return ids.length > 0 && (
                     <div className="flex gap-1 flex-wrap items-center">
-                      <span className="text-xs font-bold text-gray-700">🏷️ Interests:</span>
+                      <span className="text-xs font-bold text-gray-700">{`🏷️ ${t('general.interestsHeader')}:`}</span>
                       {ids.map((intId, idx) => {
                         const obj = allInterestOptions.find(o => o.id === intId);
                         return obj ? (
@@ -10779,7 +10789,7 @@ const CityExplorer = () => {
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-bold mb-1">💬 Notes</label>
+                <label className="block text-xs font-bold mb-1">{`💬 ${t('general.notesLabel')}`}</label>
                 <textarea
                   value={editingRoute.notes || ''}
                   onChange={(e) => setEditingRoute({...editingRoute, notes: e.target.value})}
@@ -10949,7 +10959,7 @@ const CityExplorer = () => {
                       onClick={() => { setShowRouteDialog(false); setEditingRoute(null); }}
                       className="px-5 py-2.5 rounded-lg bg-green-500 text-white text-sm font-bold hover:bg-green-600"
                     >
-                      ✓ Close
+                      {`✓ ${t("general.close")}`}
                     </button>
                   </>
                 );
@@ -11385,7 +11395,7 @@ const CityExplorer = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl w-full max-w-sm shadow-2xl">
             <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white p-3 rounded-t-xl">
-              <h3 className="text-base font-bold">📥 Import data</h3>
+              <h3 className="text-base font-bold">{`📥 ${t('general.importExport')}`}</h3>
             </div>
             <div className="p-4 space-y-3">
               {importedData.exportDate && (
@@ -11397,7 +11407,7 @@ const CityExplorer = () => {
               
               <div className="bg-gray-50 rounded-lg p-3 space-y-1.5">
                 <div className="flex justify-between text-sm">
-                  <span>🏷️ Custom interests</span>
+                  <span>{`🏷️ ${t('interests.customCount')}`}</span>
                   <span className="font-bold text-purple-600">{(importedData.customInterests || []).length}</span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -11416,7 +11426,7 @@ const CityExplorer = () => {
                 )}
                 {importedData.interestStatus && (
                   <div className="flex justify-between text-sm">
-                    <span>✅ Interest status</span>
+                    <span>{`✅ ${t('interests.interestStatus')}`}</span>
                     <span className="font-bold text-gray-600">{Object.keys(importedData.interestStatus).length}</span>
                   </div>
                 )}

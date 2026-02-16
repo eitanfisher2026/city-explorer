@@ -166,7 +166,7 @@
                     marginBottom: '4px', transition: 'all 0.2s'
                   }}
                 >
-                  <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#2563eb' }}>📍 Near me</div>
+                  <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#2563eb' }}>{`📍 ${t("general.nearMe")}`}</div>
                   <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '1px' }}>GPS (1km)</div>
                 </button>
 
@@ -1032,7 +1032,7 @@
                                         <span title={t("form.myPlace")} style={{ fontSize: '11px' }}>🎖️</span>
                                       )}
                                       {isAddedLater && !wizardMode && (
-                                        <span className="text-blue-500 font-bold" title={t("general.addedViaMore")} style={{ fontSize: '9px' }}>+more</span>
+                                        <span className="text-blue-500 font-bold" title={t("general.addedViaMore")} style={{ fontSize: '9px' }}>{`+${t('general.more')}`}</span>
                                       )}
                                       {/* Camera icon for custom locations with image */}
                                       {isCustom && stop.uploadedImage && !wizardMode && (
@@ -1649,7 +1649,7 @@
                                     {stop.notes && (
                                       <div className="text-gray-400 italic">💭 {stop.notes}</div>
                                     )}
-                                    <div className="text-gray-400 mt-2 text-[9px]">👆 Click for full details</div>
+                                    <div className="text-gray-400 mt-2 text-[9px]">{`👆 ${t("general.clickForDetails")}`}</div>
                                   </div>
                                 </div>
                               </div>
@@ -2708,10 +2708,10 @@
                 </button>
                 <div className="mt-2 text-[10px] text-gray-500 flex flex-wrap gap-1">
                   <span className="bg-cyan-100 px-1.5 py-0.5 rounded">{`📍 ${t("nav.myPlaces")}`}</span>
-                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">🏷️ Interests</span>
+                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">{`🏷️ ${t("general.interestsHeader")}`}</span>
                   <span className="bg-cyan-100 px-1.5 py-0.5 rounded">{`💾 ${t("nav.saved")}`}</span>
-                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">⚙️ Search settings</span>
-                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">👑 Permissions</span>
+                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">{`⚙️ ${t("general.searchSettings")}`}</span>
+                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">{`👑 ${t("general.permissions")}`}</span>
                 </div>
               </div>
             </div>
@@ -2960,7 +2960,7 @@
                   
                   {/* Info Box */}
                   <div className="bg-blue-100 border border-blue-300 rounded-lg p-2 text-[10px]">
-                    <p className="text-blue-900 font-bold mb-1">💡 Uses:</p>
+                    <p className="text-blue-900 font-bold mb-1">{`💡 ${t('general.uses')}:`}</p>
                     <ul className="text-blue-800 space-y-0.5 mr-3">
                       <li>{t("general.transferDevices")}</li>
                       <li>{t("general.dataBackup")}</li>
@@ -2985,13 +2985,13 @@
                 else { try { navigator.clipboard.writeText(window.location.href); showToast(t('route.linkCopied'), 'success'); } catch(e) { showToast(window.location.href, 'info'); } }
               }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}
-            >📤 Share</button>
+            >{`📤 ${t("general.share")}`}</button>
             <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
             <span style={{ fontSize: '9px', color: '#9ca3af' }}>v{window.BKK.VERSION}</span>
             <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
             <span style={{ fontSize: '9px', color: '#9ca3af' }}>© Eitan Fisher</span>
             <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
-            <button onClick={applyUpdate} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}>🔄 Refresh</button>
+            <button onClick={applyUpdate} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}>{`🔄 ${t("general.refresh")}`}</button>
           </div>
         </div>
 

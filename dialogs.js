@@ -206,7 +206,7 @@
 
                 {/* Image - Compact */}
                 <div>
-                  <label className="block text-xs font-bold mb-1">📷 Image</label>
+                  <label className="block text-xs font-bold mb-1">{`📷 ${t("general.image")}`}</label>
                   {newLocation.uploadedImage ? (
                     <div className="relative">
                       <img 
@@ -248,7 +248,7 @@
 
                 {/* Links - Compact */}
                 <div>
-                  <label className="block text-xs font-bold mb-1">🔗 Links</label>
+                  <label className="block text-xs font-bold mb-1">{`🔗 ${t("general.links")}`}</label>
                   <div className="space-y-1">
                     {(newLocation.imageUrls || []).map((url, idx) => (
                       <div key={idx} className="flex gap-1">
@@ -313,7 +313,7 @@
 
                 {/* Coordinates - SUPER COMPACT */}
                 <div className="bg-blue-50 border border-blue-300 rounded-lg p-2">
-                  <label className="block text-xs font-bold mb-1.5">📍 Coordinates</label>
+                  <label className="block text-xs font-bold mb-1.5">{`📍 ${t("general.coordinates")}`}</label>
                   
                   {/* Lat/Lng Inputs */}
                   <div className="grid grid-cols-2 gap-1.5 mb-1.5">
@@ -612,7 +612,7 @@
                   }}
                   className="px-5 py-2.5 rounded-lg bg-green-500 text-white text-sm font-bold hover:bg-green-600"
                 >
-                  ✓ Close
+                  {`✓ ${t("general.close")}`}
                 </button>
               </div>
                 );
@@ -725,21 +725,21 @@
                   <label className="block text-xs font-bold mb-2 text-blue-800">{`🔍 ${t("general.searchSettings")}`}</label>
                   
                   <div className="mb-2">
-                    <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>Search Mode:</label>
+                    <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>{`${t("general.searchMode")}:`}</label>
                     <select
                       value={newInterest.searchMode || 'types'}
                       onChange={(e) => setNewInterest({...newInterest, searchMode: e.target.value})}
                       className="w-full p-1.5 text-sm border rounded"
                       style={{ direction: 'ltr' }}
                     >
-                      <option value="types">Category Search (types)</option>
-                      <option value="text">Text Search (query)</option>
+                      <option value="types">{t('interests.categorySearch')}</option>
+                      <option value="text">{t('interests.textSearch')}</option>
                     </select>
                   </div>
                   
                   {newInterest.searchMode === 'text' ? (
                     <div className="mb-2">
-                      <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>Text Query:</label>
+                      <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>{`${t('interests.textQuery')}:`}</label>
                       <input
                         type="text"
                         value={newInterest.textSearch || ''}
@@ -754,7 +754,7 @@
                     </div>
                   ) : (
                     <div className="mb-2">
-                      <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>Place Types (comma separated):</label>
+                      <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>{`${t('interests.placeTypes')}:`}</label>
                       <input
                         type="text"
                         value={newInterest.types || ''}
@@ -764,13 +764,13 @@
                         style={{ direction: 'ltr' }}
                       />
                       <p className="text-[9px] text-gray-500 mt-0.5" style={{ direction: 'ltr' }}>
-                        <a href="https://developers.google.com/maps/documentation/places/web-service/place-types" target="_blank" className="text-blue-500 underline">See types list</a>
+                        <a href="https://developers.google.com/maps/documentation/places/web-service/place-types" target="_blank" className="text-blue-500 underline">{t('interests.seeTypesList')}</a>
                       </p>
                     </div>
                   )}
                   
                   <div>
-                    <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>Blacklist Words (comma separated):</label>
+                    <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>{`${t('interests.blacklistWords')}:`}</label>
                     <input
                       type="text"
                       value={newInterest.blacklist || ''}
@@ -991,7 +991,7 @@
                   }}
                   className="px-5 py-2.5 rounded-lg bg-green-500 text-white text-sm font-bold hover:bg-green-600"
                 >
-                  ✓ Close
+                  {`✓ ${t("general.close")}`}
                 </button>
               </div>
 
@@ -1170,14 +1170,14 @@
               <div className="bg-blue-50 rounded-lg p-3 space-y-1.5">
                 {/* Area */}
                 <div className="text-xs text-gray-700">
-                  <span className="font-bold">📍 Area:</span> {editingRoute.areaName || t('general.noArea')}
+                  <span className="font-bold">{`📍 ${t('general.area')}:`}</span> {editingRoute.areaName || t('general.noArea')}
                 </div>
                 {/* Interests */}
                 {(() => {
                   const ids = [...new Set((editingRoute.stops || []).flatMap(s => s.interests || []))];
                   return ids.length > 0 && (
                     <div className="flex gap-1 flex-wrap items-center">
-                      <span className="text-xs font-bold text-gray-700">🏷️ Interests:</span>
+                      <span className="text-xs font-bold text-gray-700">{`🏷️ ${t('general.interestsHeader')}:`}</span>
                       {ids.map((intId, idx) => {
                         const obj = allInterestOptions.find(o => o.id === intId);
                         return obj ? (
@@ -1214,7 +1214,7 @@
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-bold mb-1">💬 Notes</label>
+                <label className="block text-xs font-bold mb-1">{`💬 ${t('general.notesLabel')}`}</label>
                 <textarea
                   value={editingRoute.notes || ''}
                   onChange={(e) => setEditingRoute({...editingRoute, notes: e.target.value})}
@@ -1384,7 +1384,7 @@
                       onClick={() => { setShowRouteDialog(false); setEditingRoute(null); }}
                       className="px-5 py-2.5 rounded-lg bg-green-500 text-white text-sm font-bold hover:bg-green-600"
                     >
-                      ✓ Close
+                      {`✓ ${t("general.close")}`}
                     </button>
                   </>
                 );
@@ -1820,7 +1820,7 @@
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl w-full max-w-sm shadow-2xl">
             <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white p-3 rounded-t-xl">
-              <h3 className="text-base font-bold">📥 Import data</h3>
+              <h3 className="text-base font-bold">{`📥 ${t('general.importExport')}`}</h3>
             </div>
             <div className="p-4 space-y-3">
               {importedData.exportDate && (
@@ -1832,7 +1832,7 @@
               
               <div className="bg-gray-50 rounded-lg p-3 space-y-1.5">
                 <div className="flex justify-between text-sm">
-                  <span>🏷️ Custom interests</span>
+                  <span>{`🏷️ ${t('interests.customCount')}`}</span>
                   <span className="font-bold text-purple-600">{(importedData.customInterests || []).length}</span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -1851,7 +1851,7 @@
                 )}
                 {importedData.interestStatus && (
                   <div className="flex justify-between text-sm">
-                    <span>✅ Interest status</span>
+                    <span>{`✅ ${t('interests.interestStatus')}`}</span>
                     <span className="font-bold text-gray-600">{Object.keys(importedData.interestStatus).length}</span>
                   </div>
                 )}
