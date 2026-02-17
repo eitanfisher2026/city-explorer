@@ -37,7 +37,10 @@
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
                 <div style={{ position: 'relative' }}>
                 {showEditLocationDialog && editingLocation?.locked && !isUnlocked && (
-                  <div style={{ position: 'absolute', inset: 0, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                  <div style={{ position: 'absolute', inset: 0, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.3)', pointerEvents: 'all' }} 
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); document.activeElement?.blur(); }}
+                    onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); document.activeElement?.blur(); }}
+                  />
                 )}
                 
                 {/* Row 1: Name + Area */}
@@ -66,7 +69,7 @@
                         placeholder={t("places.placeName")}
                         className="flex-1 p-2 text-sm border-2 border-purple-300 rounded-lg focus:border-purple-500"
                         style={{ direction: 'rtl' }}
-                        autoFocus
+                        autoFocus={!showEditLocationDialog}
                       />
                       <button
                         onClick={() => searchPlacesByName(newLocation.name)}
