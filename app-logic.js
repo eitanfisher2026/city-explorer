@@ -316,6 +316,7 @@
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [showVersionPasswordDialog, setShowVersionPasswordDialog] = useState(false);
   const [showAddCityDialog, setShowAddCityDialog] = useState(false);
+  const [googleMaxWaypoints, setGoogleMaxWaypoints] = useState(12);
   const [cityModified, setCityModified] = useState(false);
   const [showSettingsMap, setShowSettingsMap] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
@@ -346,9 +347,9 @@
   };
 
   // Toast notification helper
-  const showToast = (message, type = 'success') => {
+  const showToast = (message, type = 'success', customDuration = null) => {
     setToastMessage({ message, type });
-    const duration = Math.min(4000, Math.max(1500, message.length * 50));
+    const duration = customDuration || Math.min(4000, Math.max(1500, message.length * 50));
     setTimeout(() => setToastMessage(null), duration);
   };
 
@@ -871,6 +872,15 @@
           console.error('[REFRESH] Error loading admin settings:', e);
         }
         
+        // 7. Google Max Waypoints setting
+        try {
+          const gmwSnap = await database.ref('settings/googleMaxWaypoints').once('value');
+          if (gmwSnap.val() !== null) setGoogleMaxWaypoints(gmwSnap.val());
+          console.log('[REFRESH] Loaded googleMaxWaypoints:', gmwSnap.val() || 12);
+        } catch (e) {
+          console.error('[REFRESH] Error loading googleMaxWaypoints:', e);
+        }
+        
         showToast(t('toast.dataRefreshed'), 'success');
       } else {
         // Firebase not available - load from localStorage fallbacks
@@ -978,6 +988,11 @@
         ...data
       }));
       setAdminUsers(usersList);
+    });
+    
+    // Listen for googleMaxWaypoints changes
+    database.ref('settings/googleMaxWaypoints').on('value', (snap) => {
+      if (snap.val() !== null) setGoogleMaxWaypoints(snap.val());
     });
     
     // Log access (skip if admin)
@@ -2569,6 +2584,21 @@
     });
     
     showToast(`${t("route.routeCalculated")} ${optimized.length} ${t("route.stops")}`, 'success');
+    
+    // Warn if route will need to be split for Google Maps
+    if (optimized.length + 1 > googleMaxWaypoints) { // +1 for origin/startPoint
+      const parts = Math.ceil((optimized.length + 1 - 2) / (googleMaxWaypoints - 2)) + (optimized.length + 1 > googleMaxWaypoints ? 0 : 0);
+      // Calculate actual parts using the helper
+      const testUrls = window.BKK.buildGoogleMapsUrls(
+        optimized.map(s => ({ lat: s.lat, lng: s.lng })),
+        `${startPointCoords.lat},${startPointCoords.lng}`,
+        isCircular,
+        googleMaxWaypoints
+      );
+      if (testUrls.length > 1) {
+        showToast(t('route.splitRouteWarning').replace('{max}', googleMaxWaypoints).replace('{parts}', testUrls.length), 'info', 5000);
+      }
+    }
     
     setTimeout(() => {
       // Scroll to bottom of results to show the Google Maps button
@@ -4287,22 +4317,19 @@
       !newDisabledStops.includes(s.name?.toLowerCase().trim())
     );
     
-    let waypoints = activeStops.map(s => `${s.lat},${s.lng}`);
+    const hasStartPoint = startPointCoords && startPointCoords.lat && startPointCoords.lng;
+    const origin = hasStartPoint
+      ? `${startPointCoords.lat},${startPointCoords.lng}`
+      : activeStops.length > 0 ? `${activeStops[0].lat},${activeStops[0].lng}` : '';
+    const stopsForUrls = hasStartPoint ? activeStops : activeStops.slice(1);
+    const isCircular = route.preferences?.circular || false;
+    const urls = activeStops.length > 0
+      ? window.BKK.buildGoogleMapsUrls(stopsForUrls, origin, isCircular, googleMaxWaypoints)
+      : [];
     
-    if (route.preferences.circular && activeStops.length > 1) {
-      waypoints.push(waypoints[0]);
-    }
+    // Use first URL as legacy mapUrl for backward compat
+    const mapUrl = urls.length > 0 ? urls[0].url : '';
     
-    const origin = waypoints[0];
-    const destination = waypoints[waypoints.length - 1];
-    const middlePoints = waypoints.slice(1, -1).join('|');
-    
-    let mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
-    if (middlePoints) {
-      mapUrl += `&waypoints=${middlePoints}`;
-    }
-    mapUrl += '&travelmode=walking';
-    
-    setRoute({...route, mapUrl});
+    setRoute({...route, mapUrl, mapUrls: urls});
   };
 

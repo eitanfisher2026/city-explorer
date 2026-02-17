@@ -1341,82 +1341,71 @@
                     )}
                     
                     {/* Buttons row: Open in Google + Save */}
-                    <div style={{ display: 'flex', gap: '6px', marginBottom: '4px', marginTop: '4px' }}>
-                      {/* Open in Google Maps Button */}
-                      <button
-                        id="open-google-maps-btn"
-                        disabled={!route?.optimized}
-                        onClick={() => {
-                          if (!route?.optimized) {
-                            showToast(t('route.calcRoutePrevious'), 'warning');
-                            return;
-                          }
-                          // Build Google Maps URL based on routeType
-                          const activeStops = route.stops.filter((stop, i) => {
-                            const isActive = !disabledStops.includes((stop.name || '').toLowerCase().trim());
-                            const hasValidCoords = stop.lat && stop.lng && stop.lat !== 0 && stop.lng !== 0;
-                            return isActive && hasValidCoords;
-                          });
-                          
-                          if (activeStops.length === 0) {
-                            showToast(t('places.noPlacesWithCoords'), 'warning');
-                            return;
-                          }
+                    <div style={{ display: 'flex', gap: '6px', marginBottom: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
+                      {/* Open in Google Maps Button(s) */}
+                      {(() => {
+                        // Pre-compute URLs for split detection
+                        const activeStops = route?.optimized ? route.stops.filter((stop) => {
+                          const isActive = !disabledStops.includes((stop.name || '').toLowerCase().trim());
+                          const hasValidCoords = stop.lat && stop.lng && stop.lat !== 0 && stop.lng !== 0;
+                          return isActive && hasValidCoords;
+                        }) : [];
+                        const hasStartPoint = startPointCoords && startPointCoords.lat && startPointCoords.lng;
+                        const origin = hasStartPoint
+                          ? `${startPointCoords.lat},${startPointCoords.lng}`
+                          : activeStops.length > 0 ? `${activeStops[0].lat},${activeStops[0].lng}` : '';
+                        const stopsForUrls = hasStartPoint ? activeStops : activeStops.slice(1);
+                        const isCircular = routeType === 'circular';
+                        const urls = route?.optimized && activeStops.length > 0
+                          ? window.BKK.buildGoogleMapsUrls(stopsForUrls, origin, isCircular, googleMaxWaypoints)
+                          : [];
+                        const isSplit = urls.length > 1;
 
-                          // Use startPointCoords as origin if available, otherwise first stop
-                          const hasStartPoint = startPointCoords && startPointCoords.lat && startPointCoords.lng;
-                          const origin = hasStartPoint 
-                            ? `${startPointCoords.lat},${startPointCoords.lng}`
-                            : `${activeStops[0].lat},${activeStops[0].lng}`;
-                          // If using startPoint, all stops are waypoints; otherwise first stop is origin
-                          const stopsForRoute = hasStartPoint ? activeStops : activeStops.slice(1);
-                          let destination, waypointsStr, mapUrl;
-
-                          if (activeStops.length === 1 && !hasStartPoint) {
-                            // Single stop, no start point - just show location
-                            mapUrl = window.BKK.getGoogleMapsUrl(activeStops[0]);
-                          } else {
-                            // Multiple stops or has start point - create route
-                            if (routeType === 'circular') {
-                              destination = origin; // Return to start
-                              waypointsStr = (hasStartPoint ? activeStops : activeStops.slice(1)).map(s => `${s.lat},${s.lng}`).join('|');
-                            } else {
-                              destination = `${activeStops[activeStops.length - 1].lat},${activeStops[activeStops.length - 1].lng}`;
-                              const middleStops = hasStartPoint ? activeStops.slice(0, -1) : activeStops.slice(1, -1);
-                              waypointsStr = middleStops.map(s => `${s.lat},${s.lng}`).join('|');
-                            }
-                            
-                            mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
-                            if (waypointsStr) mapUrl += `&waypoints=${waypointsStr}`;
-                            mapUrl += '&travelmode=walking';
-                          }
-
-                          // Check URL length and warn
-                          if (mapUrl.length > 2000) {
-                            showToast(`${t('toast.urlTooLong')} (${mapUrl.length})`, 'warning');
-                          } else if (routeType === 'circular') {
-                            showToast(t('route.circularDesc'), 'info');
-                          }
-
-                          // Open in new tab
-                          window.open(mapUrl, '_blank');
-                        }}
-                        style={{
-                          flex: 1,
-                          backgroundColor: route?.optimized ? '#22c55e' : '#d1d5db',
-                          color: route?.optimized ? 'white' : '#9ca3af',
-                          textAlign: 'center',
-                          padding: '8px',
-                          borderRadius: '12px',
-                          fontWeight: 'bold',
-                          fontSize: '13px',
-                          border: 'none',
-                          boxShadow: route?.optimized ? '0 4px 6px -1px rgba(0, 0, 0, 0.3)' : 'none',
-                          cursor: route?.optimized ? 'pointer' : 'not-allowed'
-                        }}
-                      >
-                        {`🗺️ ${t('route.openRouteInGoogle')}`}
-                      </button>
+                        return urls.length <= 1 ? (
+                          <button
+                            id="open-google-maps-btn"
+                            disabled={!route?.optimized}
+                            onClick={() => {
+                              if (!route?.optimized) { showToast(t('route.calcRoutePrevious'), 'warning'); return; }
+                              if (activeStops.length === 0) { showToast(t('places.noPlacesWithCoords'), 'warning'); return; }
+                              const mapUrl = urls.length === 1 ? urls[0].url : (activeStops.length === 1 && !hasStartPoint ? window.BKK.getGoogleMapsUrl(activeStops[0]) : '#');
+                              if (mapUrl.length > 2000) showToast(`${t('toast.urlTooLong')} (${mapUrl.length})`, 'warning');
+                              else if (isCircular) showToast(t('route.circularDesc'), 'info');
+                              window.open(mapUrl, '_blank');
+                            }}
+                            style={{
+                              flex: 1, backgroundColor: route?.optimized ? '#22c55e' : '#d1d5db',
+                              color: route?.optimized ? 'white' : '#9ca3af', textAlign: 'center',
+                              padding: '8px', borderRadius: '12px', fontWeight: 'bold', fontSize: '13px',
+                              border: 'none', boxShadow: route?.optimized ? '0 4px 6px -1px rgba(0, 0, 0, 0.3)' : 'none',
+                              cursor: route?.optimized ? 'pointer' : 'not-allowed'
+                            }}
+                          >
+                            {`🗺️ ${t('route.openRouteInGoogle')}`}
+                          </button>
+                        ) : (
+                          urls.map((urlInfo, idx) => (
+                            <button
+                              key={idx}
+                              id={idx === 0 ? "open-google-maps-btn" : undefined}
+                              onClick={() => {
+                                if (urlInfo.url.length > 2000) showToast(`${t('toast.urlTooLong')} (${urlInfo.url.length})`, 'warning');
+                                window.open(urlInfo.url, '_blank');
+                              }}
+                              style={{
+                                flex: 1, minWidth: '120px',
+                                backgroundColor: idx === 0 ? '#22c55e' : '#16a34a',
+                                color: 'white', textAlign: 'center',
+                                padding: '8px', borderRadius: '12px', fontWeight: 'bold', fontSize: '12px',
+                                border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {`🗺️ ${t('route.openRoutePartN').replace('{n}', urlInfo.part).replace('{total}', urlInfo.total)}`}
+                            </button>
+                          ))
+                        );
+                      })()}
                       
                       {/* Route Preview / Reorder button */}
                       <button
@@ -1896,71 +1885,49 @@
                   </label>
                 </div>
                 
-                {/* Calculate Route Button */}
-                <a
-                  href={(() => {
-                    // Build Google Maps URL based on routeType
-                    const activeStops = route.stops.filter((stop, i) => {
-                      const isActive = !disabledStops.includes((stop.name || '').toLowerCase().trim());
-                      const hasValidCoords = stop.lat && stop.lng && stop.lat !== 0 && stop.lng !== 0;
-                      return isActive && hasValidCoords;
-                    });
-                    
-                    if (activeStops.length === 0) {
-                      return '#';
-                    }
-
-                    // Use startPointCoords as origin if available
-                    const hasStartPoint = startPointCoords && startPointCoords.lat && startPointCoords.lng;
-                    const origin = hasStartPoint 
-                      ? `${startPointCoords.lat},${startPointCoords.lng}`
-                      : `${activeStops[0].lat},${activeStops[0].lng}`;
-                    let destination, waypointsStr, mapUrl;
-
-                    if (activeStops.length === 1 && !hasStartPoint) {
-                      mapUrl = window.BKK.getGoogleMapsUrl(activeStops[0]);
-                    } else {
-                      if (routeType === 'circular') {
-                        destination = origin;
-                        waypointsStr = (hasStartPoint ? activeStops : activeStops.slice(1)).map(s => `${s.lat},${s.lng}`).join('|');
-                      } else {
-                        destination = `${activeStops[activeStops.length - 1].lat},${activeStops[activeStops.length - 1].lng}`;
-                        const middleStops = hasStartPoint ? activeStops.slice(0, -1) : activeStops.slice(1, -1);
-                        waypointsStr = middleStops.map(s => `${s.lat},${s.lng}`).join('|');
-                      }
-                      
-                      mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
-                      if (waypointsStr) mapUrl += `&waypoints=${waypointsStr}`;
-                      mapUrl += '&travelmode=walking';
-                    }
-
-                    return mapUrl;
-                  })()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => {
-                    const url = e.currentTarget.href;
-                    if (url.length > 2000) {
-                      showToast(`${t('toast.urlTooLong')} (${url.length})`, 'warning');
-                    }
-                  }}
-                  style={{
-                    width: '100%',
-                    backgroundColor: '#22c55e',
-                    color: 'white',
-                    textAlign: 'center',
-                    padding: '10px',
-                    borderRadius: '12px',
-                    fontWeight: 'bold',
-                    textDecoration: 'none',
-                    fontSize: '14px',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
-                    display: 'block',
-                    marginBottom: '4px'
-                  }}
-                >
-                  {`🗺️ ${t('route.openRouteInGoogle')}`}
-                </a>
+                {/* Calculate Route Button - with split support */}
+                {(() => {
+                  const activeStops = route.stops.filter((stop) => {
+                    const isActive = !disabledStops.includes((stop.name || '').toLowerCase().trim());
+                    const hasValidCoords = stop.lat && stop.lng && stop.lat !== 0 && stop.lng !== 0;
+                    return isActive && hasValidCoords;
+                  });
+                  const hasStartPoint = startPointCoords && startPointCoords.lat && startPointCoords.lng;
+                  const origin = hasStartPoint
+                    ? `${startPointCoords.lat},${startPointCoords.lng}`
+                    : activeStops.length > 0 ? `${activeStops[0].lat},${activeStops[0].lng}` : '';
+                  const stopsForUrls = hasStartPoint ? activeStops : activeStops.slice(1);
+                  const isCircular = routeType === 'circular';
+                  const urls = activeStops.length > 0
+                    ? window.BKK.buildGoogleMapsUrls(stopsForUrls, origin, isCircular, googleMaxWaypoints)
+                    : [];
+                  
+                  if (urls.length <= 1) {
+                    const mapUrl = urls.length === 1 ? urls[0].url : (activeStops.length === 1 && !hasStartPoint ? window.BKK.getGoogleMapsUrl(activeStops[0]) : '#');
+                    return (
+                      <a href={mapUrl} target="_blank" rel="noopener noreferrer"
+                        onClick={(e) => { if (mapUrl.length > 2000) showToast(`${t('toast.urlTooLong')} (${mapUrl.length})`, 'warning'); }}
+                        style={{ width: '100%', backgroundColor: '#22c55e', color: 'white', textAlign: 'center',
+                          padding: '10px', borderRadius: '12px', fontWeight: 'bold', textDecoration: 'none',
+                          fontSize: '14px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)', display: 'block', marginBottom: '4px' }}
+                      >{`🗺️ ${t('route.openRouteInGoogle')}`}</a>
+                    );
+                  } else {
+                    return (
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                        {urls.map((urlInfo, idx) => (
+                          <a key={idx} href={urlInfo.url} target="_blank" rel="noopener noreferrer"
+                            onClick={(e) => { if (urlInfo.url.length > 2000) showToast(`${t('toast.urlTooLong')} (${urlInfo.url.length})`, 'warning'); }}
+                            style={{ flex: 1, minWidth: '120px', backgroundColor: idx === 0 ? '#22c55e' : '#16a34a',
+                              color: 'white', textAlign: 'center', padding: '10px', borderRadius: '12px',
+                              fontWeight: 'bold', textDecoration: 'none', fontSize: '12px',
+                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)', display: 'block' }}
+                          >{`🗺️ ${t('route.openRoutePartN').replace('{n}', urlInfo.part).replace('{total}', urlInfo.total)}`}</a>
+                        ))}
+                      </div>
+                    );
+                  }
+                })()}
                 
               </div>
             </div>
@@ -3021,6 +2988,34 @@
                 <span className="text-[10px] text-gray-500 mr-2">(1-100)</span>
               </div>
             </div>
+            
+            {/* Google Max Waypoints Setting (admin only) */}
+            {isUnlocked && (
+            <div className="mb-3">
+              <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-400 rounded-lg p-2">
+                <h3 className="text-sm font-bold text-gray-800 mb-1">{`🗺️ ${t("settings.googleMaxWaypoints")}`}</h3>
+                <p className="text-[10px] text-gray-600 mb-1">{t("settings.googleMaxWaypointsDesc")}</p>
+                <input
+                  type="number"
+                  min="4"
+                  max="50"
+                  value={googleMaxWaypoints}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 12;
+                    const clamped = Math.min(50, Math.max(4, val));
+                    setGoogleMaxWaypoints(clamped);
+                    try {
+                      const database = window.BKK.database;
+                      if (database) database.ref('settings/googleMaxWaypoints').set(clamped);
+                    } catch (err) { console.error('[SETTINGS] Error saving googleMaxWaypoints:', err); }
+                  }}
+                  className="w-20 p-1 border-2 border-orange-300 rounded text-center font-bold text-sm"
+                  placeholder="12"
+                />
+                <span className="text-[10px] text-gray-500 mr-2">(4-50)</span>
+              </div>
+            </div>
+            )}
             
             {/* Default Radius Setting */}
             <div className="mb-3">
