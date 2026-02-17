@@ -1799,7 +1799,9 @@
         address: editingLocation.address || '',
         uploadedImage: editingLocation.uploadedImage || null,
         imageUrls: editingLocation.imageUrls || [],
-        inProgress: editingLocation.inProgress || false
+        inProgress: editingLocation.inProgress || false,
+        locked: editingLocation.locked || false,
+        areas: editingLocation.areas || (editingLocation.area ? [editingLocation.area] : [])
       });
     }
   }, [showEditLocationDialog, editingLocation]);

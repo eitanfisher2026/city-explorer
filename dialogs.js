@@ -483,15 +483,16 @@
                     <span className="text-xs">{t("general.inProgress")}</span>
                   </label>
                   {isUnlocked && (
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={!!newLocation.locked}
-                        onChange={(e) => setNewLocation({...newLocation, locked: e.target.checked})}
-                        className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
-                      />
-                      <span className="text-xs">{t("general.locked")}</span>
-                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setNewLocation({...newLocation, locked: !newLocation.locked})}
+                      style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '6px', border: '1px solid #d1d5db', cursor: 'pointer', fontSize: '11px',
+                        background: newLocation.locked ? '#7c3aed' : 'white',
+                        color: newLocation.locked ? 'white' : '#6b7280'
+                      }}
+                    >
+                      {newLocation.locked ? '🔒' : '🔓'} {t("general.locked")}
+                    </button>
                   )}
                 </div>
                 )}
@@ -524,7 +525,7 @@
                           }}
                           className="flex-1 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
                         >
-                          🚫 Skip permanently
+                          🚫 {t('route.skipPermanently')}
                         </button>
                       )}
                       <button
@@ -813,15 +814,16 @@
                     <span className="text-xs">{t("general.inProgress")}</span>
                   </label>
                   {isUnlocked && (
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={!!newInterest.locked}
-                        onChange={(e) => setNewInterest({...newInterest, locked: e.target.checked})}
-                        className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
-                      />
-                      <span className="text-xs">{t("general.locked")}</span>
-                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setNewInterest({...newInterest, locked: !newInterest.locked})}
+                      style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '6px', border: '1px solid #d1d5db', cursor: 'pointer', fontSize: '11px',
+                        background: newInterest.locked ? '#7c3aed' : 'white',
+                        color: newInterest.locked ? 'white' : '#6b7280'
+                      }}
+                    >
+                      {newInterest.locked ? '🔒' : '🔓'} {t("general.locked")}
+                    </button>
                   )}
                 </div>
                 )}
@@ -970,6 +972,7 @@
                         }
                         
                         setShowAddInterestDialog(false);
+                        showToast(editingCustomInterest ? t('toast.interestUpdated') : t('toast.interestAdded'), 'success');
                         setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: false, inProgress: false, locked: false });
                         setEditingCustomInterest(null);
                       }}
@@ -1296,15 +1299,16 @@
                   <span className="text-xs">{t("general.inProgress")}</span>
                 </label>
                 {isUnlocked && (
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={!!editingRoute.locked}
-                      onChange={(e) => setEditingRoute({...editingRoute, locked: e.target.checked})}
-                      className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
-                    />
-                    <span className="text-xs">{t("general.locked")}</span>
-                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setEditingRoute({...editingRoute, locked: !editingRoute.locked})}
+                    style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '6px', border: '1px solid #d1d5db', cursor: 'pointer', fontSize: '11px',
+                      background: editingRoute.locked ? '#7c3aed' : 'white',
+                      color: editingRoute.locked ? 'white' : '#6b7280'
+                    }}
+                  >
+                    {editingRoute.locked ? '🔒' : '🔓'} {t("general.locked")}
+                  </button>
                 )}
               </div>
               )}

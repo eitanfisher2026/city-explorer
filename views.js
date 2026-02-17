@@ -2177,8 +2177,10 @@
                       <div className="max-h-[55vh] overflow-y-auto" style={{ contain: 'content' }}>
                         {groupedPlaces.sortedKeys.map(key => {
                           const locs = groupedPlaces.groups[key];
-                          const obj = placesGroupBy === 'interest' ? interestMap[key] : areaMap[key];
-                          const groupLabel = obj?.label || key;
+                          const obj = placesGroupBy === 'interest' 
+                            ? (interestMap[key] || customInterests?.find(ci => ci.id === key))
+                            : areaMap[key];
+                          const groupLabel = obj ? tLabel(obj) : key;
                           const groupIcon = placesGroupBy === 'interest' ? (obj?.icon || '🏷️') : '📍';
                           return (
                             <div key={key} className="border border-gray-200 rounded-lg overflow-hidden mb-1.5">
