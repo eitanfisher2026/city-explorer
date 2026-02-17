@@ -185,6 +185,8 @@ window.BKK.migrateLocationsToPerCity = function(database) {
     console.error('[MIGRATION] Error:', err);
   });
 };
+
+/**
  * Select a city and populate all legacy window.BKK.* variables.
  */
 window.BKK.selectCity = function(cityId) {

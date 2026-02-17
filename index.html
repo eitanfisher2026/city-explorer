@@ -2120,6 +2120,8 @@ window.BKK.migrateLocationsToPerCity = function(database) {
     console.error('[MIGRATION] Error:', err);
   });
 };
+
+/**
  * Select a city and populate all legacy window.BKK.* variables.
  */
 window.BKK.selectCity = function(cityId) {
@@ -2704,7 +2706,12 @@ let isFirebaseAvailable = false;
 function initFirebase() {
   try {
     if (typeof firebase !== 'undefined') {
-      firebaseApp = firebase.initializeApp(firebaseConfig);
+      const cfg = window.BKK.firebaseConfig;
+      if (!cfg || !cfg.apiKey) {
+        console.error('[FIREBASE] Config not found on window.BKK');
+        return;
+      }
+      firebaseApp = firebase.initializeApp(cfg);
       database = firebase.database();
       if (firebase.storage) {
         storage = firebase.storage();

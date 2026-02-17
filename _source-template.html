@@ -218,7 +218,12 @@ let isFirebaseAvailable = false;
 function initFirebase() {
   try {
     if (typeof firebase !== 'undefined') {
-      firebaseApp = firebase.initializeApp(firebaseConfig);
+      const cfg = window.BKK.firebaseConfig;
+      if (!cfg || !cfg.apiKey) {
+        console.error('[FIREBASE] Config not found on window.BKK');
+        return;
+      }
+      firebaseApp = firebase.initializeApp(cfg);
       database = firebase.database();
       if (firebase.storage) {
         storage = firebase.storage();
