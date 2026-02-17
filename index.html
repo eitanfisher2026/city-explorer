@@ -605,6 +605,7 @@ route: {
   openRouteInGoogle: 'פתח מסלול בגוגל',
   openRoutePartN: 'מסלול חלק {n} מתוך {total}',
   splitRouteWarning: '⚠️ גוגל מפות תומך ב-{max} נקודות. המסלול פוצל ל-{parts} חלקים. אפשר להשבית עצירות כדי לצמצם.',
+  mapPointsWarning: 'ℹ️ יתכן שגוגל מפות לא יציג את כל {count} הנקודות על המפה.',
   showStopsOnMap: 'הצג נקודות על המפה',
   backToList: 'חזור לרשימה',
   stopNumber: 'עצירה',
@@ -825,6 +826,8 @@ settings: {
   maxStops: 'מספר מקומות במסלול',
   googleMaxWaypoints: 'מקסימום נקודות בגוגל מפות',
   googleMaxWaypointsDesc: 'מגבלת גוגל מפות. אם המסלול חורג — יפוצל אוטומטית.',
+  googleMaxMapPoints: 'מקסימום נקודות להצגה על מפה',
+  googleMaxMapPointsDesc: 'מעל מספר זה תוצג התראה שיתכן וגוגל לא יציג את כולן.',
   defaultRadius: 'רדיוס ברירת מחדל',
   radiusDescription: 'רדיוס חיפוש מסביב למיקום נוכחי (מטרים)',
   refreshData: 'רענון נתונים',
@@ -1229,6 +1232,7 @@ route: {
   openRouteInGoogle: 'Open route in Google',
   openRoutePartN: 'Route part {n} of {total}',
   splitRouteWarning: '⚠️ Google Maps supports up to {max} points. Route split into {parts} parts. You can disable stops to reduce.',
+  mapPointsWarning: 'ℹ️ Google Maps may not display all {count} points on the map.',
   showStopsOnMap: 'Show stops on map',
   backToList: 'Back to list',
   stopNumber: 'Stop',
@@ -1447,6 +1451,8 @@ settings: {
   maxStops: 'Places per route',
   googleMaxWaypoints: 'Max points in Google Maps',
   googleMaxWaypointsDesc: 'Google Maps limit. Routes exceeding this will be automatically split.',
+  googleMaxMapPoints: 'Max points to show on map',
+  googleMaxMapPointsDesc: 'Above this number a warning will be shown that Google may not display all points.',
   defaultRadius: 'Default radius',
   radiusDescription: 'Search radius around current location (meters)',
   refreshData: 'Refresh data',
@@ -3200,6 +3206,7 @@ const CityExplorer = () => {
   const [showVersionPasswordDialog, setShowVersionPasswordDialog] = useState(false);
   const [showAddCityDialog, setShowAddCityDialog] = useState(false);
   const [googleMaxWaypoints, setGoogleMaxWaypoints] = useState(12);
+  const [googleMaxMapPoints, setGoogleMaxMapPoints] = useState(10);
   const [cityModified, setCityModified] = useState(false);
   const [showSettingsMap, setShowSettingsMap] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
@@ -3759,7 +3766,9 @@ const CityExplorer = () => {
         try {
           const gmwSnap = await database.ref('settings/googleMaxWaypoints').once('value');
           if (gmwSnap.val() !== null) setGoogleMaxWaypoints(gmwSnap.val());
-          console.log('[REFRESH] Loaded googleMaxWaypoints:', gmwSnap.val() || 12);
+          const gmmSnap = await database.ref('settings/googleMaxMapPoints').once('value');
+          if (gmmSnap.val() !== null) setGoogleMaxMapPoints(gmmSnap.val());
+          console.log('[REFRESH] Loaded googleMaxWaypoints:', gmwSnap.val() || 12, 'googleMaxMapPoints:', gmmSnap.val() || 10);
         } catch (e) {
           console.error('[REFRESH] Error loading googleMaxWaypoints:', e);
         }
@@ -3876,6 +3885,11 @@ const CityExplorer = () => {
     // Listen for googleMaxWaypoints changes
     database.ref('settings/googleMaxWaypoints').on('value', (snap) => {
       if (snap.val() !== null) setGoogleMaxWaypoints(snap.val());
+    });
+    
+    // Listen for googleMaxMapPoints changes
+    database.ref('settings/googleMaxMapPoints').on('value', (snap) => {
+      if (snap.val() !== null) setGoogleMaxMapPoints(snap.val());
     });
     
     // Log access (skip if admin)
@@ -8416,6 +8430,9 @@ const CityExplorer = () => {
                         showToast(t('places.noPlacesWithCoords'), 'warning');
                         return;
                       }
+                      if (activeStops.length > googleMaxMapPoints) {
+                        showToast(t('route.mapPointsWarning').replace('{count}', activeStops.length), 'info', 4000);
+                      }
                       const url = e.currentTarget.href;
                       if (url.length > 2000) {
                         showToast(`${t('toast.urlTooLong')} (${url.length})`, 'warning');
@@ -10233,6 +10250,34 @@ const CityExplorer = () => {
                   placeholder="12"
                 />
                 <span className="text-[10px] text-gray-500 mr-2">(4-50)</span>
+              </div>
+            </div>
+            )}
+            
+            {/* Google Max Map Points Setting (admin only) */}
+            {isUnlocked && (
+            <div className="mb-3">
+              <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-400 rounded-lg p-2">
+                <h3 className="text-sm font-bold text-gray-800 mb-1">{`📍 ${t("settings.googleMaxMapPoints")}`}</h3>
+                <p className="text-[10px] text-gray-600 mb-1">{t("settings.googleMaxMapPointsDesc")}</p>
+                <input
+                  type="number"
+                  min="3"
+                  max="50"
+                  value={googleMaxMapPoints}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 10;
+                    const clamped = Math.min(50, Math.max(3, val));
+                    setGoogleMaxMapPoints(clamped);
+                    try {
+                      const database = window.BKK.database;
+                      if (database) database.ref('settings/googleMaxMapPoints').set(clamped);
+                    } catch (err) { console.error('[SETTINGS] Error saving googleMaxMapPoints:', err); }
+                  }}
+                  className="w-20 p-1 border-2 border-orange-300 rounded text-center font-bold text-sm"
+                  placeholder="10"
+                />
+                <span className="text-[10px] text-gray-500 mr-2">(3-50)</span>
               </div>
             </div>
             )}

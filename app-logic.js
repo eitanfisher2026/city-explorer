@@ -317,6 +317,7 @@
   const [showVersionPasswordDialog, setShowVersionPasswordDialog] = useState(false);
   const [showAddCityDialog, setShowAddCityDialog] = useState(false);
   const [googleMaxWaypoints, setGoogleMaxWaypoints] = useState(12);
+  const [googleMaxMapPoints, setGoogleMaxMapPoints] = useState(10);
   const [cityModified, setCityModified] = useState(false);
   const [showSettingsMap, setShowSettingsMap] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
@@ -876,7 +877,9 @@
         try {
           const gmwSnap = await database.ref('settings/googleMaxWaypoints').once('value');
           if (gmwSnap.val() !== null) setGoogleMaxWaypoints(gmwSnap.val());
-          console.log('[REFRESH] Loaded googleMaxWaypoints:', gmwSnap.val() || 12);
+          const gmmSnap = await database.ref('settings/googleMaxMapPoints').once('value');
+          if (gmmSnap.val() !== null) setGoogleMaxMapPoints(gmmSnap.val());
+          console.log('[REFRESH] Loaded googleMaxWaypoints:', gmwSnap.val() || 12, 'googleMaxMapPoints:', gmmSnap.val() || 10);
         } catch (e) {
           console.error('[REFRESH] Error loading googleMaxWaypoints:', e);
         }
@@ -993,6 +996,11 @@
     // Listen for googleMaxWaypoints changes
     database.ref('settings/googleMaxWaypoints').on('value', (snap) => {
       if (snap.val() !== null) setGoogleMaxWaypoints(snap.val());
+    });
+    
+    // Listen for googleMaxMapPoints changes
+    database.ref('settings/googleMaxMapPoints').on('value', (snap) => {
+      if (snap.val() !== null) setGoogleMaxMapPoints(snap.val());
     });
     
     // Log access (skip if admin)

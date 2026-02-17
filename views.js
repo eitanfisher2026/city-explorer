@@ -1196,6 +1196,9 @@
                         showToast(t('places.noPlacesWithCoords'), 'warning');
                         return;
                       }
+                      if (activeStops.length > googleMaxMapPoints) {
+                        showToast(t('route.mapPointsWarning').replace('{count}', activeStops.length), 'info', 4000);
+                      }
                       const url = e.currentTarget.href;
                       if (url.length > 2000) {
                         showToast(`${t('toast.urlTooLong')} (${url.length})`, 'warning');
@@ -3013,6 +3016,34 @@
                   placeholder="12"
                 />
                 <span className="text-[10px] text-gray-500 mr-2">(4-50)</span>
+              </div>
+            </div>
+            )}
+            
+            {/* Google Max Map Points Setting (admin only) */}
+            {isUnlocked && (
+            <div className="mb-3">
+              <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-400 rounded-lg p-2">
+                <h3 className="text-sm font-bold text-gray-800 mb-1">{`📍 ${t("settings.googleMaxMapPoints")}`}</h3>
+                <p className="text-[10px] text-gray-600 mb-1">{t("settings.googleMaxMapPointsDesc")}</p>
+                <input
+                  type="number"
+                  min="3"
+                  max="50"
+                  value={googleMaxMapPoints}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 10;
+                    const clamped = Math.min(50, Math.max(3, val));
+                    setGoogleMaxMapPoints(clamped);
+                    try {
+                      const database = window.BKK.database;
+                      if (database) database.ref('settings/googleMaxMapPoints').set(clamped);
+                    } catch (err) { console.error('[SETTINGS] Error saving googleMaxMapPoints:', err); }
+                  }}
+                  className="w-20 p-1 border-2 border-orange-300 rounded text-center font-bold text-sm"
+                  placeholder="10"
+                />
+                <span className="text-[10px] text-gray-500 mr-2">(3-50)</span>
               </div>
             </div>
             )}
