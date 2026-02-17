@@ -1144,15 +1144,15 @@
   };
 
   // Config - loaded from config.js, re-read on city change via selectedCityId dependency
-  const interestOptions = window.BKK.interestOptions;
+  const interestOptions = window.BKK.interestOptions || [];
 
-  const interestToGooglePlaces = window.BKK.interestToGooglePlaces;
+  const interestToGooglePlaces = window.BKK.interestToGooglePlaces || {};
 
-  const uncoveredInterests = window.BKK.uncoveredInterests;
+  const uncoveredInterests = window.BKK.uncoveredInterests || [];
 
-  const interestTooltips = window.BKK.interestTooltips;
+  const interestTooltips = window.BKK.interestTooltips || {};
 
-  const areaCoordinates = window.BKK.areaCoordinates;
+  const areaCoordinates = window.BKK.areaCoordinates || {};
 
   // Switch city function
   const switchCity = (cityId, stayOnView) => {
