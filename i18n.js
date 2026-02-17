@@ -1160,6 +1160,8 @@ toast: {
   addressSearchError: 'Address search error',
   routeSaveError: 'Route save error',
   imageUploadError: 'Image upload error',
+  uploadingImage: 'Uploading image...',
+  imageUploaded: 'Image uploaded successfully',
   addPlacesError: 'Error adding places',
   googleInfoError: 'Error fetching Google info',
   resetError: 'Reset error',

@@ -1020,7 +1020,7 @@
                                         <span className="text-blue-500 font-bold" title={t("general.addedViaMore")} style={{ fontSize: '9px' }}>{`+${t('general.more')}`}</span>
                                       )}
                                       {/* Camera icon for custom locations with image */}
-                                      {isCustom && stop.uploadedImage && !wizardMode && (
+                                      {isCustom && stop.uploadedImage && (
                                         <button
                                           onClick={(e) => {
                                             e.preventDefault();

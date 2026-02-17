@@ -1900,7 +1900,7 @@
   }, [cityCustomLocations, placesGroupBy, interestMap, areaMap]);
 
   // Image handling - loaded from utils.js
-  const compressImage = window.BKK.compressImage;
+  const uploadImage = window.BKK.uploadImage;
   
   const handleImageUpload = async (event) => {
     const file = event.target.files[0];
@@ -1912,8 +1912,11 @@
     }
     
     try {
-      const compressed = await compressImage(file);
-      setNewLocation(prev => ({ ...prev, uploadedImage: compressed }));
+      showToast(t('toast.uploadingImage'), 'info');
+      const locationId = newLocation.id || 'loc_' + Date.now();
+      const imageUrl = await uploadImage(file, selectedCityId, locationId);
+      setNewLocation(prev => ({ ...prev, uploadedImage: imageUrl }));
+      showToast(t('toast.imageUploaded'), 'success');
     } catch (error) {
       console.error('[IMAGE] Upload error:', error);
       showToast(t('toast.imageUploadError'), 'error');
@@ -2879,13 +2882,17 @@
     });
   };
 
-  // Strip heavy data (base64 images) from route before localStorage save
+  // Strip heavy data (base64 images) from route before save - keep Storage URLs
   const stripRouteForStorage = (r) => {
     const stripped = { ...r };
     if (stripped.stops) {
       stripped.stops = stripped.stops.map(s => {
-        const { uploadedImage, ...rest } = s;
-        return rest;
+        // Only strip base64 data, keep URL strings
+        if (s.uploadedImage && s.uploadedImage.startsWith('data:')) {
+          const { uploadedImage, ...rest } = s;
+          return rest;
+        }
+        return { ...s };
       });
     }
     return stripped;

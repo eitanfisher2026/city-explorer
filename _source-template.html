@@ -133,7 +133,7 @@
     <!-- Firebase SDK - sequential loading with Promise -->
     <script>
     window.__firebaseReady = new Promise(function(resolve) {
-      var libs = ['firebase-app-compat.js','firebase-database-compat.js'];
+      var libs = ['firebase-app-compat.js','firebase-database-compat.js','firebase-storage-compat.js'];
       var loaded = 0;
       var failed = false;
       
@@ -212,6 +212,7 @@ const firebaseConfig = window.BKK.firebaseConfig;
 // Initialize Firebase (deferred until SDK loads)
 let firebaseApp = null;
 let database = null;
+let storage = null;
 let isFirebaseAvailable = false;
 
 function initFirebase() {
@@ -219,6 +220,10 @@ function initFirebase() {
     if (typeof firebase !== 'undefined') {
       firebaseApp = firebase.initializeApp(firebaseConfig);
       database = firebase.database();
+      if (firebase.storage) {
+        storage = firebase.storage();
+        console.log('[FIREBASE] Storage initialized');
+      }
       isFirebaseAvailable = true;
       console.log('[FIREBASE] Initialized successfully');
     } else {

@@ -225,9 +225,9 @@ window.BKK.reverseGeocode = async (lat, lng) => {
 
 /**
  * Compress image file to target size
- * @returns {Promise<string>} base64 compressed image
+ * @returns {Promise<string>} base64 compressed image (fallback) or URL
  */
-window.BKK.compressImage = (file, maxSizeKB = 200) => {
+window.BKK.compressImage = (file, maxSizeKB = 150) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     
@@ -238,7 +238,7 @@ window.BKK.compressImage = (file, maxSizeKB = 200) => {
         let width = img.width;
         let height = img.height;
         
-        const maxDimension = 800;
+        const maxDimension = 600;
         if (width > height && width > maxDimension) {
           height = (height / width) * maxDimension;
           width = maxDimension;
@@ -253,10 +253,10 @@ window.BKK.compressImage = (file, maxSizeKB = 200) => {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
         
-        let quality = 0.8;
+        let quality = 0.7;
         let compressed = canvas.toDataURL('image/jpeg', quality);
         
-        while (compressed.length > maxSizeKB * 1024 * 1.37 && quality > 0.3) {
+        while (compressed.length > maxSizeKB * 1024 * 1.37 && quality > 0.2) {
           quality -= 0.1;
           compressed = canvas.toDataURL('image/jpeg', quality);
         }
@@ -275,6 +275,41 @@ window.BKK.compressImage = (file, maxSizeKB = 200) => {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+};
+
+/**
+ * Upload an image to Firebase Storage and return the download URL.
+ * Falls back to base64 if Storage is not available.
+ */
+window.BKK.uploadImage = async (file, cityId, locationId) => {
+  // Compress first
+  const compressed = await window.BKK.compressImage(file);
+  
+  // Try Firebase Storage
+  if (typeof firebase !== 'undefined' && firebase.storage) {
+    try {
+      const storageRef = firebase.storage().ref();
+      const path = `cities/${cityId}/images/${locationId}_${Date.now()}.jpg`;
+      const imageRef = storageRef.child(path);
+      
+      // Convert base64 to blob for upload
+      const response = await fetch(compressed);
+      const blob = await response.blob();
+      
+      const snapshot = await imageRef.put(blob, { contentType: 'image/jpeg' });
+      const downloadURL = await snapshot.ref.getDownloadURL();
+      
+      console.log('[STORAGE] Uploaded image:', path, 'URL:', downloadURL.substring(0, 60) + '...');
+      return downloadURL;
+    } catch (err) {
+      console.error('[STORAGE] Upload failed, falling back to base64:', err);
+      return compressed;
+    }
+  }
+  
+  // Fallback: return base64
+  console.log('[STORAGE] Not available, using base64 fallback');
+  return compressed;
 };
 
 // ============================================================================

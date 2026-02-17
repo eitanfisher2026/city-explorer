@@ -133,7 +133,7 @@
     <!-- Firebase SDK - sequential loading with Promise -->
     <script>
     window.__firebaseReady = new Promise(function(resolve) {
-      var libs = ['firebase-app-compat.js','firebase-database-compat.js'];
+      var libs = ['firebase-app-compat.js','firebase-database-compat.js','firebase-storage-compat.js'];
       var loaded = 0;
       var failed = false;
       
@@ -1333,6 +1333,8 @@ toast: {
   addressSearchError: 'Address search error',
   routeSaveError: 'Route save error',
   imageUploadError: 'Image upload error',
+  uploadingImage: 'Uploading image...',
+  imageUploaded: 'Image uploaded successfully',
   addPlacesError: 'Error adding places',
   googleInfoError: 'Error fetching Google info',
   resetError: 'Reset error',
@@ -2444,9 +2446,9 @@ window.BKK.reverseGeocode = async (lat, lng) => {
 
 /**
  * Compress image file to target size
- * @returns {Promise<string>} base64 compressed image
+ * @returns {Promise<string>} base64 compressed image (fallback) or URL
  */
-window.BKK.compressImage = (file, maxSizeKB = 200) => {
+window.BKK.compressImage = (file, maxSizeKB = 150) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     
@@ -2457,7 +2459,7 @@ window.BKK.compressImage = (file, maxSizeKB = 200) => {
         let width = img.width;
         let height = img.height;
         
-        const maxDimension = 800;
+        const maxDimension = 600;
         if (width > height && width > maxDimension) {
           height = (height / width) * maxDimension;
           width = maxDimension;
@@ -2472,10 +2474,10 @@ window.BKK.compressImage = (file, maxSizeKB = 200) => {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
         
-        let quality = 0.8;
+        let quality = 0.7;
         let compressed = canvas.toDataURL('image/jpeg', quality);
         
-        while (compressed.length > maxSizeKB * 1024 * 1.37 && quality > 0.3) {
+        while (compressed.length > maxSizeKB * 1024 * 1.37 && quality > 0.2) {
           quality -= 0.1;
           compressed = canvas.toDataURL('image/jpeg', quality);
         }
@@ -2494,6 +2496,41 @@ window.BKK.compressImage = (file, maxSizeKB = 200) => {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+};
+
+/**
+ * Upload an image to Firebase Storage and return the download URL.
+ * Falls back to base64 if Storage is not available.
+ */
+window.BKK.uploadImage = async (file, cityId, locationId) => {
+  // Compress first
+  const compressed = await window.BKK.compressImage(file);
+  
+  // Try Firebase Storage
+  if (typeof firebase !== 'undefined' && firebase.storage) {
+    try {
+      const storageRef = firebase.storage().ref();
+      const path = `cities/${cityId}/images/${locationId}_${Date.now()}.jpg`;
+      const imageRef = storageRef.child(path);
+      
+      // Convert base64 to blob for upload
+      const response = await fetch(compressed);
+      const blob = await response.blob();
+      
+      const snapshot = await imageRef.put(blob, { contentType: 'image/jpeg' });
+      const downloadURL = await snapshot.ref.getDownloadURL();
+      
+      console.log('[STORAGE] Uploaded image:', path, 'URL:', downloadURL.substring(0, 60) + '...');
+      return downloadURL;
+    } catch (err) {
+      console.error('[STORAGE] Upload failed, falling back to base64:', err);
+      return compressed;
+    }
+  }
+  
+  // Fallback: return base64
+  console.log('[STORAGE] Not available, using base64 fallback');
+  return compressed;
 };
 
 // ============================================================================
@@ -2661,6 +2698,7 @@ const firebaseConfig = window.BKK.firebaseConfig;
 // Initialize Firebase (deferred until SDK loads)
 let firebaseApp = null;
 let database = null;
+let storage = null;
 let isFirebaseAvailable = false;
 
 function initFirebase() {
@@ -2668,6 +2706,10 @@ function initFirebase() {
     if (typeof firebase !== 'undefined') {
       firebaseApp = firebase.initializeApp(firebaseConfig);
       database = firebase.database();
+      if (firebase.storage) {
+        storage = firebase.storage();
+        console.log('[FIREBASE] Storage initialized');
+      }
       isFirebaseAvailable = true;
       console.log('[FIREBASE] Initialized successfully');
     } else {
@@ -4587,7 +4629,7 @@ const CityExplorer = () => {
   }, [cityCustomLocations, placesGroupBy, interestMap, areaMap]);
 
   // Image handling - loaded from utils.js
-  const compressImage = window.BKK.compressImage;
+  const uploadImage = window.BKK.uploadImage;
   
   const handleImageUpload = async (event) => {
     const file = event.target.files[0];
@@ -4599,8 +4641,11 @@ const CityExplorer = () => {
     }
     
     try {
-      const compressed = await compressImage(file);
-      setNewLocation(prev => ({ ...prev, uploadedImage: compressed }));
+      showToast(t('toast.uploadingImage'), 'info');
+      const locationId = newLocation.id || 'loc_' + Date.now();
+      const imageUrl = await uploadImage(file, selectedCityId, locationId);
+      setNewLocation(prev => ({ ...prev, uploadedImage: imageUrl }));
+      showToast(t('toast.imageUploaded'), 'success');
     } catch (error) {
       console.error('[IMAGE] Upload error:', error);
       showToast(t('toast.imageUploadError'), 'error');
@@ -5566,13 +5611,17 @@ const CityExplorer = () => {
     });
   };
 
-  // Strip heavy data (base64 images) from route before localStorage save
+  // Strip heavy data (base64 images) from route before save - keep Storage URLs
   const stripRouteForStorage = (r) => {
     const stripped = { ...r };
     if (stripped.stops) {
       stripped.stops = stripped.stops.map(s => {
-        const { uploadedImage, ...rest } = s;
-        return rest;
+        // Only strip base64 data, keep URL strings
+        if (s.uploadedImage && s.uploadedImage.startsWith('data:')) {
+          const { uploadedImage, ...rest } = s;
+          return rest;
+        }
+        return { ...s };
       });
     }
     return stripped;
@@ -8006,7 +8055,7 @@ const CityExplorer = () => {
                                         <span className="text-blue-500 font-bold" title={t("general.addedViaMore")} style={{ fontSize: '9px' }}>{`+${t('general.more')}`}</span>
                                       )}
                                       {/* Camera icon for custom locations with image */}
-                                      {isCustom && stop.uploadedImage && !wizardMode && (
+                                      {isCustom && stop.uploadedImage && (
                                         <button
                                           onClick={(e) => {
                                             e.preventDefault();
