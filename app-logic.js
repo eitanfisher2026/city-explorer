@@ -4,13 +4,11 @@
       const saved = localStorage.getItem('bangkok_preferences');
       if (saved) {
         const prefs = JSON.parse(saved);
-        // Add maxStops if not present or upgrade from old default
+        // Admin-controlled defaults (will be overridden by Firebase on load)
         if (!prefs.maxStops) prefs.maxStops = 12;
-        // Add fetchMoreCount if not present
         if (!prefs.fetchMoreCount) prefs.fetchMoreCount = 3;
-        // Add radius search fields if not present
+        // User-specific settings preserved from last session
         if (!prefs.searchMode) prefs.searchMode = 'area';
-        // Handle legacy 'all' that was stored as radius with 15000
         if (prefs.searchMode === 'radius' && prefs.radiusMeters === 15000 && prefs.radiusPlaceName === t('general.allCity')) prefs.searchMode = 'all';
         if (!prefs.radiusMeters) prefs.radiusMeters = 500;
         if (!prefs.radiusSource) prefs.radiusSource = 'gps';
@@ -18,9 +16,10 @@
         return prefs;
       }
     } catch (e) {}
+    // First time user: area and interests empty, defaults for everything else
     return {
       hours: 3,
-      area: 'sukhumvit',
+      area: '',
       interests: [],
       circular: true,
       startPoint: '',
@@ -880,15 +879,25 @@
           console.error('[REFRESH] Error loading admin settings:', e);
         }
         
-        // 7. Google Max Waypoints setting
+        // 7. Google Max Waypoints setting + admin-controlled form settings
         try {
           const gmwSnap = await database.ref('settings/googleMaxWaypoints').once('value');
           if (gmwSnap.val() !== null) setGoogleMaxWaypoints(gmwSnap.val());
           const gmmSnap = await database.ref('settings/googleMaxMapPoints').once('value');
           if (gmmSnap.val() !== null) setGoogleMaxMapPoints(gmmSnap.val());
-          console.log('[REFRESH] Loaded googleMaxWaypoints:', gmwSnap.val() || 12, 'googleMaxMapPoints:', gmmSnap.val() || 10);
+          const msSnap = await database.ref('settings/maxStops').once('value');
+          const fmSnap = await database.ref('settings/fetchMoreCount').once('value');
+          const drSnap = await database.ref('settings/defaultRadius').once('value');
+          const updates = {};
+          if (msSnap.val() !== null) updates.maxStops = msSnap.val();
+          if (fmSnap.val() !== null) updates.fetchMoreCount = fmSnap.val();
+          if (drSnap.val() !== null) window.BKK._defaultRadius = drSnap.val();
+          if (Object.keys(updates).length > 0) {
+            setFormData(prev => ({...prev, ...updates}));
+          }
+          console.log('[REFRESH] Loaded settings:', { googleMaxWaypoints: gmwSnap.val() || 12, googleMaxMapPoints: gmmSnap.val() || 10, ...updates });
         } catch (e) {
-          console.error('[REFRESH] Error loading googleMaxWaypoints:', e);
+          console.error('[REFRESH] Error loading settings:', e);
         }
         
         showToast(t('toast.dataRefreshed'), 'success');
@@ -1009,6 +1018,51 @@
     database.ref('settings/googleMaxMapPoints').on('value', (snap) => {
       if (snap.val() !== null) setGoogleMaxMapPoints(snap.val());
     });
+    
+    // Listen for maxStops changes (admin setting)
+    database.ref('settings/maxStops').on('value', (snap) => {
+      if (snap.val() !== null) setFormData(prev => ({...prev, maxStops: snap.val()}));
+    });
+    
+    // Listen for fetchMoreCount changes (admin setting)
+    database.ref('settings/fetchMoreCount').on('value', (snap) => {
+      if (snap.val() !== null) setFormData(prev => ({...prev, fetchMoreCount: snap.val()}));
+    });
+    
+    // Listen for defaultRadius changes (admin setting) - only apply if user hasn't customized
+    database.ref('settings/defaultRadius').on('value', (snap) => {
+      if (snap.val() !== null) {
+        // Store globally for first-time users
+        window.BKK._defaultRadius = snap.val();
+      }
+    });
+    
+    // Load admin-controlled settings and apply to formData
+    const loadAdminControlledSettings = async () => {
+      try {
+        const [msSnap, fmSnap, drSnap] = await Promise.all([
+          database.ref('settings/maxStops').once('value'),
+          database.ref('settings/fetchMoreCount').once('value'),
+          database.ref('settings/defaultRadius').once('value')
+        ]);
+        const updates = {};
+        if (msSnap.val() !== null) updates.maxStops = msSnap.val();
+        if (fmSnap.val() !== null) updates.fetchMoreCount = fmSnap.val();
+        // defaultRadius: only apply if user has no saved preferences (first time)
+        const hasSavedPrefs = !!localStorage.getItem('bangkok_preferences');
+        if (drSnap.val() !== null) {
+          window.BKK._defaultRadius = drSnap.val();
+          if (!hasSavedPrefs) updates.radiusMeters = drSnap.val();
+        }
+        if (Object.keys(updates).length > 0) {
+          setFormData(prev => ({...prev, ...updates}));
+        }
+        console.log('[SETTINGS] Loaded admin settings:', updates);
+      } catch (e) {
+        console.error('[SETTINGS] Error loading admin settings:', e);
+      }
+    };
+    loadAdminControlledSettings();
     
     // Log access (skip if admin)
     const isAdmin = localStorage.getItem('bangkok_is_admin') === 'true';

@@ -266,7 +266,11 @@ window.BKK.selectCity = function(cityId) {
   
   var savedCity = 'bangkok';
   try { savedCity = localStorage.getItem('city_explorer_city') || 'bangkok'; } catch(e) {}
-  if (!window.BKK.cities[savedCity]) savedCity = Object.keys(window.BKK.cities)[0] || 'bangkok';
+  // If saved city doesn't exist or is not active, pick first active city
+  if (!window.BKK.cities[savedCity] || window.BKK.cities[savedCity].active === false) {
+    var activeCities = Object.keys(window.BKK.cities).filter(function(id) { return window.BKK.cities[id].active !== false; });
+    savedCity = activeCities[0] || Object.keys(window.BKK.cities)[0] || 'bangkok';
+  }
   window.BKK.selectCity(savedCity);
 })();
 

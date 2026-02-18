@@ -2982,8 +2982,13 @@
                   max="100"
                   value={formData.maxStops}
                   onChange={(e) => {
-                    const val = parseInt(e.target.value) || 10;
-                    setFormData({...formData, maxStops: Math.min(100, Math.max(1, val))});
+                    const val = parseInt(e.target.value) || 12;
+                    const clamped = Math.min(100, Math.max(1, val));
+                    setFormData({...formData, maxStops: clamped});
+                    try {
+                      const database = window.BKK.database;
+                      if (database && isUnlocked) database.ref('settings/maxStops').set(clamped);
+                    } catch (err) { console.error('[SETTINGS] Error saving maxStops:', err); }
                   }}
                   className="w-20 p-1 border-2 border-blue-300 rounded text-center font-bold text-sm"
                   placeholder="10"
@@ -3002,8 +3007,13 @@
                   max="100"
                   value={formData.fetchMoreCount || 3}
                   onChange={(e) => {
-                    const val = parseInt(e.target.value) || 5;
-                    setFormData({...formData, fetchMoreCount: Math.min(100, Math.max(1, val))});
+                    const val = parseInt(e.target.value) || 3;
+                    const clamped = Math.min(100, Math.max(1, val));
+                    setFormData({...formData, fetchMoreCount: clamped});
+                    try {
+                      const database = window.BKK.database;
+                      if (database && isUnlocked) database.ref('settings/fetchMoreCount').set(clamped);
+                    } catch (err) { console.error('[SETTINGS] Error saving fetchMoreCount:', err); }
                   }}
                   className="w-20 p-1 border-2 border-green-300 rounded text-center font-bold text-sm"
                   placeholder="5"
@@ -3079,7 +3089,14 @@
                   max="2000"
                   step="100"
                   value={formData.radiusMeters}
-                  onChange={(e) => setFormData({...formData, radiusMeters: parseInt(e.target.value)})}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setFormData({...formData, radiusMeters: val});
+                    try {
+                      const database = window.BKK.database;
+                      if (database && isUnlocked) database.ref('settings/defaultRadius').set(val);
+                    } catch (err) { console.error('[SETTINGS] Error saving defaultRadius:', err); }
+                  }}
                   className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
                   style={{ accentColor: '#ea580c' }}
                 />

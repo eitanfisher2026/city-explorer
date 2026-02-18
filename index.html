@@ -2517,7 +2517,11 @@ window.BKK.selectCity = function(cityId) {
   
   var savedCity = 'bangkok';
   try { savedCity = localStorage.getItem('city_explorer_city') || 'bangkok'; } catch(e) {}
-  if (!window.BKK.cities[savedCity]) savedCity = Object.keys(window.BKK.cities)[0] || 'bangkok';
+  // If saved city doesn't exist or is not active, pick first active city
+  if (!window.BKK.cities[savedCity] || window.BKK.cities[savedCity].active === false) {
+    var activeCities = Object.keys(window.BKK.cities).filter(function(id) { return window.BKK.cities[id].active !== false; });
+    savedCity = activeCities[0] || Object.keys(window.BKK.cities)[0] || 'bangkok';
+  }
   window.BKK.selectCity(savedCity);
 })();
 
@@ -3165,13 +3169,11 @@ const CityExplorer = () => {
       const saved = localStorage.getItem('bangkok_preferences');
       if (saved) {
         const prefs = JSON.parse(saved);
-        // Add maxStops if not present or upgrade from old default
+        // Admin-controlled defaults (will be overridden by Firebase on load)
         if (!prefs.maxStops) prefs.maxStops = 12;
-        // Add fetchMoreCount if not present
         if (!prefs.fetchMoreCount) prefs.fetchMoreCount = 3;
-        // Add radius search fields if not present
+        // User-specific settings preserved from last session
         if (!prefs.searchMode) prefs.searchMode = 'area';
-        // Handle legacy 'all' that was stored as radius with 15000
         if (prefs.searchMode === 'radius' && prefs.radiusMeters === 15000 && prefs.radiusPlaceName === t('general.allCity')) prefs.searchMode = 'all';
         if (!prefs.radiusMeters) prefs.radiusMeters = 500;
         if (!prefs.radiusSource) prefs.radiusSource = 'gps';
@@ -3179,9 +3181,10 @@ const CityExplorer = () => {
         return prefs;
       }
     } catch (e) {}
+    // First time user: area and interests empty, defaults for everything else
     return {
       hours: 3,
-      area: 'sukhumvit',
+      area: '',
       interests: [],
       circular: true,
       startPoint: '',
@@ -4041,15 +4044,25 @@ const CityExplorer = () => {
           console.error('[REFRESH] Error loading admin settings:', e);
         }
         
-        // 7. Google Max Waypoints setting
+        // 7. Google Max Waypoints setting + admin-controlled form settings
         try {
           const gmwSnap = await database.ref('settings/googleMaxWaypoints').once('value');
           if (gmwSnap.val() !== null) setGoogleMaxWaypoints(gmwSnap.val());
           const gmmSnap = await database.ref('settings/googleMaxMapPoints').once('value');
           if (gmmSnap.val() !== null) setGoogleMaxMapPoints(gmmSnap.val());
-          console.log('[REFRESH] Loaded googleMaxWaypoints:', gmwSnap.val() || 12, 'googleMaxMapPoints:', gmmSnap.val() || 10);
+          const msSnap = await database.ref('settings/maxStops').once('value');
+          const fmSnap = await database.ref('settings/fetchMoreCount').once('value');
+          const drSnap = await database.ref('settings/defaultRadius').once('value');
+          const updates = {};
+          if (msSnap.val() !== null) updates.maxStops = msSnap.val();
+          if (fmSnap.val() !== null) updates.fetchMoreCount = fmSnap.val();
+          if (drSnap.val() !== null) window.BKK._defaultRadius = drSnap.val();
+          if (Object.keys(updates).length > 0) {
+            setFormData(prev => ({...prev, ...updates}));
+          }
+          console.log('[REFRESH] Loaded settings:', { googleMaxWaypoints: gmwSnap.val() || 12, googleMaxMapPoints: gmmSnap.val() || 10, ...updates });
         } catch (e) {
-          console.error('[REFRESH] Error loading googleMaxWaypoints:', e);
+          console.error('[REFRESH] Error loading settings:', e);
         }
         
         showToast(t('toast.dataRefreshed'), 'success');
@@ -4170,6 +4183,51 @@ const CityExplorer = () => {
     database.ref('settings/googleMaxMapPoints').on('value', (snap) => {
       if (snap.val() !== null) setGoogleMaxMapPoints(snap.val());
     });
+    
+    // Listen for maxStops changes (admin setting)
+    database.ref('settings/maxStops').on('value', (snap) => {
+      if (snap.val() !== null) setFormData(prev => ({...prev, maxStops: snap.val()}));
+    });
+    
+    // Listen for fetchMoreCount changes (admin setting)
+    database.ref('settings/fetchMoreCount').on('value', (snap) => {
+      if (snap.val() !== null) setFormData(prev => ({...prev, fetchMoreCount: snap.val()}));
+    });
+    
+    // Listen for defaultRadius changes (admin setting) - only apply if user hasn't customized
+    database.ref('settings/defaultRadius').on('value', (snap) => {
+      if (snap.val() !== null) {
+        // Store globally for first-time users
+        window.BKK._defaultRadius = snap.val();
+      }
+    });
+    
+    // Load admin-controlled settings and apply to formData
+    const loadAdminControlledSettings = async () => {
+      try {
+        const [msSnap, fmSnap, drSnap] = await Promise.all([
+          database.ref('settings/maxStops').once('value'),
+          database.ref('settings/fetchMoreCount').once('value'),
+          database.ref('settings/defaultRadius').once('value')
+        ]);
+        const updates = {};
+        if (msSnap.val() !== null) updates.maxStops = msSnap.val();
+        if (fmSnap.val() !== null) updates.fetchMoreCount = fmSnap.val();
+        // defaultRadius: only apply if user has no saved preferences (first time)
+        const hasSavedPrefs = !!localStorage.getItem('bangkok_preferences');
+        if (drSnap.val() !== null) {
+          window.BKK._defaultRadius = drSnap.val();
+          if (!hasSavedPrefs) updates.radiusMeters = drSnap.val();
+        }
+        if (Object.keys(updates).length > 0) {
+          setFormData(prev => ({...prev, ...updates}));
+        }
+        console.log('[SETTINGS] Loaded admin settings:', updates);
+      } catch (e) {
+        console.error('[SETTINGS] Error loading admin settings:', e);
+      }
+    };
+    loadAdminControlledSettings();
     
     // Log access (skip if admin)
     const isAdmin = localStorage.getItem('bangkok_is_admin') === 'true';
@@ -10495,8 +10553,13 @@ const CityExplorer = () => {
                   max="100"
                   value={formData.maxStops}
                   onChange={(e) => {
-                    const val = parseInt(e.target.value) || 10;
-                    setFormData({...formData, maxStops: Math.min(100, Math.max(1, val))});
+                    const val = parseInt(e.target.value) || 12;
+                    const clamped = Math.min(100, Math.max(1, val));
+                    setFormData({...formData, maxStops: clamped});
+                    try {
+                      const database = window.BKK.database;
+                      if (database && isUnlocked) database.ref('settings/maxStops').set(clamped);
+                    } catch (err) { console.error('[SETTINGS] Error saving maxStops:', err); }
                   }}
                   className="w-20 p-1 border-2 border-blue-300 rounded text-center font-bold text-sm"
                   placeholder="10"
@@ -10515,8 +10578,13 @@ const CityExplorer = () => {
                   max="100"
                   value={formData.fetchMoreCount || 3}
                   onChange={(e) => {
-                    const val = parseInt(e.target.value) || 5;
-                    setFormData({...formData, fetchMoreCount: Math.min(100, Math.max(1, val))});
+                    const val = parseInt(e.target.value) || 3;
+                    const clamped = Math.min(100, Math.max(1, val));
+                    setFormData({...formData, fetchMoreCount: clamped});
+                    try {
+                      const database = window.BKK.database;
+                      if (database && isUnlocked) database.ref('settings/fetchMoreCount').set(clamped);
+                    } catch (err) { console.error('[SETTINGS] Error saving fetchMoreCount:', err); }
                   }}
                   className="w-20 p-1 border-2 border-green-300 rounded text-center font-bold text-sm"
                   placeholder="5"
@@ -10592,7 +10660,14 @@ const CityExplorer = () => {
                   max="2000"
                   step="100"
                   value={formData.radiusMeters}
-                  onChange={(e) => setFormData({...formData, radiusMeters: parseInt(e.target.value)})}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setFormData({...formData, radiusMeters: val});
+                    try {
+                      const database = window.BKK.database;
+                      if (database && isUnlocked) database.ref('settings/defaultRadius').set(val);
+                    } catch (err) { console.error('[SETTINGS] Error saving defaultRadius:', err); }
+                  }}
                   className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
                   style={{ accentColor: '#ea580c' }}
                 />
