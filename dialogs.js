@@ -1002,16 +1002,20 @@
                           
                           // Save in background
                           if (isFirebaseAvailable && database) {
-                            showToast(`✅ ${newInterestData.label} — ${t('toast.interestAdded')}`, 'success');
-                            database.ref(`customInterests/${interestId}`).set(newInterestData);
+                            showToast(`✅ ${newInterestData.label} — ${t('interests.interestAdded')}`, 'success');
+                            database.ref(`customInterests/${interestId}`).set(newInterestData)
+                              .then(() => console.log(`[INTEREST-SAVE] Saved to Firebase: ${interestId}`))
+                              .catch(e => console.error(`[INTEREST-SAVE] FAILED: ${interestId}`, e));
                             if (Object.keys(searchConfig).length > 0) {
-                              database.ref(`settings/interestConfig/${interestId}`).set(searchConfig);
+                              database.ref(`settings/interestConfig/${interestId}`).set(searchConfig)
+                                .then(() => console.log(`[INTEREST-SAVE] Config saved: ${interestId}`))
+                                .catch(e => console.error(`[INTEREST-SAVE] Config FAILED: ${interestId}`, e));
                             }
                           } else {
                             const updated = [...customInterests, newInterestData];
                             setCustomInterests(updated);
                             localStorage.setItem('bangkok_custom_interests', JSON.stringify(updated));
-                            showToast(`✅ ${newInterestData.label} — ${t('toast.interestAdded')}`, 'success');
+                            showToast(`✅ ${newInterestData.label} — ${t('interests.interestAdded')}`, 'success');
                           }
                           return; // Skip the setShow/setNew below since we already did it
                         }
