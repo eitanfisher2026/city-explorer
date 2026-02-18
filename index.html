@@ -5381,9 +5381,14 @@ const CityExplorer = () => {
     if (customs.length > 0) {
       console.log(`[DEBUG-INTERESTS] allInterestOptions has ${allInterestOptions.length} total, ${customs.length} custom:`);
       customs.forEach(c => console.log(`  - ${c.id}: "${c.label}" scope=${c.scope||'?'} privateOnly=${c.privateOnly} valid=${isInterestValid?.(c.id)}`));
+    } else {
+      console.log(`[DEBUG-INTERESTS] No custom in allInterestOptions. raw customInterests=${(customInterests||[]).length} cityCustomInterests=${(cityCustomInterests||[]).length}`);
+      if ((customInterests||[]).length > 0) {
+        console.log('[DEBUG-INTERESTS] customInterests exist but NOT in allInterestOptions:');
+        customInterests.forEach(c => console.log(`  RAW: ${c.id} "${c.label}" scope=${c.scope||'?'}`));
+      }
     }
-    console.log(`[DEBUG-INTERESTS] cityCustomInterests: ${(cityCustomInterests||[]).length}, customInterests: ${(customInterests||[]).length}`);
-  }, [allInterestOptions.length, cityCustomInterests?.length]);
+  }, [customInterests, cityCustomInterests, allInterestOptions.length]);
   useEffect(() => {
     // Don't save if data hasn't loaded yet - prevents overwriting saved interests with empty state
     if (!isDataLoaded) return;
