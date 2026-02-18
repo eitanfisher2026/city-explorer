@@ -549,3 +549,181 @@ window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints) => {
   return urls;
 };
 
+
+// ============================================================================
+// EMOJI SUGGESTION ENGINE
+// ============================================================================
+
+/**
+ * Suggest 3 emojis for a given description.
+ * Tries Gemini API first (online), falls back to local keyword mapping.
+ * @param {string} description - What the emoji should represent
+ * @returns {Promise<string[]>} - Array of 3 emoji suggestions
+ */
+window.BKK.suggestEmojis = async function(description) {
+  if (!description || !description.trim()) return ['📍', '⭐', '🏷️'];
+  
+  // Try Gemini API first
+  try {
+    const result = await window.BKK._suggestEmojisGemini(description);
+    if (result && result.length >= 3) return result.slice(0, 3);
+  } catch (e) {
+    console.log('[EMOJI] Gemini failed, using local fallback:', e.message);
+  }
+  
+  // Fallback: local keyword mapping
+  return window.BKK._suggestEmojisLocal(description);
+};
+
+/**
+ * Gemini API emoji suggestion
+ */
+window.BKK._suggestEmojisGemini = async function(description) {
+  const apiKey = window.BKK.GOOGLE_PLACES_API_KEY;
+  if (!apiKey) throw new Error('No API key');
+  
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{
+        parts: [{
+          text: `Suggest exactly 6 different emoji icons that best represent: "${description}". Reply with ONLY the 6 emojis separated by spaces, nothing else. No text, no numbers, no explanations.`
+        }]
+      }],
+      generationConfig: { temperature: 0.8, maxOutputTokens: 50 }
+    })
+  });
+  
+  if (!resp.ok) throw new Error(`Gemini API error: ${resp.status}`);
+  
+  const data = await resp.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  
+  // Extract emojis from response
+  const emojiRegex = /\p{Emoji_Presentation}|\p{Emoji}\uFE0F/gu;
+  const emojis = [...new Set(text.match(emojiRegex) || [])];
+  
+  if (emojis.length < 3) throw new Error('Not enough emojis in response');
+  console.log('[EMOJI] Gemini suggested:', emojis);
+  return emojis.slice(0, 6);
+};
+
+/**
+ * Local keyword-based emoji suggestion (offline fallback)
+ */
+window.BKK._suggestEmojisLocal = function(description) {
+  const desc = description.toLowerCase();
+  
+  const mapping = [
+    // Food & Drink
+    { keys: ['אוכל','food','restaurant','מסעד','dining','eat'], emojis: ['🍽️','🍜','🍕','🍔','🥘','🍴'] },
+    { keys: ['קפה','coffee','cafe','קפית'], emojis: ['☕','🫖','🍵','☕'] },
+    { keys: ['בר','bar','drink','שתי','cocktail','beer','בירה'], emojis: ['🍺','🍸','🥂','🍻'] },
+    { keys: ['wine','יין'], emojis: ['🍷','🥂','🍇'] },
+    { keys: ['ice cream','גלידה','dessert','קינוח'], emojis: ['🍦','🧁','🍰'] },
+    { keys: ['bakery','מאפ','bread','לחם'], emojis: ['🥐','🍞','🧁'] },
+    // Nature & Outdoors
+    { keys: ['חוף','beach','sea','ים','ocean'], emojis: ['🏖️','🌊','🐚','☀️'] },
+    { keys: ['פארק','park','garden','גן','טבע','nature'], emojis: ['🌳','🌿','🏞️','🌲'] },
+    { keys: ['הר','mountain','hill','טיול','hike'], emojis: ['⛰️','🏔️','🥾'] },
+    { keys: ['river','נהר','lake','אגם'], emojis: ['🏞️','💧','🚣'] },
+    { keys: ['flower','פרח','botanical'], emojis: ['🌸','🌺','🌻'] },
+    { keys: ['animal','חיות','zoo','גן חיות'], emojis: ['🦁','🐘','🦒'] },
+    // Culture & History
+    { keys: ['מוזיאון','museum','exhibit','תערוכה'], emojis: ['🏛️','🖼️','🎨'] },
+    { keys: ['היסטורי','history','historic','עתיק','ancient'], emojis: ['🏛️','📜','⏳','🏰'] },
+    { keys: ['תרבות','culture','cultural'], emojis: ['🎭','🏛️','🎪'] },
+    { keys: ['temple','מקדש','church','כנסי','mosque','מסגד','synagogue','בית כנסת','religion','דת'], emojis: ['⛩️','🕌','⛪','🕍','🛕'] },
+    { keys: ['ארכיטקטורה','architecture','building','בניין'], emojis: ['🏗️','🏢','🏰'] },
+    // Arts & Entertainment
+    { keys: ['אומנות','art','גלריה','gallery','street art','גרפיטי','graffiti'], emojis: ['🎨','🖼️','🖌️'] },
+    { keys: ['מוזיקה','music','concert','הופעה'], emojis: ['🎵','🎶','🎸','🎤'] },
+    { keys: ['תאטרון','theater','theatre','הצגה','show','performance'], emojis: ['🎭','🎪','🎬'] },
+    { keys: ['cinema','סרט','movie','film'], emojis: ['🎬','🎞️','🍿'] },
+    { keys: ['nightlife','לילה','club','מועדון'], emojis: ['🌃','🪩','💃','🎉'] },
+    // Shopping & Markets
+    { keys: ['קניות','shopping','mall','קניון'], emojis: ['🛍️','🏬','💳'] },
+    { keys: ['שוק','market','bazaar','שוק פשפשים'], emojis: ['🏪','🧺','🏬'] },
+    // Services & Public
+    { keys: ['שירות','service','ציבורי','public','municipal','עירי'], emojis: ['🏛️','🏥','📋','🔧'] },
+    { keys: ['בית חולים','hospital','health','בריאות','medical','רפואי'], emojis: ['🏥','⚕️','💊'] },
+    { keys: ['police','משטרה','emergency','חירום'], emojis: ['🚔','🚨','👮'] },
+    { keys: ['school','בית ספר','education','חינוך','university','אוניברסיטה'], emojis: ['🏫','📚','🎓'] },
+    { keys: ['transport','תחבורה','bus','אוטובוס','train','רכבת','metro'], emojis: ['🚌','🚆','🚇','🚊'] },
+    { keys: ['parking','חני','חנייה'], emojis: ['🅿️','🚗','🏎️'] },
+    { keys: ['toilet','שירותים','wc','restroom','bathroom'], emojis: ['🚻','🚽','🧻'] },
+    // Sports & Activities
+    { keys: ['sport','ספורט','gym','חדר כושר','fitness'], emojis: ['⚽','🏋️','🤸'] },
+    { keys: ['yoga','יוגה','meditation','מדיטציה','wellness','spa'], emojis: ['🧘','💆','🧖'] },
+    { keys: ['swim','שחי','pool','בריכה'], emojis: ['🏊','🤽','💦'] },
+    { keys: ['bike','אופני','cycling','רכיבה'], emojis: ['🚲','🚴','🛴'] },
+    // Travel & Places
+    { keys: ['hotel','מלון','hostel','אכסני','accommodation','לינה'], emojis: ['🏨','🛏️','🏩'] },
+    { keys: ['airport','שדה תעופה','flight','טיסה'], emojis: ['✈️','🛫','🛬'] },
+    { keys: ['viewpoint','תצפית','panorama','view','נוף'], emojis: ['🔭','👀','🏔️','📸'] },
+    { keys: ['photo','צילום','camera','instagram'], emojis: ['📸','📷','🤳'] },
+    // Countries & Regions
+    { keys: ['spain','ספרד','spanish'], emojis: ['🇪🇸','☀️','💃','🥘'] },
+    { keys: ['thailand','תאילנד','thai'], emojis: ['🇹🇭','🛺','🍜','🐘'] },
+    { keys: ['israel','ישראל'], emojis: ['🇮🇱','✡️','🕍'] },
+    { keys: ['japan','יפן','japanese'], emojis: ['🇯🇵','⛩️','🍣','🗾'] },
+    { keys: ['italy','איטלי','italian'], emojis: ['🇮🇹','🍕','🍝'] },
+    { keys: ['france','צרפת','french'], emojis: ['🇫🇷','🥐','🗼'] },
+    { keys: ['usa','america','אמריקה'], emojis: ['🇺🇸','🗽','🦅'] },
+    { keys: ['uk','england','אנגלי','british','london','לונדון'], emojis: ['🇬🇧','👑','🎡'] },
+    { keys: ['singapore','סינגפור'], emojis: ['🇸🇬','🦁','🌿'] },
+    // Misc
+    { keys: ['kid','ילד','children','family','משפח','playground'], emojis: ['👨‍👩‍👧‍👦','🎠','🧒','🎪'] },
+    { keys: ['pet','חיית מחמד','dog','כלב','cat','חתול'], emojis: ['🐕','🐈','🐾'] },
+    { keys: ['book','ספר','library','ספרי'], emojis: ['📚','📖','📕'] },
+    { keys: ['work','עבודה','office','משרד','cowork'], emojis: ['💼','🏢','💻'] },
+    { keys: ['wifi','אינטרנט','internet','tech'], emojis: ['📶','💻','🔌'] },
+    { keys: ['money','כסף','exchange','חלפ','atm','בנק','bank'], emojis: ['💰','🏧','💳'] },
+    { keys: ['sunset','שקיע','sunrise','זריחה'], emojis: ['🌅','🌇','🌄'] },
+    { keys: ['rain','גשם','umbrella','מטרי'], emojis: ['🌧️','☂️','💧'] },
+    { keys: ['hot','חם','sun','שמש','summer','קיץ'], emojis: ['☀️','🌞','🔥'] },
+    { keys: ['cold','קר','snow','שלג','winter','חורף'], emojis: ['❄️','⛷️','🧊'] },
+    { keys: ['love','אהבה','heart','לב','romantic','רומנטי'], emojis: ['❤️','💕','💑'] },
+    { keys: ['star','כוכב','favorite','מועדף'], emojis: ['⭐','🌟','✨'] },
+    { keys: ['fire','אש','hot','חם','popular','פופולרי'], emojis: ['🔥','💥','⚡'] },
+    { keys: ['peace','שלום','calm','שקט','relax'], emojis: ['☮️','🕊️','😌'] },
+    { keys: ['danger','סכנה','warning','אזהרה'], emojis: ['⚠️','🚫','❌'] },
+    { keys: ['celebration','חגיגה','party','מסיבה','birthday','יום הולדת'], emojis: ['🎉','🎊','🥳'] },
+  ];
+  
+  // Score each mapping entry
+  const scored = mapping.map(entry => {
+    let score = 0;
+    entry.keys.forEach(key => {
+      if (desc.includes(key)) score += key.length; // longer match = higher score
+    });
+    return { ...entry, score };
+  }).filter(e => e.score > 0).sort((a, b) => b.score - a.score);
+  
+  // Collect unique emojis from top matches
+  const result = [];
+  const seen = new Set();
+  for (const entry of scored) {
+    for (const emoji of entry.emojis) {
+      if (!seen.has(emoji)) {
+        seen.add(emoji);
+        result.push(emoji);
+        if (result.length >= 6) return result;
+      }
+    }
+  }
+  
+  // If not enough matches, pad with generic emojis
+  const generic = ['📍','⭐','🏷️','📌','🔖','🎯'];
+  for (const g of generic) {
+    if (!seen.has(g)) {
+      result.push(g);
+      if (result.length >= 6) break;
+    }
+  }
+  
+  return result.slice(0, 6);
+};

@@ -62,6 +62,14 @@
   }); // 'circular' or 'linear'
   const [savedRoutes, setSavedRoutes] = useState([]);
   const [customLocations, setCustomLocations] = useState([]);
+  const [pendingLocations, setPendingLocations] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('pendingLocations') || '[]'); } catch(e) { return []; }
+  });
+  const [pendingInterests, setPendingInterests] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('pendingInterests') || '[]'); } catch(e) { return []; }
+  });
+  const [locationsLoading, setLocationsLoading] = useState(true);
+  const [firebaseConnected, setFirebaseConnected] = useState(false);
   const [showAddLocationDialog, setShowAddLocationDialog] = useState(false);
   const [showBlacklistLocations, setShowBlacklistLocations] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -95,7 +103,8 @@
   const [locationSearchResults, setLocationSearchResults] = useState(null); // null=hidden, []=no results, [...]= results
   const [editingCustomInterest, setEditingCustomInterest] = useState(null);
   const [showAddInterestDialog, setShowAddInterestDialog] = useState(false);
-  const [newInterest, setNewInterest] = useState({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '' });
+  const [newInterest, setNewInterest] = useState({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, inProgress: false, locked: false, scope: 'global' });
+  const [iconPickerConfig, setIconPickerConfig] = useState(null); // { description: '', callback: fn, suggestions: [], loading: false }
   const [showEditLocationDialog, setShowEditLocationDialog] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -355,7 +364,7 @@
   const showToast = (message, type = 'success', customDuration = null) => {
     setToastMessage({ message, type, sticky: customDuration === 'sticky' });
     if (customDuration !== 'sticky') {
-      const duration = customDuration || Math.min(4000, Math.max(1500, message.length * 50));
+      const duration = customDuration || Math.min(6000, Math.max(2500, message.length * 70));
       setTimeout(() => setToastMessage(null), duration);
     }
   };
@@ -478,6 +487,115 @@
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
   };
+  // Monitor Firebase connection state
+  useEffect(() => {
+    const handler = (e) => setFirebaseConnected(e.detail.connected);
+    window.addEventListener('firebase-connection', handler);
+    // Set initial state
+    setFirebaseConnected(!!window.BKK.firebaseConnected);
+    return () => window.removeEventListener('firebase-connection', handler);
+  }, []);
+
+  // Save pending items to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('pendingLocations', JSON.stringify(pendingLocations));
+  }, [pendingLocations]);
+  useEffect(() => {
+    localStorage.setItem('pendingInterests', JSON.stringify(pendingInterests));
+  }, [pendingInterests]);
+
+  // Sync pending locations to Firebase
+  const syncPendingItems = async () => {
+    if (!isFirebaseAvailable || !database) return 0;
+    if (!window.BKK.firebaseConnected) {
+      showToast(t('toast.offline'), 'warning');
+      return 0;
+    }
+    
+    let synced = 0;
+    
+    // Sync pending locations
+    if (pendingLocations.length > 0) {
+      const remaining = [];
+      for (const loc of pendingLocations) {
+        try {
+          const cityId = loc.cityId || selectedCityId;
+          const { pendingAt, ...cleanLoc } = loc;
+          const ref = await database.ref(`cities/${cityId}/locations`).push(cleanLoc);
+          const verifyRef = database.ref(`_verify/${ref.key}`);
+          await Promise.race([
+            verifyRef.set(firebase.database.ServerValue.TIMESTAMP).then(() => verifyRef.remove()),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+          ]);
+          synced++;
+          console.log('[SYNC] Synced pending location:', loc.name);
+        } catch (e) {
+          console.warn('[SYNC] Failed to sync location:', loc.name, e.message);
+          remaining.push(loc);
+        }
+      }
+      setPendingLocations(remaining);
+    }
+    
+    // Sync pending interests
+    if (pendingInterests.length > 0) {
+      const remaining = [];
+      for (const item of pendingInterests) {
+        try {
+          const { pendingAt, searchConfig, ...interestData } = item;
+          await database.ref(`customInterests/${interestData.id}`).set(interestData);
+          if (searchConfig && Object.keys(searchConfig).length > 0) {
+            await database.ref(`settings/interestConfig/${interestData.id}`).set(searchConfig);
+          }
+          const verifyRef = database.ref(`_verify/${interestData.id}`);
+          await Promise.race([
+            verifyRef.set(firebase.database.ServerValue.TIMESTAMP).then(() => verifyRef.remove()),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+          ]);
+          synced++;
+          console.log('[SYNC] Synced pending interest:', interestData.label);
+        } catch (e) {
+          console.warn('[SYNC] Failed to sync interest:', item.label, e.message);
+          remaining.push(item);
+        }
+      }
+      setPendingInterests(remaining);
+    }
+    
+    const totalPending = pendingLocations.length + pendingInterests.length;
+    if (synced > 0) {
+      showToast(`✅ ${t('toast.syncedPending').replace('{count}', String(synced))}`, 'success');
+    }
+    if (totalPending > 0 && synced < totalPending) {
+      showToast(`⚠️ ${totalPending - synced} ${t('toast.stillPending')}`, 'warning');
+    }
+    return synced;
+  };
+
+  // Auto-sync when connection is restored
+  useEffect(() => {
+    if (firebaseConnected && (pendingLocations.length > 0 || pendingInterests.length > 0) && isFirebaseAvailable && database) {
+      const timer = setTimeout(() => {
+        console.log('[SYNC] Connection restored, syncing', pendingLocations.length, 'pending locations');
+        syncPendingItems();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [firebaseConnected]);
+
+  // Helper: save to pending localStorage
+  const saveToPending = (locationData) => {
+    const pending = { ...locationData, pendingAt: new Date().toISOString() };
+    setPendingLocations(prev => [...prev, pending]);
+    showToast(`💾 ${locationData.name} — ${t('toast.savedPending')}`, 'warning', 'sticky');
+  };
+
+  const saveToPendingInterest = (interestData, searchConfig) => {
+    const pending = { ...interestData, searchConfig: searchConfig || {}, pendingAt: new Date().toISOString() };
+    setPendingInterests(prev => [...prev, pending]);
+    showToast(`💾 ${interestData.label || interestData.name} — ${t('toast.savedPending')}`, 'warning', 'sticky');
+  };
+
   // One-time migration: move old customLocations to per-city structure
   useEffect(() => {
     if (isFirebaseAvailable && database) {
@@ -524,6 +642,7 @@
   // Load custom locations from Firebase - PER CITY
   useEffect(() => {
     if (!selectedCityId) return;
+    setLocationsLoading(true);
     
     if (isFirebaseAvailable && database) {
       console.log('[DATA] Loading locations for city:', selectedCityId);
@@ -542,6 +661,7 @@
         } else {
           setCustomLocations([]);
         }
+        setLocationsLoading(false);
         markLoaded('locations');
       });
       
@@ -555,6 +675,7 @@
       } catch (e) {
         console.error('[LOCALSTORAGE] Error loading locations:', e);
       }
+      setLocationsLoading(false);
       markLoaded('locations');
     }
   }, [selectedCityId]);
@@ -1921,7 +2042,11 @@
   }, [savedRoutes, selectedCityId]);
 
   const cityCustomInterests = useMemo(() => {
-    return (customInterests || []).filter(i => (i.cityId || 'bangkok') === selectedCityId);
+    return (customInterests || []).filter(i => {
+      // scope: 'local' = only for specific city, 'global' or undefined = show everywhere
+      if (i.scope === 'local') return (i.cityId || '') === selectedCityId;
+      return true; // global or no scope = show everywhere
+    });
   }, [customInterests, selectedCityId]);
 
   // Memoize expensive places grouping/sorting
@@ -3223,6 +3348,9 @@
     const rawCustom = customInterests.find(o => o.id === interestId);
     if (rawCustom?.privateOnly) return true;
     
+    // Custom interests are always valid (may be used for manual places even without search config)
+    if (interestId?.startsWith?.('custom_') || rawCustom || interestObj?.custom) return true;
+    
     const config = interestConfig[interestId];
     if (config) {
       // Valid if has textSearch OR has types array with items
@@ -3244,12 +3372,8 @@
     if (!loc) return false;
     // Must have name
     if (!loc.name || !loc.name.trim()) return false;
-    // Must have at least one interest
-    if (!loc.interests || loc.interests.length === 0) return false;
-    // Must have address OR coordinates
-    const hasAddress = loc.address && loc.address.trim();
-    const hasCoords = loc.lat && loc.lng;
-    if (!hasAddress && !hasCoords) return false;
+    // Note: interests and coordinates are optional - location is still valid without them
+    // (it just won't appear in route calculation, but will show in "my places")
     return true;
   };
 
@@ -3411,15 +3535,26 @@
     // Save to Firebase (or localStorage fallback)
     if (isFirebaseAvailable && database) {
       try {
-        await database.ref(`cities/${selectedCityId}/locations`).push(locationToAdd);
-        addDebugLog('ADD', `Added "${place.name}" to Firebase`);
-        showToast(`"${place.name}" ${t("places.addedToYourList")}`, 'success');
+        const ref = await database.ref(`cities/${selectedCityId}/locations`).push(locationToAdd);
+        // Verify REAL server save
+        try {
+          const verifyRef = database.ref(`_verify/${ref.key}`);
+          await Promise.race([
+            verifyRef.set(firebase.database.ServerValue.TIMESTAMP).then(() => verifyRef.remove()),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+          ]);
+          addDebugLog('ADD', `Added "${place.name}" to Firebase (server verified)`);
+          showToast(`✅ "${place.name}" ${t("places.addedToYourList")}`, 'success');
+        } catch (e) {
+          // Server unreachable — save to pending
+          saveToPending(locationToAdd);
+        }
         setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
         return true;
       } catch (error) {
-        console.error('[FIREBASE] Error adding Google place:', error);
-        addDebugLog('ERROR', `Failed to add "${place.name}"`, error);
-        showToast(t('toast.saveError'), 'error');
+        console.error('[FIREBASE] Error adding Google place, saving to pending:', error);
+        addDebugLog('ERROR', `Failed to add "${place.name}", saved to pending`, error);
+        saveToPending(locationToAdd);
         setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
         return false;
       }
@@ -3871,9 +4006,21 @@
     if (isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       database.ref(`cities/${selectedCityId}/locations`).push(locationToAdd)
-        .then((ref) => {
-          console.log('[FIREBASE] Location added to shared database');
-          showToast(t('places.placeAddedShared'), 'success');
+        .then(async (ref) => {
+          // Verify REAL server save by writing a server timestamp (can't be faked by cache)
+          try {
+            const verifyRef = database.ref(`_verify/${ref.key}`);
+            await Promise.race([
+              verifyRef.set(firebase.database.ServerValue.TIMESTAMP).then(() => verifyRef.remove()),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+            ]);
+            console.log('[FIREBASE] Location VERIFIED on server:', ref.key);
+            showToast(`✅ ${locationToAdd.name} — ${t('places.placeAddedShared')}`, 'success');
+          } catch (verifyErr) {
+            // Server unreachable — save to pending queue
+            console.warn('[FIREBASE] Server unreachable, saving to pending:', verifyErr.message);
+            saveToPending(locationToAdd);
+          }
           
           // If staying open, switch to edit mode
           if (!closeAfter) {
@@ -3884,8 +4031,9 @@
           }
         })
         .catch((error) => {
-          console.error('[FIREBASE] Error adding location:', error);
-          showToast(t('toast.saveError'), 'error');
+          // Firebase push itself failed — save to pending queue
+          console.error('[FIREBASE] Error adding location, saving to pending:', error);
+          saveToPending(locationToAdd);
         });
     } else {
       // STATIC MODE: localStorage (local)
@@ -4013,17 +4161,26 @@
       
       if (firebaseId) {
         database.ref(`cities/${selectedCityId}/locations/${firebaseId}`).set(locationData)
-          .then(() => {
-            console.log('[FIREBASE] Location updated in shared database');
-            showToast(t('places.placeUpdated'), 'success');
-            // Update editingLocation with latest data
+          .then(async () => {
+            // Verify REAL server save
+            try {
+              const verifyRef = database.ref(`_verify/${firebaseId}`);
+              await Promise.race([
+                verifyRef.set(firebase.database.ServerValue.TIMESTAMP).then(() => verifyRef.remove()),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+              ]);
+              console.log('[FIREBASE] Location update VERIFIED on server');
+              showToast(`✅ ${updatedLocation.name} — ${t('places.placeUpdated')}`, 'success');
+            } catch (e) {
+              showToast(`⚠️ ${updatedLocation.name} — ${t('toast.savedLocalOnly')}`, 'warning', 'sticky');
+            }
             if (!closeAfter) {
               setEditingLocation({ ...updatedLocation, firebaseId });
             }
           })
           .catch((error) => {
             console.error('[FIREBASE] Error updating location:', error);
-            showToast(t('toast.updateError'), 'error');
+            showToast(`❌ ${updatedLocation.name} — ${t('toast.updateError')}: ${error.message || error}`, 'error', 'sticky');
           });
       }
     } else {

@@ -46,6 +46,25 @@
             alignSelf: 'flex-end',
             marginBottom: '2px'
           }}>v{window.BKK.VERSION}</span>
+          {isFirebaseAvailable && !firebaseConnected && (
+            <span title={t('toast.offline')} style={{ 
+              fontSize: '8px', 
+              color: '#fbbf24',
+              alignSelf: 'flex-end',
+              marginBottom: '2px',
+              animation: 'pulse 2s infinite'
+            }}>⚡</span>
+          )}
+          {(pendingLocations.length + pendingInterests.length) > 0 && (
+            <span title={`${pendingLocations.length + pendingInterests.length} ${t('toast.pendingSync')}`} style={{ 
+              fontSize: '8px', 
+              color: '#fb923c',
+              alignSelf: 'flex-end',
+              marginBottom: '2px',
+              fontWeight: 'bold',
+              animation: 'pulse 2s infinite'
+            }}>☁️{pendingLocations.length + pendingInterests.length}</span>
+          )}
         </div>
       </div>
       );
@@ -291,7 +310,7 @@
             }`}
           >
             <div className="text-center">📍</div>
-            <div className="truncate text-center text-[8px]">{t("nav.myPlaces")} {cityCustomLocations.filter(l => l.status !== 'blacklist').length > 0 ? `(${cityCustomLocations.filter(l => l.status !== 'blacklist').length})` : ''}</div>
+            <div className="truncate text-center text-[8px]">{t("nav.myPlaces")} {locationsLoading ? '...' : cityCustomLocations.filter(l => l.status !== 'blacklist').length > 0 ? `(${cityCustomLocations.filter(l => l.status !== 'blacklist').length})` : ''}</div>
           </button>
           <button
             onClick={() => { setCurrentView('myInterests'); window.scrollTo(0, 0); }}
@@ -1048,7 +1067,7 @@
                                   
                                   <a
                                     href={window.BKK.getGoogleMapsUrl(stop)}
-                                    target={hasValidCoords ? "_blank" : undefined}
+                                    target="_blank"
                                     rel={hasValidCoords ? "noopener noreferrer" : undefined}
                                     className={`block hover:bg-gray-100 transition ${window.BKK.i18n.isRTL() ? 'pr-2' : 'pl-2'}`}
                                     onClick={(e) => {
@@ -1161,8 +1180,9 @@
                   </button>
                   
                   <a
+                    target="_blank"
+                    rel="noopener noreferrer"
                     href={(() => {
-                      // Filter active stops with valid coordinates
                       const activeStops = route.stops.filter((s, i) => {
                         const isActive = !disabledStops.includes((s.name || '').toLowerCase().trim());
                         const hasValidCoords = s.lat && s.lng && s.lat !== 0 && s.lng !== 0;
@@ -1631,7 +1651,7 @@
                             )}
                             <a
                               href={window.BKK.getGoogleMapsUrl(stop)}
-                              target={hasValidCoords ? "_blank" : undefined}
+                              target="_blank"
                               rel={hasValidCoords ? "noopener noreferrer" : undefined}
                               className={`font-bold text-sm ${isDisabled ? 'line-through text-gray-500' : hasValidCoords ? 'text-blue-600 hover:text-blue-800' : 'text-red-600'}`}
                               onClick={(e) => {
@@ -1797,6 +1817,8 @@
 
             <div className="space-y-3 mb-4">
               <a
+                target="_blank"
+                rel="noopener noreferrer"
                 href={(() => {
                   // Filter active stops with valid coordinates
                   const activeStops = route.stops.filter((s, i) => {
@@ -2049,6 +2071,14 @@
                 <p className="font-bold">{t("places.noResultsFor")} "{searchQuery}"</p>
                 <p className="text-sm mt-2">{t("general.tryDifferentSearch")}</p>/p>
               </div>
+            ) : locationsLoading ? (
+              <div className="text-center py-12">
+                <svg className="animate-spin h-10 w-10 text-blue-500 mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <p className="text-gray-500 text-sm">{t("general.loading")}</p>
+              </div>
             ) : cityCustomLocations.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
                 <div className="text-6xl mb-4">📍</div>
@@ -2186,7 +2216,7 @@
             {/* Custom Locations Section - Split by status */}
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="text-base font-bold">{`${t("nav.myPlaces")} (${cityCustomLocations.filter(l => l.status !== 'blacklist').length})`}</h3>
+                <h3 className="text-base font-bold">{`${t("nav.myPlaces")} ${locationsLoading ? '(...)' : `(${cityCustomLocations.filter(l => l.status !== 'blacklist').length})`}`}</h3>
                 <div className="flex items-center gap-2">
                   {/* Group by toggle */}
                   <div className="flex bg-gray-200 rounded-lg p-0.5">
@@ -2219,7 +2249,38 @@
                 </div>
               </div>
               
-              {cityCustomLocations.length === 0 ? (
+              {/* Pending locations waiting for sync */}
+              {pendingLocations.filter(l => (l.cityId || 'bangkok') === selectedCityId).length > 0 && (
+                <div style={{ background: '#fff7ed', border: '2px dashed #fb923c', borderRadius: '8px', padding: '8px 12px', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <div>
+                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#c2410c' }}>
+                        {`☁️ ${pendingLocations.filter(l => (l.cityId || 'bangkok') === selectedCityId).length} ${t('toast.pendingSync')}`}
+                      </span>
+                      <div style={{ fontSize: '10px', color: '#9a3412', marginTop: '2px' }}>
+                        {pendingLocations.filter(l => (l.cityId || 'bangkok') === selectedCityId).map(l => l.name).join(', ')}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => syncPendingItems()}
+                      disabled={!firebaseConnected}
+                      style={{ padding: '4px 10px', background: firebaseConnected ? '#f97316' : '#d1d5db', color: 'white', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: firebaseConnected ? 'pointer' : 'not-allowed' }}
+                    >
+                      {`🔄 ${t('toast.syncNow')}`}
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {locationsLoading ? (
+                <div className="text-center py-8">
+                  <svg className="animate-spin h-8 w-8 text-blue-500 mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                  </svg>
+                  <p className="text-gray-500 text-sm">{t("general.loading")}</p>
+                </div>
+              ) : cityCustomLocations.length === 0 ? (
                 <div className="text-center py-6 bg-gray-50 rounded-lg">
                   <div className="text-3xl mb-2">📍</div>
                   <p className="text-gray-600 text-sm">{t("places.noPlacesInCity", {cityName: tLabel(window.BKK.selectedCity) || t('places.thisCity')})}</p>
@@ -2437,7 +2498,9 @@
                   privateOnly: interest.privateOnly || false,
                   inProgress: interest.inProgress || false,
                   locked: interest.locked || false,
-                  builtIn: !isCustom
+                  builtIn: !isCustom,
+                  scope: interest.scope || 'global',
+                  cityId: interest.cityId || ''
                 });
                 setShowAddInterestDialog(true);
               };
@@ -2602,6 +2665,9 @@
                             onChange={(e) => { city.icon = e.target.value; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].icon = e.target.value; setCityModified(true); setCityEditCounter(c => c + 1); }}
                             style={{ width: '42px', fontSize: '18px', textAlign: 'center', padding: '2px', border: '1px solid #d1d5db', borderRadius: '6px', background: '#fff' }}
                           />
+                          <button onClick={() => setIconPickerConfig({ description: city.nameEn || city.name || '', callback: (emoji) => { city.icon = emoji; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].icon = emoji; setCityModified(true); setCityEditCounter(c => c + 1); }, suggestions: [], loading: false })}
+                            style={{ fontSize: '10px', padding: '2px 4px', border: '1px dashed #f59e0b', borderRadius: '4px', background: '#fffbeb', cursor: 'pointer', color: '#d97706', fontWeight: 'bold' }}
+                          >✨</button>
                           <input type="text" value={city.name || ''}
                             onChange={(e) => { city.name = e.target.value; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].name = e.target.value; setCityModified(true); setCityEditCounter(c => c + 1); }}
                             style={{ width: '70px', fontSize: '12px', padding: '2px 4px', border: '1px solid #d1d5db', borderRadius: '6px', fontWeight: 'bold' }}
@@ -2672,9 +2738,15 @@
                         }}
                         style={{ width: '36px', fontSize: '14px', textAlign: 'center', padding: '2px', border: '1px solid #d1d5db', borderRadius: '6px' }}
                       />
+                      <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' left side icon', callback: (emoji) => { city.theme.iconLeft = emoji; setCityModified(true); setCityEditCounter(c => c + 1); }, suggestions: [], loading: false })}
+                        style={{ fontSize: '8px', padding: '1px 3px', border: '1px dashed #f59e0b', borderRadius: '3px', background: '#fffbeb', cursor: 'pointer', color: '#d97706' }}
+                      >✨</button>
                       <div style={{ width: '60px', height: '22px', borderRadius: '6px', background: theme.color || '#e11d48', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <span style={{ color: 'white', fontSize: '9px', fontWeight: 'bold' }}>{tLabel(city)}</span>
                       </div>
+                      <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' right side icon', callback: (emoji) => { city.theme.iconRight = emoji; setCityModified(true); setCityEditCounter(c => c + 1); }, suggestions: [], loading: false })}
+                        style={{ fontSize: '8px', padding: '1px 3px', border: '1px dashed #f59e0b', borderRadius: '3px', background: '#fffbeb', cursor: 'pointer', color: '#d97706' }}
+                      >✨</button>
                       <input type="text" value={theme.iconRight || ''} placeholder="▶"
                         onChange={(e) => {
                           city.theme.iconRight = e.target.value;
@@ -3420,7 +3492,7 @@
             <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
             <span style={{ fontSize: '9px', color: '#9ca3af' }}>© Eitan Fisher</span>
             <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
-            <button onClick={applyUpdate} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}>{`🔄 ${t("general.refresh")}`}</button>
+            <button onClick={() => { if (window.confirm(t('general.confirmRefresh'))) applyUpdate(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}>{`🔄 ${t("general.refresh")}`}</button>
           </div>
         </div>
 

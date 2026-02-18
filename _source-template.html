@@ -32,9 +32,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="BKK Explorer">
     <style>
-      /* Disable pull-to-refresh on mobile */
+      /* Disable pull-to-refresh and swipe-back on mobile */
       html, body {
-        overscroll-behavior-y: contain;
+        overscroll-behavior: none;
       }
       @keyframes slideUp {
         from {
@@ -232,6 +232,15 @@ function initFirebase() {
       }
       firebaseApp = firebase.initializeApp(cfg);
       database = firebase.database();
+      
+      // Monitor Firebase connection state
+      window.BKK.firebaseConnected = false;
+      database.ref('.info/connected').on('value', function(snap) {
+        window.BKK.firebaseConnected = snap.val() === true;
+        console.log('[FIREBASE] Connection:', window.BKK.firebaseConnected ? 'ONLINE' : 'OFFLINE');
+        // Dispatch event so React can react
+        window.dispatchEvent(new CustomEvent('firebase-connection', { detail: { connected: window.BKK.firebaseConnected } }));
+      });
       if (firebase.storage) {
         storage = firebase.storage();
         console.log('[FIREBASE] Storage initialized');
@@ -273,6 +282,21 @@ window.__firebaseReady.then(function(sdkLoaded) {
   } else {
     console.log('[FIREBASE] SDK not loaded - running without Firebase');
   }
+  // Prevent accidental page close/refresh/navigation
+  window.addEventListener('beforeunload', function(e) {
+    e.preventDefault();
+    e.returnValue = '';
+    return '';
+  });
+
+  // Prevent accidental back/forward navigation via mouse buttons
+  window.addEventListener('popstate', function(e) {
+    // Push state back to prevent leaving
+    window.history.pushState(null, '', window.location.href);
+  });
+  // Initialize history state
+  window.history.pushState(null, '', window.location.href);
+
   ReactDOM.createRoot(document.getElementById('root')).render(<CityExplorer />);
 });
     </script>

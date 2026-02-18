@@ -640,7 +640,7 @@
                 <button
                   onClick={() => {
                     setShowAddInterestDialog(false);
-                    setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: false, inProgress: false, locked: false });
+                    setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, inProgress: false, locked: false, scope: 'global' });
                     setEditingCustomInterest(null);
                   }}
                   className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center"
@@ -709,12 +709,20 @@
                         />
                       </label>
                     )}
+                    {(!newInterest.builtIn || isUnlocked) && (
+                      <button
+                        onClick={() => setIconPickerConfig({ description: newInterest.label || '', callback: (emoji) => setNewInterest(prev => ({...prev, icon: emoji})), suggestions: [], loading: false })}
+                        className="block w-full mt-1 p-1 border border-dashed border-orange-300 rounded text-center cursor-pointer hover:bg-orange-50 text-[9px] text-orange-600 font-bold"
+                      >✨ {t('emoji.suggest')}</button>
+                    )}
                   </div>
                 </div>
 
                 {/* Search Configuration */}
-                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
-                  <label className="block text-xs font-bold mb-2 text-blue-800">{`🔍 ${t("general.searchSettings")}`}</label>
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3" style={{ opacity: (!newInterest.builtIn && newInterest.privateOnly) ? 0.4 : 1, pointerEvents: (!newInterest.builtIn && newInterest.privateOnly) ? 'none' : 'auto' }}>
+                  <label className="block text-xs font-bold mb-2 text-blue-800">{`🔍 ${t("general.searchSettings")}`}
+                    {(!newInterest.builtIn && newInterest.privateOnly) && <span className="text-[9px] text-gray-500 font-normal ml-2">({t("interests.myPlacesOnly")})</span>}
+                  </label>
                   
                   <div className="mb-2">
                     <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>{`${t("general.searchMode")}:`}</label>
@@ -775,7 +783,7 @@
                   
                   {/* Private Only toggle - only for custom interests */}
                   {!newInterest.builtIn && (
-                  <div className="mt-2 pt-2 border-t border-blue-200">
+                  <div className="mt-2 pt-2 border-t border-blue-200 space-y-2">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
@@ -786,6 +794,30 @@
                       <span className="text-xs font-bold text-blue-800">{`🔒 ${t("interests.privateInterest")}`}</span>
                       <span className="text-[9px] text-gray-500">{`— ${t("interests.myPlacesOnly")}`}</span>
                     </label>
+                    
+                    {/* Scope: global / local */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-blue-800">🌍</span>
+                      <select
+                        value={newInterest.scope || 'global'}
+                        onChange={(e) => setNewInterest({...newInterest, scope: e.target.value, cityId: e.target.value === 'local' ? selectedCityId : ''})}
+                        className="p-1 text-xs border rounded flex-1"
+                      >
+                        <option value="global">{t('interests.scopeGlobal')}</option>
+                        <option value="local">{t('interests.scopeLocal')}</option>
+                      </select>
+                      {newInterest.scope === 'local' && (
+                        <select
+                          value={newInterest.cityId || selectedCityId}
+                          onChange={(e) => setNewInterest({...newInterest, cityId: e.target.value})}
+                          className="p-1 text-xs border rounded"
+                        >
+                          {Object.values(window.BKK.cities || {}).map(city => (
+                            <option key={city.id} value={city.id}>{city.icon} {tLabel(city)}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
                   </div>
                   )}
                 </div>
@@ -869,7 +901,7 @@
                     </div>
                   ) : (
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         if (!newInterest.label.trim()) return;
                         
                         const searchConfig = {};
@@ -909,7 +941,9 @@
                               icon: newInterest.icon || '📍',
                               privateOnly: newInterest.privateOnly || false,
                               inProgress: newInterest.inProgress || false,
-                              locked: newInterest.locked || false
+                              locked: newInterest.locked || false,
+                              scope: newInterest.scope || 'global',
+                              cityId: newInterest.scope === 'local' ? (newInterest.cityId || selectedCityId) : ''
                             };
                             delete updatedInterest.builtIn;
                             
@@ -937,13 +971,26 @@
                             privateOnly: newInterest.privateOnly || false,
                             inProgress: newInterest.inProgress || false,
                             locked: newInterest.locked || false,
-                            cityId: selectedCityId
+                            scope: newInterest.scope || 'global',
+                            cityId: newInterest.scope === 'local' ? (newInterest.cityId || selectedCityId) : ''
                           };
                           
                           if (isFirebaseAvailable && database) {
-                            database.ref(`customInterests/${interestId}`).set(newInterestData);
-                            if (Object.keys(searchConfig).length > 0) {
-                              database.ref(`settings/interestConfig/${interestId}`).set(searchConfig);
+                            try {
+                              await database.ref(`customInterests/${interestId}`).set(newInterestData);
+                              if (Object.keys(searchConfig).length > 0) {
+                                await database.ref(`settings/interestConfig/${interestId}`).set(searchConfig);
+                              }
+                              // Verify server save
+                              const verifyRef = database.ref(`_verify/${interestId}`);
+                              await Promise.race([
+                                verifyRef.set(firebase.database.ServerValue.TIMESTAMP).then(() => verifyRef.remove()),
+                                new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))
+                              ]);
+                              showToast(`✅ ${newInterestData.label} — ${t('toast.interestAdded')}`, 'success');
+                            } catch(e) {
+                              console.warn('[FIREBASE] Interest save failed, saving to pending:', e.message);
+                              saveToPendingInterest(newInterestData, searchConfig);
                             }
                           } else {
                             const updated = [...customInterests, newInterestData];
@@ -956,7 +1003,7 @@
                         
                         setShowAddInterestDialog(false);
                         showToast(editingCustomInterest ? t('toast.interestUpdated') : t('toast.interestAdded'), 'success');
-                        setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: false, inProgress: false, locked: false });
+                        setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, inProgress: false, locked: false, scope: 'global' });
                         setEditingCustomInterest(null);
                       }}
                       disabled={!newInterest.label?.trim()}
@@ -973,7 +1020,7 @@
                 <button
                   onClick={() => {
                     setShowAddInterestDialog(false);
-                    setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: false, inProgress: false, locked: false });
+                    setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, inProgress: false, locked: false, scope: 'global' });
                     setEditingCustomInterest(null);
                   }}
                   className="px-5 py-2.5 rounded-lg bg-green-500 text-white text-sm font-bold hover:bg-green-600"
@@ -2243,35 +2290,128 @@
         </div>
       )}
 
+            {/* Emoji Picker Dialog */}
+            {iconPickerConfig && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-xl w-full max-w-sm shadow-2xl">
+                  <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between">
+                    <h3 className="text-sm font-bold">✨ {t('emoji.suggestTitle')}</h3>
+                    <button onClick={() => setIconPickerConfig(null)} className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center">✕</button>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={iconPickerConfig.description || ''}
+                        onChange={(e) => setIconPickerConfig({...iconPickerConfig, description: e.target.value})}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && iconPickerConfig.description?.trim()) {
+                            setIconPickerConfig(prev => ({...prev, loading: true, suggestions: []}));
+                            window.BKK.suggestEmojis(iconPickerConfig.description).then(emojis => {
+                              setIconPickerConfig(prev => prev ? {...prev, suggestions: emojis, loading: false} : null);
+                            });
+                          }
+                        }}
+                        placeholder={t('emoji.describePlaceholder')}
+                        className="flex-1 p-2 text-sm border-2 border-orange-300 rounded-lg focus:border-orange-500"
+                        style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => {
+                          if (!iconPickerConfig.description?.trim()) return;
+                          setIconPickerConfig(prev => ({...prev, loading: true, suggestions: []}));
+                          window.BKK.suggestEmojis(iconPickerConfig.description).then(emojis => {
+                            setIconPickerConfig(prev => prev ? {...prev, suggestions: emojis, loading: false} : null);
+                          });
+                        }}
+                        disabled={iconPickerConfig.loading || !iconPickerConfig.description?.trim()}
+                        className="px-3 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600 disabled:opacity-50"
+                      >
+                        {iconPickerConfig.loading ? '...' : '🔍'}
+                      </button>
+                    </div>
+                    
+                    {iconPickerConfig.loading && (
+                      <div className="text-center text-gray-500 text-sm py-4">{t('emoji.searching')}...</div>
+                    )}
+                    
+                    {iconPickerConfig.suggestions?.length > 0 && (
+                      <React.Fragment>
+                        <div className="flex flex-wrap justify-center gap-2">
+                          {iconPickerConfig.suggestions.map((emoji, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => {
+                                if (iconPickerConfig.callback) iconPickerConfig.callback(emoji);
+                                setIconPickerConfig(prev => prev ? {...prev, selected: emoji} : null);
+                              }}
+                              className={`text-3xl p-3 rounded-xl border-2 transition-all cursor-pointer ${iconPickerConfig.selected === emoji ? 'border-orange-500 bg-orange-100 ring-2 ring-orange-300' : 'border-gray-200 hover:border-orange-400 hover:bg-orange-50'}`}
+                              title={emoji}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="flex gap-2 justify-center pt-1">
+                          <button
+                            onClick={() => {
+                              if (!iconPickerConfig.description?.trim()) return;
+                              setIconPickerConfig(prev => ({...prev, loading: true, suggestions: [], selected: null}));
+                              window.BKK.suggestEmojis(iconPickerConfig.description).then(emojis => {
+                                setIconPickerConfig(prev => prev ? {...prev, suggestions: emojis, loading: false} : null);
+                              });
+                            }}
+                            className="px-4 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold hover:bg-gray-200 border border-gray-300"
+                          >🔄 {t('emoji.moreOptions')}</button>
+                          <button
+                            onClick={() => setIconPickerConfig(null)}
+                            className="px-4 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600"
+                          >✓ {t('emoji.done')}</button>
+                        </div>
+                      </React.Fragment>
+                    )}
+                    
+                    {!iconPickerConfig.loading && (!iconPickerConfig.suggestions || iconPickerConfig.suggestions.length === 0) && (
+                      <p className="text-center text-xs text-gray-400">{t('emoji.typeAndSearch')}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {toastMessage && (
         <div
           onClick={() => setToastMessage(null)}
+          dir={window.BKK.i18n.isRTL() ? 'rtl' : 'ltr'}
           style={{
             position: 'fixed',
             top: '10px',
             right: '10px',
             left: '10px',
-            maxWidth: '350px',
+            maxWidth: '400px',
             margin: '0 auto',
-            padding: '6px 12px',
-            borderRadius: '6px',
+            padding: '8px 14px',
+            borderRadius: '8px',
             backgroundColor: toastMessage.type === 'error' ? '#fecaca' : toastMessage.type === 'warning' ? '#fde68a' : toastMessage.type === 'info' ? '#dbeafe' : '#bbf7d0',
             border: `1px solid ${toastMessage.type === 'error' ? '#ef4444' : toastMessage.type === 'warning' ? '#f59e0b' : toastMessage.type === 'info' ? '#3b82f6' : '#22c55e'}`,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
             zIndex: 9999,
             animation: 'slideDown 0.15s ease-out',
-            cursor: toastMessage.sticky ? 'pointer' : 'default'
+            cursor: toastMessage.sticky ? 'pointer' : 'default',
+            direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr',
+            textAlign: window.BKK.i18n.isRTL() ? 'right' : 'left'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
-            <span style={{ fontSize: '12px' }}>
-              {toastMessage.type === 'error' ? '✗' : toastMessage.type === 'warning' ? '!' : toastMessage.type === 'info' ? 'ℹ' : '✓'}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+            <span style={{ fontSize: '14px', flexShrink: 0 }}>
+              {toastMessage.type === 'error' ? '❌' : toastMessage.type === 'warning' ? '⚠️' : toastMessage.type === 'info' ? 'ℹ️' : '✅'}
             </span>
-            <div style={{ fontSize: '12px', fontWeight: '500', color: '#374151' }}>
+            <div style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>
               {toastMessage.message}
             </div>
             {toastMessage.sticky && (
-              <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#6b7280', marginLeft: '8px' }}>✕</span>
+              <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#6b7280', cursor: 'pointer', flexShrink: 0 }}>✕</span>
             )}
           </div>
         </div>
