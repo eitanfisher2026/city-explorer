@@ -134,56 +134,128 @@ window.BKK.getCityRegistryEntry = function(city) {
 /**
  * One-time migration: move old flat customLocations to per-city structure.
  * Old: customLocations/{id} → New: cities/{cityId}/locations/{id}
+ * Writes ONE item at a time to avoid Firebase "Write too large" error.
  */
 window.BKK.migrateLocationsToPerCity = function(database) {
   if (!database) return Promise.resolve();
   var migrated = localStorage.getItem('locations_migrated_v2');
   if (migrated === 'true') return Promise.resolve();
   
-  var updates = {};
   var locCount = 0;
   var routeCount = 0;
+  var errors = 0;
   
   return database.ref('customLocations').once('value').then(function(snap) {
     var data = snap.val();
-    if (data) {
-      Object.keys(data).forEach(function(key) {
+    if (!data) return Promise.resolve();
+    var keys = Object.keys(data);
+    locCount = keys.length;
+    // Write one location at a time (sequential to avoid overwhelming Firebase)
+    return keys.reduce(function(chain, key) {
+      return chain.then(function() {
         var loc = data[key];
+        // Strip base64 images during migration to reduce size
+        if (loc.uploadedImage && typeof loc.uploadedImage === 'string' && loc.uploadedImage.startsWith('data:')) {
+          delete loc.uploadedImage;
+        }
         var cityId = loc.cityId || 'bangkok';
-        updates['cities/' + cityId + '/locations/' + key] = loc;
-        locCount++;
+        return database.ref('cities/' + cityId + '/locations/' + key).set(loc).catch(function(e) {
+          console.warn('[MIGRATION] Failed to migrate location ' + key + ':', e.message);
+          errors++;
+        });
       });
-    }
+    }, Promise.resolve());
+  }).then(function() {
     return database.ref('savedRoutes').once('value');
   }).then(function(snap) {
     var data = snap.val();
-    if (data) {
-      Object.keys(data).forEach(function(key) {
+    if (!data) return Promise.resolve();
+    var keys = Object.keys(data);
+    routeCount = keys.length;
+    // Write one route at a time
+    return keys.reduce(function(chain, key) {
+      return chain.then(function() {
         var route = data[key];
+        // Strip base64 images from route stops
+        if (route.stops && Array.isArray(route.stops)) {
+          route.stops = route.stops.map(function(s) {
+            if (s.uploadedImage && typeof s.uploadedImage === 'string' && s.uploadedImage.startsWith('data:')) {
+              var copy = Object.assign({}, s);
+              delete copy.uploadedImage;
+              return copy;
+            }
+            return s;
+          });
+        }
         var cityId = route.cityId || 'bangkok';
-        updates['cities/' + cityId + '/routes/' + key] = route;
-        routeCount++;
+        return database.ref('cities/' + cityId + '/routes/' + key).set(route).catch(function(e) {
+          console.warn('[MIGRATION] Failed to migrate route ' + key + ':', e.message);
+          errors++;
+        });
       });
-    }
-    
+    }, Promise.resolve());
+  }).then(function() {
     if (locCount === 0 && routeCount === 0) {
       localStorage.setItem('locations_migrated_v2', 'true');
       console.log('[MIGRATION] No old data to migrate');
       return;
     }
-    
-    // Write all to new paths then remove old
-    return database.ref().update(updates).then(function() {
-      var removals = [];
-      if (locCount > 0) removals.push(database.ref('customLocations').remove());
-      if (routeCount > 0) removals.push(database.ref('savedRoutes').remove());
-      return Promise.all(removals);
-    }).then(function() {
+    if (errors > 0) {
+      console.warn('[MIGRATION] Completed with ' + errors + ' errors — will retry next load');
+      return;
+    }
+    // Only remove old data and mark done if ALL writes succeeded
+    var removals = [];
+    if (locCount > 0) removals.push(database.ref('customLocations').remove());
+    if (routeCount > 0) removals.push(database.ref('savedRoutes').remove());
+    return Promise.all(removals).then(function() {
       localStorage.setItem('locations_migrated_v2', 'true');
       console.log('[MIGRATION] Migrated ' + locCount + ' locations + ' + routeCount + ' routes to per-city structure');
     });
   }).catch(function(err) {
     console.error('[MIGRATION] Error:', err);
+  });
+};
+
+/**
+ * Admin utility: clean up stale _verify nodes and diagnose Firebase issues.
+ */
+window.BKK.cleanupFirebase = function(database) {
+  if (!database) { console.log('[CLEANUP] No database'); return Promise.resolve(); }
+  var cleaned = 0;
+  return database.ref('_verify').once('value').then(function(snap) {
+    var data = snap.val();
+    if (!data) {
+      console.log('[CLEANUP] No stale _verify nodes found');
+      return;
+    }
+    cleaned = Object.keys(data).length;
+    console.log('[CLEANUP] Removing ' + cleaned + ' stale _verify nodes...');
+    return database.ref('_verify').remove();
+  }).then(function() {
+    if (cleaned > 0) console.log('[CLEANUP] Removed ' + cleaned + ' _verify nodes');
+    // Check sizes of major nodes
+    return Promise.all([
+      database.ref('accessLog').once('value').then(function(s) {
+        var d = s.val();
+        var count = d ? Object.keys(d).length : 0;
+        var size = d ? JSON.stringify(d).length : 0;
+        console.log('[CLEANUP] accessLog: ' + count + ' entries, ~' + Math.round(size/1024) + 'KB');
+        return { node: 'accessLog', count: count, sizeKB: Math.round(size/1024) };
+      }),
+      database.ref('feedback').once('value').then(function(s) {
+        var d = s.val();
+        var count = d ? Object.keys(d).length : 0;
+        var size = d ? JSON.stringify(d).length : 0;
+        console.log('[CLEANUP] feedback: ' + count + ' entries, ~' + Math.round(size/1024) + 'KB');
+        return { node: 'feedback', count: count, sizeKB: Math.round(size/1024) };
+      })
+    ]);
+  }).then(function(results) {
+    console.log('[CLEANUP] Done. Results:', results);
+    return { verifyRemoved: cleaned, nodes: results };
+  }).catch(function(err) {
+    console.error('[CLEANUP] Error:', err);
   });
 };
 

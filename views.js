@@ -3466,6 +3466,68 @@
                       <li>{t("general.shareWithFriends")}</li>
                     </ul>
                   </div>
+                  
+                  {/* Firebase Cleanup (Admin only) */}
+                  {isUnlocked && (
+                    <div className="mt-3 border-t border-red-200 pt-3">
+                      <p className="text-xs font-bold text-red-700 mb-2">🔧 Firebase Admin Tools</p>
+                      <div className="space-y-2">
+                        <button
+                          onClick={async () => {
+                            if (!window.confirm('Clean up stale _verify nodes and check database sizes?')) return;
+                            try {
+                              showToast('🔧 Running cleanup...', 'info');
+                              const result = await window.BKK.cleanupFirebase(database);
+                              if (result) {
+                                const msg = `Cleaned ${result.verifyRemoved} _verify nodes. ` + 
+                                  (result.nodes || []).map(n => `${n.node}: ${n.count} entries (~${n.sizeKB}KB)`).join(', ');
+                                showToast(`✅ ${msg}`, 'success', 'sticky');
+                              }
+                            } catch (e) {
+                              showToast(`❌ Cleanup failed: ${e.message}`, 'error');
+                            }
+                          }}
+                          className="w-full bg-red-500 text-white py-1.5 px-3 rounded-lg text-xs font-bold hover:bg-red-600 transition"
+                        >
+                          🧹 Clean _verify nodes + check sizes
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (!window.confirm('Mark migration as completed? Only use if data is already in per-city structure.')) return;
+                            localStorage.setItem('locations_migrated_v2', 'true');
+                            showToast('✅ Migration marked as completed', 'success');
+                          }}
+                          className="w-full bg-orange-500 text-white py-1.5 px-3 rounded-lg text-xs font-bold hover:bg-orange-600 transition"
+                        >
+                          ✅ Mark migration done (skip re-run)
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!window.confirm('Trim accessLog to last 100 entries? This deletes older entries.')) return;
+                            try {
+                              const snap = await database.ref('accessLog').orderByChild('timestamp').once('value');
+                              const data = snap.val();
+                              if (!data) { showToast('accessLog is empty', 'info'); return; }
+                              const keys = Object.keys(data);
+                              const sorted = keys.sort((a, b) => (data[a].timestamp || 0) - (data[b].timestamp || 0));
+                              const toDelete = sorted.slice(0, Math.max(0, sorted.length - 100));
+                              if (toDelete.length === 0) { showToast(`accessLog has ${keys.length} entries, no trimming needed`, 'info'); return; }
+                              if (!window.confirm(`Delete ${toDelete.length} old entries (keep latest 100)?`)) return;
+                              const updates = {};
+                              toDelete.forEach(k => { updates[k] = null; });
+                              await database.ref('accessLog').update(updates);
+                              showToast(`✅ Deleted ${toDelete.length} old accessLog entries`, 'success');
+                            } catch (e) {
+                              showToast(`❌ Failed: ${e.message}`, 'error');
+                            }
+                          }}
+                          className="w-full bg-yellow-500 text-white py-1.5 px-3 rounded-lg text-xs font-bold hover:bg-yellow-600 transition"
+                        >
+                          ✂️ Trim accessLog (keep last 100)
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

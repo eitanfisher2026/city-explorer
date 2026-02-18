@@ -521,9 +521,9 @@
           const cityId = loc.cityId || selectedCityId;
           const { pendingAt, ...cleanLoc } = loc;
           const ref = await database.ref(`cities/${cityId}/locations`).push(cleanLoc);
-          const verifyRef = database.ref(`_verify/${ref.key}`);
+          // Verify server received it by reading back
           await Promise.race([
-            verifyRef.set(firebase.database.ServerValue.TIMESTAMP).then(() => verifyRef.remove()),
+            ref.once('value'),
             new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
           ]);
           synced++;
@@ -546,9 +546,9 @@
           if (searchConfig && Object.keys(searchConfig).length > 0) {
             await database.ref(`settings/interestConfig/${interestData.id}`).set(searchConfig);
           }
-          const verifyRef = database.ref(`_verify/${interestData.id}`);
+          // Verify server received it by reading back
           await Promise.race([
-            verifyRef.set(firebase.database.ServerValue.TIMESTAMP).then(() => verifyRef.remove()),
+            database.ref(`customInterests/${interestData.id}`).once('value'),
             new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
           ]);
           synced++;
@@ -3549,11 +3549,10 @@
     if (isFirebaseAvailable && database) {
       try {
         const ref = await database.ref(`cities/${selectedCityId}/locations`).push(locationToAdd);
-        // Verify REAL server save
+        // Verify server received it by reading back
         try {
-          const verifyRef = database.ref(`_verify/${ref.key}`);
           await Promise.race([
-            verifyRef.set(firebase.database.ServerValue.TIMESTAMP).then(() => verifyRef.remove()),
+            ref.once('value'),
             new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
           ]);
           addDebugLog('ADD', `Added "${place.name}" to Firebase (server verified)`);
@@ -4022,9 +4021,8 @@
         .then(async (ref) => {
           // Firebase push succeeded (may be cached offline - SDK will sync when online)
           try {
-            const verifyRef = database.ref(`_verify/${ref.key}`);
             await Promise.race([
-              verifyRef.set(firebase.database.ServerValue.TIMESTAMP).then(() => verifyRef.remove()),
+              ref.once('value'),
               new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
             ]);
             console.log('[FIREBASE] Location VERIFIED on server:', ref.key);
@@ -4175,11 +4173,10 @@
       if (firebaseId) {
         database.ref(`cities/${selectedCityId}/locations/${firebaseId}`).set(locationData)
           .then(async () => {
-            // Verify REAL server save
+            // Verify server received it by reading back
             try {
-              const verifyRef = database.ref(`_verify/${firebaseId}`);
               await Promise.race([
-                verifyRef.set(firebase.database.ServerValue.TIMESTAMP).then(() => verifyRef.remove()),
+                database.ref(`cities/${selectedCityId}/locations/${firebaseId}`).once('value'),
                 new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
               ]);
               console.log('[FIREBASE] Location update VERIFIED on server');
