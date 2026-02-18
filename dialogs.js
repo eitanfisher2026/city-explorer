@@ -495,7 +495,6 @@
                     </button>
                   )}
                 </div>
-                )}
 
                 {/* Actions: Skip permanently + Delete (edit mode only) - hidden for locked non-admin */}
                 {showEditLocationDialog && editingLocation && !(editingLocation.locked && !isUnlocked) && (
@@ -783,9 +782,10 @@
                 </div>
                 </div>{/* close inner wrapper */}
 
-                {/* Private Only toggle + Scope - OUTSIDE search config, always editable */}
-                {!newInterest.builtIn && (
+                {/* Manual toggle (custom only) + Scope (all interests) */}
                 <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-3 space-y-2">
+                  {/* Manual toggle - only for custom interests */}
+                  {!newInterest.builtIn && (
                   <div className="flex items-center gap-2">
                     <button type="button"
                       onClick={() => setNewInterest({...newInterest, privateOnly: !newInterest.privateOnly})}
@@ -795,6 +795,7 @@
                     </button>
                     <span className="text-[9px] text-gray-500">{newInterest.privateOnly ? t("interests.myPlacesOnly") : t("interests.searchesGoogle")}</span>
                   </div>
+                  )}
                   
                   {/* Scope: global / local */}
                   <div className="flex items-center gap-2">
@@ -923,6 +924,8 @@
                           if (newInterest.builtIn) {
                             // Built-in interest - save search config + admin overrides to interestConfig
                             const configData = { ...searchConfig };
+                            configData.scope = newInterest.scope || 'global';
+                            configData.cityId = newInterest.scope === 'local' ? (newInterest.cityId || selectedCityId) : '';
                             if (isUnlocked) {
                               configData.labelOverride = newInterest.label.trim();
                               configData.iconOverride = newInterest.icon || '';
@@ -1000,24 +1003,10 @@
                           // Save in background
                           if (isFirebaseAvailable && database) {
                             showToast(`✅ ${newInterestData.label} — ${t('toast.interestAdded')}`, 'success');
-                            (async () => {
-                              try {
-                                await database.ref(`customInterests/${interestId}`).set(newInterestData);
-                                if (Object.keys(searchConfig).length > 0) {
-                                  await database.ref(`settings/interestConfig/${interestId}`).set(searchConfig);
-                                }
-                                // Silent verify - no toast needed, Firebase SDK handles sync
-                                const verifyRef = database.ref(`_verify/${interestId}`);
-                                await Promise.race([
-                                  verifyRef.set(firebase.database.ServerValue.TIMESTAMP).then(() => verifyRef.remove()),
-                                  new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))
-                                ]);
-                                console.log('[FIREBASE] Interest verified on server:', interestId);
-                              } catch(e) {
-                                console.warn('[FIREBASE] Interest saved to cache (will auto-sync):', e.message);
-                              }
-                              }
-                            })();
+                            database.ref(`customInterests/${interestId}`).set(newInterestData);
+                            if (Object.keys(searchConfig).length > 0) {
+                              database.ref(`settings/interestConfig/${interestId}`).set(searchConfig);
+                            }
                           } else {
                             const updated = [...customInterests, newInterestData];
                             setCustomInterests(updated);

@@ -232,6 +232,7 @@
                   {allInterestOptions.filter(option => {
                     const status = interestStatus[option.id];
                     if (option.uncovered) return status === true;
+                    if (option.scope === 'local' && option.cityId && option.cityId !== selectedCityId) return false;
                     return status !== false;
                   }).filter(option => isInterestValid(option.id)).map(option => {
                     const isSelected = formData.interests.includes(option.id);
@@ -720,6 +721,8 @@
                 {allInterestOptions.filter(option => {
                   if (!option || !option.id) return false;
                   if (!isInterestValid(option.id)) return false;
+                  // Respect scope: local interests only show in their city
+                  if (option.scope === 'local' && option.cityId && option.cityId !== selectedCityId) return false;
                   // Respect disabled status
                   return interestStatus[option.id] !== false;
                 }).map(option => {
@@ -2495,8 +2498,8 @@
                   inProgress: interest.inProgress || false,
                   locked: interest.locked || false,
                   builtIn: !isCustom,
-                  scope: interest.scope || 'global',
-                  cityId: interest.cityId || ''
+                  scope: config.scope || interest.scope || 'global',
+                  cityId: config.cityId || interest.cityId || ''
                 });
                 setShowAddInterestDialog(true);
               };

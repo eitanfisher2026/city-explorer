@@ -1930,7 +1930,9 @@
       label: config.labelOverride || opt.label, labelEn: config.labelOverrideEn || opt.labelEn,
       icon: config.iconOverride || opt.icon,
       inProgress: config.inProgress !== undefined ? config.inProgress : opt.inProgress,
-      locked: config.locked !== undefined ? config.locked : opt.locked
+      locked: config.locked !== undefined ? config.locked : opt.locked,
+      scope: config.scope || opt.scope || 'global',
+      cityId: config.cityId || opt.cityId || ''
     };
   });
 
