@@ -122,7 +122,7 @@
                         if (step < wizardStep) {
                           setWizardStep(step);
                           if (step < 3) { setRoute(null); setCurrentView('form'); }
-                          if (step === 1) setFormData(prev => ({...prev, interests: []}));
+                          if (step === 1) { /* interests preserved */ };
                           window.scrollTo(0, 0);
                         }
                       }}
@@ -138,9 +138,8 @@
                   </React.Fragment>
                 ))}
               </div>
+              
             </div>
-
-            {/* Step 1: Choose Area */}
             {wizardStep === 1 && (
               <div className="bg-white rounded-xl shadow-lg p-3">
                 {/* City Selector - small button only */}
@@ -381,6 +380,31 @@
             <div className="truncate text-center text-[8px]">{t("settings.title")}</div>
           </button>
         </div>
+        )}
+
+        {/* Wizard Step 3: breadcrumb with back link */}
+        {wizardMode && wizardStep === 3 && !isGenerating && (
+          <div style={{ 
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+            fontSize: '11px', color: '#9ca3af', marginBottom: '6px', flexWrap: 'wrap'
+          }}>
+            <span
+              onClick={() => { setWizardStep(2); setRoute(null); setCurrentView('form'); window.scrollTo(0, 0); }}
+              style={{ cursor: 'pointer', color: '#3b82f6', fontWeight: '600', textDecoration: 'underline' }}
+            >{currentLang === 'he' ? '→' : '←'} {t("general.back")}</span>
+            <span style={{ color: '#d1d5db' }}>|</span>
+            <span>📍 {(() => {
+              if (formData.searchMode === 'all') return t('wizard.allCity');
+              if (formData.searchMode === 'radius') return t('form.radius');
+              const area = (window.BKK.areaOptions || []).find(a => a.id === formData.area);
+              return area ? tLabel(area) : '';
+            })()}</span>
+            <span style={{ color: '#d1d5db' }}>|</span>
+            <span>⭐ {formData.interests.slice(0, 3).map(id => {
+              const opt = allInterestOptions.find(o => o.id === id);
+              return opt ? tLabel(opt) : id;
+            }).join(', ')}{formData.interests.length > 3 ? ` +${formData.interests.length - 3}` : ''}</span>
+          </div>
         )}
 
         {/* Wizard Step 3: Loading spinner while generating */}

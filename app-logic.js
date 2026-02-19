@@ -5,7 +5,7 @@
       if (saved) {
         const prefs = JSON.parse(saved);
         // Admin-controlled defaults (will be overridden by Firebase on load)
-        if (!prefs.maxStops) prefs.maxStops = 12;
+        if (!prefs.maxStops) prefs.maxStops = 10;
         if (!prefs.fetchMoreCount) prefs.fetchMoreCount = 3;
         // User-specific settings preserved from last session
         if (!prefs.searchMode) prefs.searchMode = 'area';
@@ -23,7 +23,7 @@
       interests: [],
       circular: true,
       startPoint: '',
-      maxStops: 12,
+      maxStops: 10,
       fetchMoreCount: 3,
       searchMode: 'area',
       radiusMeters: 500,
@@ -531,7 +531,7 @@
         if (prev.wizardStep < wizardStep) {
           setWizardStep(prev.wizardStep);
           if (prev.wizardStep < 3) { setRoute(null); setCurrentView('form'); }
-          if (prev.wizardStep === 1) setFormData(p => ({...p, interests: []}));
+          // Don't clear interests on back - user's selections should persist
           window.scrollTo(0, 0);
           return;
         }
@@ -1439,7 +1439,7 @@
     const firstArea = window.BKK.areaOptions[0]?.id || '';
     setFormData(prev => ({
       hours: 3, area: firstArea, interests: [], circular: true, startPoint: '',
-      maxStops: prev.maxStops || 12, fetchMoreCount: prev.fetchMoreCount || 3, searchMode: 'area',
+      maxStops: prev.maxStops || 10, fetchMoreCount: prev.fetchMoreCount || 3, searchMode: 'area',
       radiusMeters: prev.radiusMeters || 500, radiusSource: 'gps', radiusPlaceId: null, radiusPlaceName: '',
       gpsLat: null, gpsLng: null, currentLat: null, currentLng: null
     }));
@@ -2030,7 +2030,9 @@
   useEffect(() => {
     // Don't save if data hasn't loaded yet - prevents overwriting saved interests with empty state
     if (!isDataLoaded) return;
-    localStorage.setItem('bangkok_preferences', JSON.stringify(formData));
+    // Strip admin-controlled settings before saving — these come from Firebase, not localStorage
+    const { maxStops, fetchMoreCount, ...userPrefs } = formData;
+    localStorage.setItem('bangkok_preferences', JSON.stringify(userPrefs));
   }, [formData, isDataLoaded]);
 
   // Version check - auto-check on load + manual check
@@ -2486,7 +2488,7 @@
       
       // Calculate stops needed per interest
       const numInterests = formData.interests.length || 1;
-      const maxStops = formData.maxStops || 12;
+      const maxStops = formData.maxStops || 10;
       const stopsPerInterest = Math.ceil(maxStops / numInterests);
       
       // Track results per interest for smart completion
