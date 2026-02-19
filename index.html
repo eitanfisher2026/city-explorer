@@ -23,10 +23,10 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>FouFou</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=3">
+    <link rel="manifest" href="manifest.json?v=3.1.0">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=3.1.0">
     <link rel="icon" type="image/png" sizes="32x32" href="icon-32x32.png?v=3">
-    <link rel="apple-touch-icon" sizes="180x180" href="icon-180x180.png?v=3">
+    <link rel="apple-touch-icon" sizes="180x180" href="icon-180x180.png?v=3.1.0">
     <meta name="theme-color" content="#be123c">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -3611,10 +3611,28 @@ window.BKK._suggestEmojisLocal = function(description, returnAll) {
 </head>
 <body>
     <div id="root">
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)">
-        <div style="width:48px;height:48px;border:4px solid rgba(255,255,255,0.3);border-top:4px solid white;border-radius:50%;animation:spin 0.8s linear infinite"></div>
-        <div style="color:white;font-size:18px;font-weight:bold;font-family:system-ui">FouFou</div>
-        <div style="color:rgba(255,255,255,0.7);font-size:13px">Loading...</div>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:12px;background:linear-gradient(135deg,#E17055 0%,#FDCB6E 100%)">
+        <svg viewBox="0 0 200 200" width="80" height="80" style="filter:drop-shadow(0 2px 8px rgba(0,0,0,0.2))">
+          <circle cx="100" cy="108" r="52" fill="#FFE8D6"/>
+          <polygon points="62,72 50,28 82,58" fill="#FFE8D6"/>
+          <polygon points="138,72 150,28 118,58" fill="#FFE8D6"/>
+          <polygon points="64,70 54,34 80,58" fill="#FFCBA4"/>
+          <polygon points="136,70 146,34 120,58" fill="#FFCBA4"/>
+          <rect x="68" y="94" width="26" height="19" rx="6" fill="#2D2D2D" opacity="0.9"/>
+          <rect x="106" y="94" width="26" height="19" rx="6" fill="#2D2D2D" opacity="0.9"/>
+          <line x1="94" y1="103" x2="106" y2="103" stroke="#2D2D2D" stroke-width="3"/>
+          <line x1="68" y1="100" x2="56" y2="95" stroke="#2D2D2D" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="132" y1="100" x2="144" y2="95" stroke="#2D2D2D" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M95,120 L100,125 L105,120 Z" fill="#FF8C94"/>
+          <path d="M90,130 Q100,138 110,130" fill="none" stroke="#8B6F5E" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M148,140 Q170,125 165,100" fill="none" stroke="#FFE8D6" stroke-width="10" stroke-linecap="round"/>
+        </svg>
+        <div style="color:white;font-size:20px;font-weight:bold;font-family:system-ui;text-shadow:0 1px 3px rgba(0,0,0,0.15)">FouFou</div>
+        <div style="color:rgba(255,255,255,0.85);font-size:11px;font-family:system-ui">City Trail Generator 🍜🏛️🎭</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+          <div style="width:28px;height:28px;border:3px solid rgba(255,255,255,0.3);border-top:3px solid white;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+          <span style="color:rgba(255,255,255,0.7);font-size:12px;font-family:system-ui">Loading...</span>
+        </div>
       </div>
       <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
     </div>
@@ -7913,16 +7931,31 @@ const FouFouApp = () => {
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-rose-50" dir={window.BKK.i18n.isRTL() ? 'rtl' : 'ltr'}>
       {/* Loading Overlay */}
       {!isDataLoaded && (
-        <div className="fixed inset-0 bg-gradient-to-br from-amber-50 to-rose-50 z-[9999] flex flex-col items-center justify-center">
+        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center" style={{ background: 'linear-gradient(135deg, #E17055 0%, #FDCB6E 100%)' }}>
           <div className="text-center">
-            <div className="text-5xl mb-4 animate-bounce">🗺️</div>
-            <h2 className="text-xl font-bold text-gray-700 mb-2">{tLabel(window.BKK.selectedCity) || 'FouFou'}</h2>
-            <div className="flex items-center justify-center gap-2 text-gray-500">
-              <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            <svg viewBox="0 0 200 200" width="72" height="72" style={{ margin: '0 auto 12px', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.15))' }}>
+              <circle cx="100" cy="108" r="52" fill="#FFE8D6"/>
+              <polygon points="62,72 50,28 82,58" fill="#FFE8D6"/>
+              <polygon points="138,72 150,28 118,58" fill="#FFE8D6"/>
+              <polygon points="64,70 54,34 80,58" fill="#FFCBA4"/>
+              <polygon points="136,70 146,34 120,58" fill="#FFCBA4"/>
+              <rect x="68" y="94" width="26" height="19" rx="6" fill="#2D2D2D" opacity="0.9"/>
+              <rect x="106" y="94" width="26" height="19" rx="6" fill="#2D2D2D" opacity="0.9"/>
+              <line x1="94" y1="103" x2="106" y2="103" stroke="#2D2D2D" strokeWidth="3"/>
+              <line x1="68" y1="100" x2="56" y2="95" stroke="#2D2D2D" strokeWidth="2.5" strokeLinecap="round"/>
+              <line x1="132" y1="100" x2="144" y2="95" stroke="#2D2D2D" strokeWidth="2.5" strokeLinecap="round"/>
+              <path d="M95,120 L100,125 L105,120 Z" fill="#FF8C94"/>
+              <path d="M90,130 Q100,138 110,130" fill="none" stroke="#8B6F5E" strokeWidth="2.5" strokeLinecap="round"/>
+              <path d="M148,140 Q170,125 165,100" fill="none" stroke="#FFE8D6" strokeWidth="10" strokeLinecap="round"/>
+            </svg>
+            <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', marginBottom: '4px', textShadow: '0 1px 3px rgba(0,0,0,0.15)' }}>FouFou</h2>
+            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.85)', marginBottom: '16px' }}>City Trail Generator 🍜🏛️🎭</div>
+            <div className="flex items-center justify-center gap-2">
+              <svg className="animate-spin h-5 w-5" style={{ color: 'white' }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle style={{ opacity: 0.3 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path style={{ opacity: 0.8 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
               </svg>
-              <span className="text-sm">{t("general.loading")}</span>
+              <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)' }}>{t("general.loading")}</span>
             </div>
           </div>
         </div>
