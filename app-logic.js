@@ -113,7 +113,8 @@
   const [showMapModal, setShowMapModal] = useState(false);
   const [settingsTab, setSettingsTab] = useState('cities'); // 'cities' or 'general'
   const [editingArea, setEditingArea] = useState(null); // area being edited on map
-  const [mapMode, setMapMode] = useState('areas'); // 'areas' or 'radius'
+  const [mapMode, setMapMode] = useState('areas'); // 'areas', 'radius', or 'stops'
+  const [mapStops, setMapStops] = useState([]); // stops to show when mapMode='stops'
   const leafletMapRef = React.useRef(null);
   
   // Cache for unused Google Places results per interest (avoids redundant API calls)
@@ -236,14 +237,66 @@
           });
           
           leafletMapRef.current = map;
+        } else if (mapMode === 'stops') {
+          // Stops mode - show route points on map
+          const stops = mapStops.filter(s => s.lat && s.lng);
+          if (stops.length === 0) return;
+          
+          const avgLat = stops.reduce((sum, s) => sum + s.lat, 0) / stops.length;
+          const avgLng = stops.reduce((sum, s) => sum + s.lng, 0) / stops.length;
+          
+          const map = L.map(container).setView([avgLat, avgLng], 13);
+          L.tileLayer(window.BKK.getTileUrl(), {
+            attribution: '© OpenStreetMap contributors', maxZoom: 18
+          }).addTo(map);
+          
+          const markers = [];
+          stops.forEach((stop, i) => {
+            const color = colorPalette[i % colorPalette.length];
+            const marker = L.circleMarker([stop.lat, stop.lng], {
+              radius: 10, color: color, fillColor: color,
+              fillOpacity: 0.85, weight: 2
+            }).addTo(map);
+            
+            // Number label
+            L.marker([stop.lat, stop.lng], {
+              icon: L.divIcon({
+                className: '',
+                html: '<div style="font-size:9px;font-weight:bold;text-align:center;color:white;width:20px;height:20px;line-height:20px;border-radius:50%;background:' + color + ';border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);">' + (i + 1) + '</div>',
+                iconSize: [20, 20], iconAnchor: [10, 10]
+              })
+            }).addTo(map);
+            
+            marker.bindPopup(
+              '<div style="text-align:center;direction:rtl;font-size:12px;min-width:120px;">' +
+              '<b>' + (i + 1) + '. ' + (stop.name || '') + '</b>' +
+              (stop.rating ? '<br/><span style="color:#f59e0b;">⭐ ' + stop.rating + '</span>' : '') +
+              (stop.vicinity ? '<br/><span style="font-size:10px;color:#666;">' + stop.vicinity + '</span>' : '') +
+              '<br/><a href="https://www.google.com/maps/search/?api=1&query=' + stop.lat + ',' + stop.lng + (stop.place_id ? '&query_place_id=' + stop.place_id : '') + '" target="_blank" style="font-size:10px;color:#3b82f6;">Google Maps ↗</a>' +
+              '</div>'
+            );
+            markers.push(marker);
+          });
+          
+          // Draw route line
+          if (stops.length > 1) {
+            const latlngs = stops.map(s => [s.lat, s.lng]);
+            L.polyline(latlngs, { color: '#3b82f6', weight: 2, opacity: 0.5, dashArray: '6,8' }).addTo(map);
+          }
+          
+          if (markers.length > 0) {
+            const group = L.featureGroup(markers);
+            map.fitBounds(group.getBounds().pad(0.15));
+          }
+          
+          leafletMapRef.current = map;
         }
-      } catch(err) {
         console.error('[MAP]', err);
       }
     }, 150);
     
     return () => clearTimeout(timer);
-  }, [showMapModal, mapMode, formData.currentLat, formData.currentLng, formData.radiusMeters]);
+  }, [showMapModal, mapMode, mapStops, formData.currentLat, formData.currentLng, formData.radiusMeters]);
   const [modalImage, setModalImage] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');

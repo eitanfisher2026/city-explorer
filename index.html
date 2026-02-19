@@ -3553,16 +3553,14 @@ window.BKK._suggestEmojisGemini = async function(description) {
     body: JSON.stringify({
       contents: [{
         parts: [{
-          text: `You are an emoji icon picker. The user wants an emoji icon for a category/place/interest called: "${description}".
-Suggest exactly 6 emoji that would work as a visual ICON for this category. 
-Rules:
-- Only single emoji characters, no text
-- Choose emoji that visually represent the concept (e.g. food→🍜, temple→🛕, coffee→☕)
-- Be specific to the description, not generic
-- Reply with ONLY 6 emoji separated by spaces`
+          text: `Pick 6 emoji icons for the category "${description}". Rules:
+1. Each emoji must visually represent "${description}"
+2. Be SPECIFIC: "street food" → 🍢🍡🥟🍜🍲🥘 NOT generic utensils
+3. No text, no numbers. Just 6 emoji separated by spaces.
+4. Prefer food items over utensils, buildings over generic icons, etc.`
         }]
       }],
-      generationConfig: { temperature: 0.5, maxOutputTokens: 50 }
+      generationConfig: { temperature: 0.3, maxOutputTokens: 50 }
     })
   });
   
@@ -3571,12 +3569,13 @@ Rules:
   const data = await resp.json();
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
   
-  // Extract emojis from response
-  const emojiRegex = /\p{Emoji_Presentation}|\p{Emoji}\uFE0F/gu;
-  const emojis = [...new Set(text.match(emojiRegex) || [])];
+  // Extract emojis from response — broad regex to catch compound emoji
+  const emojiRegex = /\p{Extended_Pictographic}(\u200D\p{Extended_Pictographic})*/gu;
+  const matches = text.match(emojiRegex) || [];
+  const emojis = [...new Set(matches)];
   
-  if (emojis.length < 3) throw new Error('Not enough emojis in response');
-  console.log('[EMOJI] Gemini suggested:', emojis);
+  if (emojis.length < 3) throw new Error('Not enough emojis in response: ' + text);
+  console.log('[EMOJI] Gemini suggested:', emojis, 'from:', text.trim());
   return emojis.slice(0, 6);
 };
 
@@ -3588,7 +3587,8 @@ window.BKK._suggestEmojisLocal = function(description, returnAll) {
   
   const mapping = [
     // Food & Drink
-    { keys: ['אוכל','food','restaurant','מסעד','dining','eat','דוכן','stand','stall','street food','אוכל רחוב','snack'], emojis: ['🍽️','🍜','🍕','🍔','🥘','🍴'] },
+    { keys: ['street food','אוכל רחוב','דוכן','stand','stall','hawker','vendor'], emojis: ['🍢','🍡','🥟','🍲','🍜','🥘'] },
+    { keys: ['אוכל','food','restaurant','מסעד','dining','eat','snack'], emojis: ['🍜','🍲','🥘','🍛','🍔','🍕'] },
     { keys: ['קפה','coffee','cafe','קפית'], emojis: ['☕','🫖','🍵','☕'] },
     { keys: ['בר','bar','drink','שתי','cocktail','beer','בירה'], emojis: ['🍺','🍸','🥂','🍻'] },
     { keys: ['wine','יין'], emojis: ['🍷','🥂','🍇'] },
@@ -3913,7 +3913,8 @@ const CityExplorer = () => {
   const [showMapModal, setShowMapModal] = useState(false);
   const [settingsTab, setSettingsTab] = useState('cities'); // 'cities' or 'general'
   const [editingArea, setEditingArea] = useState(null); // area being edited on map
-  const [mapMode, setMapMode] = useState('areas'); // 'areas' or 'radius'
+  const [mapMode, setMapMode] = useState('areas'); // 'areas', 'radius', or 'stops'
+  const [mapStops, setMapStops] = useState([]); // stops to show when mapMode='stops'
   const leafletMapRef = React.useRef(null);
   
   // Cache for unused Google Places results per interest (avoids redundant API calls)
@@ -4036,14 +4037,66 @@ const CityExplorer = () => {
           });
           
           leafletMapRef.current = map;
+        } else if (mapMode === 'stops') {
+          // Stops mode - show route points on map
+          const stops = mapStops.filter(s => s.lat && s.lng);
+          if (stops.length === 0) return;
+          
+          const avgLat = stops.reduce((sum, s) => sum + s.lat, 0) / stops.length;
+          const avgLng = stops.reduce((sum, s) => sum + s.lng, 0) / stops.length;
+          
+          const map = L.map(container).setView([avgLat, avgLng], 13);
+          L.tileLayer(window.BKK.getTileUrl(), {
+            attribution: '© OpenStreetMap contributors', maxZoom: 18
+          }).addTo(map);
+          
+          const markers = [];
+          stops.forEach((stop, i) => {
+            const color = colorPalette[i % colorPalette.length];
+            const marker = L.circleMarker([stop.lat, stop.lng], {
+              radius: 10, color: color, fillColor: color,
+              fillOpacity: 0.85, weight: 2
+            }).addTo(map);
+            
+            // Number label
+            L.marker([stop.lat, stop.lng], {
+              icon: L.divIcon({
+                className: '',
+                html: '<div style="font-size:9px;font-weight:bold;text-align:center;color:white;width:20px;height:20px;line-height:20px;border-radius:50%;background:' + color + ';border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);">' + (i + 1) + '</div>',
+                iconSize: [20, 20], iconAnchor: [10, 10]
+              })
+            }).addTo(map);
+            
+            marker.bindPopup(
+              '<div style="text-align:center;direction:rtl;font-size:12px;min-width:120px;">' +
+              '<b>' + (i + 1) + '. ' + (stop.name || '') + '</b>' +
+              (stop.rating ? '<br/><span style="color:#f59e0b;">⭐ ' + stop.rating + '</span>' : '') +
+              (stop.vicinity ? '<br/><span style="font-size:10px;color:#666;">' + stop.vicinity + '</span>' : '') +
+              '<br/><a href="https://www.google.com/maps/search/?api=1&query=' + stop.lat + ',' + stop.lng + (stop.place_id ? '&query_place_id=' + stop.place_id : '') + '" target="_blank" style="font-size:10px;color:#3b82f6;">Google Maps ↗</a>' +
+              '</div>'
+            );
+            markers.push(marker);
+          });
+          
+          // Draw route line
+          if (stops.length > 1) {
+            const latlngs = stops.map(s => [s.lat, s.lng]);
+            L.polyline(latlngs, { color: '#3b82f6', weight: 2, opacity: 0.5, dashArray: '6,8' }).addTo(map);
+          }
+          
+          if (markers.length > 0) {
+            const group = L.featureGroup(markers);
+            map.fitBounds(group.getBounds().pad(0.15));
+          }
+          
+          leafletMapRef.current = map;
         }
-      } catch(err) {
         console.error('[MAP]', err);
       }
     }, 150);
     
     return () => clearTimeout(timer);
-  }, [showMapModal, mapMode, formData.currentLat, formData.currentLng, formData.radiusMeters]);
+  }, [showMapModal, mapMode, mapStops, formData.currentLat, formData.currentLng, formData.radiusMeters]);
   const [modalImage, setModalImage] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -9691,50 +9744,20 @@ const CityExplorer = () => {
                     {t("route.addManualStop")}
                   </button>
                   
-                  <a
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    href={(() => {
-                      const activeStops = route.stops.filter((s, i) => {
-                        const isActive = !disabledStops.includes((s.name || '').toLowerCase().trim());
-                        const hasValidCoords = s.lat && s.lng && s.lat !== 0 && s.lng !== 0;
-                        return isActive && hasValidCoords;
-                      });
-                      
-                      if (activeStops.length === 0) {
-                        return '#';
-                      }
-                      
-                      // Calculate center
-                      const avgLat = activeStops.reduce((sum, s) => sum + s.lat, 0) / activeStops.length;
-                      const avgLng = activeStops.reduce((sum, s) => sum + s.lng, 0) / activeStops.length;
-                      
-                      // Create search query with all active place names
-                      const query = activeStops.map(s => s.name).join(' OR ');
-                      
-                      // Return search URL with active places
-                      return `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${avgLat},${avgLng},13z`;
-                    })()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => {
+                  <button
+                    onClick={() => {
                       const activeStops = route.stops.filter((s, i) => {
                         const isActive = !disabledStops.includes((s.name || '').toLowerCase().trim());
                         const hasValidCoords = s.lat && s.lng && s.lat !== 0 && s.lng !== 0;
                         return isActive && hasValidCoords;
                       });
                       if (activeStops.length === 0) {
-                        e.preventDefault();
                         showToast(t('places.noPlacesWithCoords'), 'warning');
                         return;
                       }
-                      if (activeStops.length > googleMaxMapPoints) {
-                        showToast(t('route.mapPointsWarning').replace('{count}', activeStops.length), 'info', 'sticky');
-                      }
-                      const url = e.currentTarget.href;
-                      if (url.length > 2000) {
-                        showToast(`${t('toast.urlTooLong')} (${url.length})`, 'warning');
-                      }
+                      setMapStops(activeStops);
+                      setMapMode('stops');
+                      setShowMapModal(true);
                     }}
                     style={{
                       display: 'block',
@@ -9745,14 +9768,15 @@ const CityExplorer = () => {
                       padding: '8px',
                       borderRadius: '12px',
                       fontWeight: 'bold',
-                      textDecoration: 'none',
                       fontSize: '13px',
+                      border: 'none',
+                      cursor: 'pointer',
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
                       marginBottom: '4px'
                     }}
                   >
                     {`${t("route.showStopsOnMap")} (${route.stops.filter(s => !disabledStops.includes((s.name || '').toLowerCase().trim()) && s.lat && s.lng).length})`}
-                  </a>
+                  </button>
                   
                   
                   {/* URL limit note */}
@@ -10328,48 +10352,20 @@ const CityExplorer = () => {
             </div>
 
             <div className="space-y-3 mb-4">
-              <a
-                target="_blank"
-                rel="noopener noreferrer"
-                href={(() => {
-                  // Filter active stops with valid coordinates
-                  const activeStops = route.stops.filter((s, i) => {
-                    const isActive = !disabledStops.includes((s.name || '').toLowerCase().trim());
-                    const hasValidCoords = s.lat && s.lng && s.lat !== 0 && s.lng !== 0;
-                    return isActive && hasValidCoords;
-                  });
-                  
-                  if (activeStops.length === 0) {
-                    return '#';
-                  }
-                  
-                  // Calculate center
-                  const avgLat = activeStops.reduce((sum, s) => sum + s.lat, 0) / activeStops.length;
-                  const avgLng = activeStops.reduce((sum, s) => sum + s.lng, 0) / activeStops.length;
-                  
-                  // Create search query with all active place names
-                  const query = activeStops.map(s => s.name).join(' OR ');
-                  
-                  // Return search URL with active places
-                  return `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${avgLat},${avgLng},13z`;
-                })()}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => {
+              <button
+                onClick={() => {
                   const activeStops = route.stops.filter((s, i) => {
                     const isActive = !disabledStops.includes((s.name || '').toLowerCase().trim());
                     const hasValidCoords = s.lat && s.lng && s.lat !== 0 && s.lng !== 0;
                     return isActive && hasValidCoords;
                   });
                   if (activeStops.length === 0) {
-                    e.preventDefault();
                     showToast(t('places.noPlacesWithCoords'), 'warning');
                     return;
                   }
-                  const url = e.currentTarget.href;
-                  if (url.length > 2000) {
-                    showToast(`${t('toast.urlTooLong')} (${url.length})`, 'warning');
-                  }
+                  setMapStops(activeStops);
+                  setMapMode('stops');
+                  setShowMapModal(true);
                 }}
                 style={{
                   display: 'block',
@@ -10380,14 +10376,15 @@ const CityExplorer = () => {
                   padding: '10px',
                   borderRadius: '12px',
                   fontWeight: 'bold',
-                  textDecoration: 'none',
                   fontSize: '14px',
+                  border: 'none',
+                  cursor: 'pointer',
                   boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
                   marginBottom: '4px'
                 }}
               >
                 {`${t("wizard.showMap")}`}
-              </a>
+              </button>
               
               {/* URL limit note */}
 
@@ -12098,9 +12095,10 @@ const CityExplorer = () => {
               >✕</button>
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-sm">
-                  {mapMode === 'areas' ? t('wizard.allAreasMap') : t('form.searchRadius')}
+                  {mapMode === 'areas' ? t('wizard.allAreasMap') : mapMode === 'stops' ? `${t('route.showStopsOnMap')} (${mapStops.length})` : t('form.searchRadius')}
                 </h3>
               </div>
+              {mapMode !== 'stops' && (
               <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
                 <button
                   onClick={() => setMapMode('areas')}
@@ -12122,14 +12120,16 @@ const CityExplorer = () => {
                   title={!formData.currentLat ? t('form.needGpsFirst') : t('form.showSearchRadius')}
                 >{`📍 ${t("form.radiusMode")}`}</button>
               </div>
+              )}
             </div>
-            {/* Map Container */}
             <div id="leaflet-map-container" style={{ flex: 1, minHeight: '350px', maxHeight: '70vh' }}></div>
             {/* Footer */}
             <div className="p-2 border-t text-center">
               <p className="text-[9px] text-gray-400">
                 {mapMode === 'areas' 
                   ? `${(window.BKK.areaOptions || []).length} ${t('general.areas')}` 
+                  : mapMode === 'stops'
+                  ? `${mapStops.length} ${t('nav.myPlaces')} — ${t('route.clickForDetails')}`
                   : `${formData.radiusMeters}m - ${formData.radiusPlaceName || t('form.currentLocation')}`
                 }
               </p>

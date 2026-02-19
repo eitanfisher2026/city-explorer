@@ -1247,50 +1247,20 @@
                     {t("route.addManualStop")}
                   </button>
                   
-                  <a
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    href={(() => {
-                      const activeStops = route.stops.filter((s, i) => {
-                        const isActive = !disabledStops.includes((s.name || '').toLowerCase().trim());
-                        const hasValidCoords = s.lat && s.lng && s.lat !== 0 && s.lng !== 0;
-                        return isActive && hasValidCoords;
-                      });
-                      
-                      if (activeStops.length === 0) {
-                        return '#';
-                      }
-                      
-                      // Calculate center
-                      const avgLat = activeStops.reduce((sum, s) => sum + s.lat, 0) / activeStops.length;
-                      const avgLng = activeStops.reduce((sum, s) => sum + s.lng, 0) / activeStops.length;
-                      
-                      // Create search query with all active place names
-                      const query = activeStops.map(s => s.name).join(' OR ');
-                      
-                      // Return search URL with active places
-                      return `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${avgLat},${avgLng},13z`;
-                    })()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => {
+                  <button
+                    onClick={() => {
                       const activeStops = route.stops.filter((s, i) => {
                         const isActive = !disabledStops.includes((s.name || '').toLowerCase().trim());
                         const hasValidCoords = s.lat && s.lng && s.lat !== 0 && s.lng !== 0;
                         return isActive && hasValidCoords;
                       });
                       if (activeStops.length === 0) {
-                        e.preventDefault();
                         showToast(t('places.noPlacesWithCoords'), 'warning');
                         return;
                       }
-                      if (activeStops.length > googleMaxMapPoints) {
-                        showToast(t('route.mapPointsWarning').replace('{count}', activeStops.length), 'info', 'sticky');
-                      }
-                      const url = e.currentTarget.href;
-                      if (url.length > 2000) {
-                        showToast(`${t('toast.urlTooLong')} (${url.length})`, 'warning');
-                      }
+                      setMapStops(activeStops);
+                      setMapMode('stops');
+                      setShowMapModal(true);
                     }}
                     style={{
                       display: 'block',
@@ -1301,14 +1271,15 @@
                       padding: '8px',
                       borderRadius: '12px',
                       fontWeight: 'bold',
-                      textDecoration: 'none',
                       fontSize: '13px',
+                      border: 'none',
+                      cursor: 'pointer',
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
                       marginBottom: '4px'
                     }}
                   >
                     {`${t("route.showStopsOnMap")} (${route.stops.filter(s => !disabledStops.includes((s.name || '').toLowerCase().trim()) && s.lat && s.lng).length})`}
-                  </a>
+                  </button>
                   
                   
                   {/* URL limit note */}
@@ -1884,48 +1855,20 @@
             </div>
 
             <div className="space-y-3 mb-4">
-              <a
-                target="_blank"
-                rel="noopener noreferrer"
-                href={(() => {
-                  // Filter active stops with valid coordinates
-                  const activeStops = route.stops.filter((s, i) => {
-                    const isActive = !disabledStops.includes((s.name || '').toLowerCase().trim());
-                    const hasValidCoords = s.lat && s.lng && s.lat !== 0 && s.lng !== 0;
-                    return isActive && hasValidCoords;
-                  });
-                  
-                  if (activeStops.length === 0) {
-                    return '#';
-                  }
-                  
-                  // Calculate center
-                  const avgLat = activeStops.reduce((sum, s) => sum + s.lat, 0) / activeStops.length;
-                  const avgLng = activeStops.reduce((sum, s) => sum + s.lng, 0) / activeStops.length;
-                  
-                  // Create search query with all active place names
-                  const query = activeStops.map(s => s.name).join(' OR ');
-                  
-                  // Return search URL with active places
-                  return `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${avgLat},${avgLng},13z`;
-                })()}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => {
+              <button
+                onClick={() => {
                   const activeStops = route.stops.filter((s, i) => {
                     const isActive = !disabledStops.includes((s.name || '').toLowerCase().trim());
                     const hasValidCoords = s.lat && s.lng && s.lat !== 0 && s.lng !== 0;
                     return isActive && hasValidCoords;
                   });
                   if (activeStops.length === 0) {
-                    e.preventDefault();
                     showToast(t('places.noPlacesWithCoords'), 'warning');
                     return;
                   }
-                  const url = e.currentTarget.href;
-                  if (url.length > 2000) {
-                    showToast(`${t('toast.urlTooLong')} (${url.length})`, 'warning');
-                  }
+                  setMapStops(activeStops);
+                  setMapMode('stops');
+                  setShowMapModal(true);
                 }}
                 style={{
                   display: 'block',
@@ -1936,14 +1879,15 @@
                   padding: '10px',
                   borderRadius: '12px',
                   fontWeight: 'bold',
-                  textDecoration: 'none',
                   fontSize: '14px',
+                  border: 'none',
+                  cursor: 'pointer',
                   boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
                   marginBottom: '4px'
                 }}
               >
                 {`${t("wizard.showMap")}`}
-              </a>
+              </button>
               
               {/* URL limit note */}
 
@@ -3654,9 +3598,10 @@
               >✕</button>
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-sm">
-                  {mapMode === 'areas' ? t('wizard.allAreasMap') : t('form.searchRadius')}
+                  {mapMode === 'areas' ? t('wizard.allAreasMap') : mapMode === 'stops' ? `${t('route.showStopsOnMap')} (${mapStops.length})` : t('form.searchRadius')}
                 </h3>
               </div>
+              {mapMode !== 'stops' && (
               <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
                 <button
                   onClick={() => setMapMode('areas')}
@@ -3678,14 +3623,16 @@
                   title={!formData.currentLat ? t('form.needGpsFirst') : t('form.showSearchRadius')}
                 >{`📍 ${t("form.radiusMode")}`}</button>
               </div>
+              )}
             </div>
-            {/* Map Container */}
             <div id="leaflet-map-container" style={{ flex: 1, minHeight: '350px', maxHeight: '70vh' }}></div>
             {/* Footer */}
             <div className="p-2 border-t text-center">
               <p className="text-[9px] text-gray-400">
                 {mapMode === 'areas' 
                   ? `${(window.BKK.areaOptions || []).length} ${t('general.areas')}` 
+                  : mapMode === 'stops'
+                  ? `${mapStops.length} ${t('nav.myPlaces')} — ${t('route.clickForDetails')}`
                   : `${formData.radiusMeters}m - ${formData.radiusPlaceName || t('form.currentLocation')}`
                 }
               </p>

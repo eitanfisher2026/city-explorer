@@ -608,16 +608,14 @@ window.BKK._suggestEmojisGemini = async function(description) {
     body: JSON.stringify({
       contents: [{
         parts: [{
-          text: `You are an emoji icon picker. The user wants an emoji icon for a category/place/interest called: "${description}".
-Suggest exactly 6 emoji that would work as a visual ICON for this category. 
-Rules:
-- Only single emoji characters, no text
-- Choose emoji that visually represent the concept (e.g. food→🍜, temple→🛕, coffee→☕)
-- Be specific to the description, not generic
-- Reply with ONLY 6 emoji separated by spaces`
+          text: `Pick 6 emoji icons for the category "${description}". Rules:
+1. Each emoji must visually represent "${description}"
+2. Be SPECIFIC: "street food" → 🍢🍡🥟🍜🍲🥘 NOT generic utensils
+3. No text, no numbers. Just 6 emoji separated by spaces.
+4. Prefer food items over utensils, buildings over generic icons, etc.`
         }]
       }],
-      generationConfig: { temperature: 0.5, maxOutputTokens: 50 }
+      generationConfig: { temperature: 0.3, maxOutputTokens: 50 }
     })
   });
   
@@ -626,12 +624,13 @@ Rules:
   const data = await resp.json();
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
   
-  // Extract emojis from response
-  const emojiRegex = /\p{Emoji_Presentation}|\p{Emoji}\uFE0F/gu;
-  const emojis = [...new Set(text.match(emojiRegex) || [])];
+  // Extract emojis from response — broad regex to catch compound emoji
+  const emojiRegex = /\p{Extended_Pictographic}(\u200D\p{Extended_Pictographic})*/gu;
+  const matches = text.match(emojiRegex) || [];
+  const emojis = [...new Set(matches)];
   
-  if (emojis.length < 3) throw new Error('Not enough emojis in response');
-  console.log('[EMOJI] Gemini suggested:', emojis);
+  if (emojis.length < 3) throw new Error('Not enough emojis in response: ' + text);
+  console.log('[EMOJI] Gemini suggested:', emojis, 'from:', text.trim());
   return emojis.slice(0, 6);
 };
 
@@ -643,7 +642,8 @@ window.BKK._suggestEmojisLocal = function(description, returnAll) {
   
   const mapping = [
     // Food & Drink
-    { keys: ['אוכל','food','restaurant','מסעד','dining','eat','דוכן','stand','stall','street food','אוכל רחוב','snack'], emojis: ['🍽️','🍜','🍕','🍔','🥘','🍴'] },
+    { keys: ['street food','אוכל רחוב','דוכן','stand','stall','hawker','vendor'], emojis: ['🍢','🍡','🥟','🍲','🍜','🥘'] },
+    { keys: ['אוכל','food','restaurant','מסעד','dining','eat','snack'], emojis: ['🍜','🍲','🥘','🍛','🍔','🍕'] },
     { keys: ['קפה','coffee','cafe','קפית'], emojis: ['☕','🫖','🍵','☕'] },
     { keys: ['בר','bar','drink','שתי','cocktail','beer','בירה'], emojis: ['🍺','🍸','🥂','🍻'] },
     { keys: ['wine','יין'], emojis: ['🍷','🥂','🍇'] },
