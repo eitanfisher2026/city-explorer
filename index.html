@@ -2617,6 +2617,21 @@ window.BKK.cityData.singapore = {
 
 window.BKK = window.BKK || {};
 
+// Generate or restore persistent visitor ID
+(function() {
+  let vid = null;
+  try { vid = localStorage.getItem('bangkok_visitor_id'); } catch(e) {}
+  if (!vid) {
+    vid = 'v_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+    try { localStorage.setItem('bangkok_visitor_id', vid); } catch(e) {}
+  }
+  window.BKK.visitorId = vid;
+  // Try to get a display name
+  let vname = null;
+  try { vname = localStorage.getItem('bangkok_visitor_name'); } catch(e) {}
+  window.BKK.visitorName = vname || vid.slice(0, 10);
+})();
+
 // App Version
 window.BKK.VERSION = '3.0.0';
 // Convert stop index (0-based) to letter label: 0→A, 1→B, ..., 25→Z, 26→AA
@@ -7452,7 +7467,7 @@ const CityExplorer = () => {
     try {
       const database = window.BKK.database;
       if (database) {
-        const snap = await database.ref(`reviews/${cityId}/${placeKey}`).once('value');
+        const snap = await database.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
         const data = snap.val();
         if (data) {
           reviews = Object.entries(data).map(([uid, r]) => ({
@@ -7487,20 +7502,29 @@ const CityExplorer = () => {
     const visitorId = window.BKK.visitorId || 'anonymous';
     const userName = window.BKK.visitorName || visitorId.slice(0, 8);
     
+    console.log('[REVIEWS] Saving:', { cityId, placeKey: reviewDialog.placeKey, visitorId, rating: reviewDialog.myRating, text: reviewDialog.myText });
+    
     try {
       const database = window.BKK.database;
+      console.log('[REVIEWS] Save attempt:', { database: !!database, rating: reviewDialog.myRating, text: reviewDialog.myText, placeKey: reviewDialog.placeKey, visitorId, cityId });
       if (database && (reviewDialog.myRating > 0 || reviewDialog.myText.trim())) {
-        await database.ref(`reviews/${cityId}/${reviewDialog.placeKey}/${visitorId}`).set({
+        const path = `cities/${cityId}/reviews/${reviewDialog.placeKey}/${visitorId}`;
+        console.log('[REVIEWS] Saving to:', path);
+        await database.ref(path).set({
           rating: reviewDialog.myRating,
           text: reviewDialog.myText.trim(),
           userName: userName,
           timestamp: Date.now()
         });
+        console.log('[REVIEWS] Save SUCCESS');
         showToast(t('reviews.saved'), 'success');
+      } else {
+        console.log('[REVIEWS] Save skipped - no database or empty review');
+        if (!database) showToast('No database connection', 'error');
       }
     } catch (e) {
-      console.error('[REVIEWS] Save error:', e);
-      showToast(t('reviews.saveError'), 'error');
+      console.error('[REVIEWS] Save error:', e.message, e.code);
+      showToast(t('reviews.saveError') + ': ' + (e.message || ''), 'error');
     }
     setReviewDialog(null);
   };
@@ -7513,7 +7537,7 @@ const CityExplorer = () => {
     try {
       const database = window.BKK.database;
       if (database) {
-        await database.ref(`reviews/${cityId}/${reviewDialog.placeKey}/${visitorId}`).remove();
+        await database.ref(`cities/${cityId}/reviews/${reviewDialog.placeKey}/${visitorId}`).remove();
         showToast(t('reviews.deleted'), 'success');
       }
     } catch (e) {
@@ -10303,6 +10327,7 @@ const CityExplorer = () => {
                 )}
               </div>
               {route.stops.map((stop, i) => {
+                if (i === 0) { const customs = route.stops.filter(s => s.custom); console.log('[DEBUG] Custom stops:', customs.map(s => s.name + ':locked=' + s.locked)); }
                 const stopId = (stop.name || '').toLowerCase().trim();
                 const isDisabled = disabledStops.includes(stopId);
                 const isCustom = stop.custom;
@@ -10468,6 +10493,10 @@ const CityExplorer = () => {
                             className="text-xs px-2 py-1 rounded bg-amber-500 text-white hover:bg-amber-600"
                             title={t('reviews.title')}
                           >👁️</button>
+                        )}
+                        {/* Debug: show for all custom stops to diagnose */}
+                        {stop.custom && !stop.locked && !isUnlocked && (
+                          <span className="text-[8px] text-red-500" title={`custom=${!!stop.custom} locked=${!!stop.locked}`}>⚠️no-lock</span>
                         )}
                         
                         {(() => {

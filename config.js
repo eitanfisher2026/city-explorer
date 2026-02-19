@@ -5,6 +5,21 @@
 
 window.BKK = window.BKK || {};
 
+// Generate or restore persistent visitor ID
+(function() {
+  let vid = null;
+  try { vid = localStorage.getItem('bangkok_visitor_id'); } catch(e) {}
+  if (!vid) {
+    vid = 'v_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+    try { localStorage.setItem('bangkok_visitor_id', vid); } catch(e) {}
+  }
+  window.BKK.visitorId = vid;
+  // Try to get a display name
+  let vname = null;
+  try { vname = localStorage.getItem('bangkok_visitor_name'); } catch(e) {}
+  window.BKK.visitorName = vname || vid.slice(0, 10);
+})();
+
 // App Version
 window.BKK.VERSION = '3.0.0';
 // Convert stop index (0-based) to letter label: 0→A, 1→B, ..., 25→Z, 26→AA

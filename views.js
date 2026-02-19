@@ -1686,6 +1686,7 @@
                 )}
               </div>
               {route.stops.map((stop, i) => {
+                if (i === 0) { const customs = route.stops.filter(s => s.custom); console.log('[DEBUG] Custom stops:', customs.map(s => s.name + ':locked=' + s.locked)); }
                 const stopId = (stop.name || '').toLowerCase().trim();
                 const isDisabled = disabledStops.includes(stopId);
                 const isCustom = stop.custom;
@@ -1851,6 +1852,10 @@
                             className="text-xs px-2 py-1 rounded bg-amber-500 text-white hover:bg-amber-600"
                             title={t('reviews.title')}
                           >👁️</button>
+                        )}
+                        {/* Debug: show for all custom stops to diagnose */}
+                        {stop.custom && !stop.locked && !isUnlocked && (
+                          <span className="text-[8px] text-red-500" title={`custom=${!!stop.custom} locked=${!!stop.locked}`}>⚠️no-lock</span>
                         )}
                         
                         {(() => {

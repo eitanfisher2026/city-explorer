@@ -3615,7 +3615,7 @@
     try {
       const database = window.BKK.database;
       if (database) {
-        const snap = await database.ref(`reviews/${cityId}/${placeKey}`).once('value');
+        const snap = await database.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
         const data = snap.val();
         if (data) {
           reviews = Object.entries(data).map(([uid, r]) => ({
@@ -3650,20 +3650,29 @@
     const visitorId = window.BKK.visitorId || 'anonymous';
     const userName = window.BKK.visitorName || visitorId.slice(0, 8);
     
+    console.log('[REVIEWS] Saving:', { cityId, placeKey: reviewDialog.placeKey, visitorId, rating: reviewDialog.myRating, text: reviewDialog.myText });
+    
     try {
       const database = window.BKK.database;
+      console.log('[REVIEWS] Save attempt:', { database: !!database, rating: reviewDialog.myRating, text: reviewDialog.myText, placeKey: reviewDialog.placeKey, visitorId, cityId });
       if (database && (reviewDialog.myRating > 0 || reviewDialog.myText.trim())) {
-        await database.ref(`reviews/${cityId}/${reviewDialog.placeKey}/${visitorId}`).set({
+        const path = `cities/${cityId}/reviews/${reviewDialog.placeKey}/${visitorId}`;
+        console.log('[REVIEWS] Saving to:', path);
+        await database.ref(path).set({
           rating: reviewDialog.myRating,
           text: reviewDialog.myText.trim(),
           userName: userName,
           timestamp: Date.now()
         });
+        console.log('[REVIEWS] Save SUCCESS');
         showToast(t('reviews.saved'), 'success');
+      } else {
+        console.log('[REVIEWS] Save skipped - no database or empty review');
+        if (!database) showToast('No database connection', 'error');
       }
     } catch (e) {
-      console.error('[REVIEWS] Save error:', e);
-      showToast(t('reviews.saveError'), 'error');
+      console.error('[REVIEWS] Save error:', e.message, e.code);
+      showToast(t('reviews.saveError') + ': ' + (e.message || ''), 'error');
     }
     setReviewDialog(null);
   };
@@ -3676,7 +3685,7 @@
     try {
       const database = window.BKK.database;
       if (database) {
-        await database.ref(`reviews/${cityId}/${reviewDialog.placeKey}/${visitorId}`).remove();
+        await database.ref(`cities/${cityId}/reviews/${reviewDialog.placeKey}/${visitorId}`).remove();
         showToast(t('reviews.deleted'), 'success');
       }
     } catch (e) {
