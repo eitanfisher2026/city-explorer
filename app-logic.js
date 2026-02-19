@@ -397,7 +397,6 @@
   const [addCityFound, setAddCityFound] = useState(null);
   const [addCityGenerated, setAddCityGenerated] = useState(null);
   const [googleMaxWaypoints, setGoogleMaxWaypoints] = useState(12);
-  const [googleMaxMapPoints, setGoogleMaxMapPoints] = useState(10);
   const [cityModified, setCityModified] = useState(false);
   const [cityEditCounter, setCityEditCounter] = useState(0); // Force re-render on city object mutation
   const [showSettingsMap, setShowSettingsMap] = useState(false);
@@ -1125,8 +1124,6 @@
         try {
           const gmwSnap = await database.ref('settings/googleMaxWaypoints').once('value');
           if (gmwSnap.val() !== null) setGoogleMaxWaypoints(gmwSnap.val());
-          const gmmSnap = await database.ref('settings/googleMaxMapPoints').once('value');
-          if (gmmSnap.val() !== null) setGoogleMaxMapPoints(gmmSnap.val());
           const msSnap = await database.ref('settings/maxStops').once('value');
           const fmSnap = await database.ref('settings/fetchMoreCount').once('value');
           const drSnap = await database.ref('settings/defaultRadius').once('value');
@@ -1137,7 +1134,7 @@
           if (Object.keys(updates).length > 0) {
             setFormData(prev => ({...prev, ...updates}));
           }
-          console.log('[REFRESH] Loaded settings:', { googleMaxWaypoints: gmwSnap.val() || 12, googleMaxMapPoints: gmmSnap.val() || 10, ...updates });
+          console.log('[REFRESH] Loaded settings:', { googleMaxWaypoints: gmwSnap.val() || 12, ...updates });
         } catch (e) {
           console.error('[REFRESH] Error loading settings:', e);
         }
@@ -1254,11 +1251,6 @@
     // Listen for googleMaxWaypoints changes
     database.ref('settings/googleMaxWaypoints').on('value', (snap) => {
       if (snap.val() !== null) setGoogleMaxWaypoints(snap.val());
-    });
-    
-    // Listen for googleMaxMapPoints changes
-    database.ref('settings/googleMaxMapPoints').on('value', (snap) => {
-      if (snap.val() !== null) setGoogleMaxMapPoints(snap.val());
     });
     
     // Listen for maxStops changes (admin setting)
@@ -3217,12 +3209,18 @@
     const stripped = { ...r };
     if (stripped.stops) {
       stripped.stops = stripped.stops.map(s => {
-        // Only strip base64 data, keep URL strings
-        if (s.uploadedImage && s.uploadedImage.startsWith('data:')) {
-          const { uploadedImage, ...rest } = s;
-          return rest;
+        const clean = { ...s };
+        // Remove base64 images
+        if (clean.uploadedImage && clean.uploadedImage.startsWith('data:')) {
+          delete clean.uploadedImage;
         }
-        return { ...s };
+        // Remove large Firebase Storage URLs from stops (they're in customLocations)
+        if (clean.uploadedImage && clean.uploadedImage.length > 200) {
+          delete clean.uploadedImage;
+        }
+        // Remove imageUrls array from stops (they're in customLocations)
+        delete clean.imageUrls;
+        return clean;
       });
     }
     return stripped;

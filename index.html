@@ -4103,7 +4103,6 @@ const CityExplorer = () => {
   const [addCityFound, setAddCityFound] = useState(null);
   const [addCityGenerated, setAddCityGenerated] = useState(null);
   const [googleMaxWaypoints, setGoogleMaxWaypoints] = useState(12);
-  const [googleMaxMapPoints, setGoogleMaxMapPoints] = useState(10);
   const [cityModified, setCityModified] = useState(false);
   const [cityEditCounter, setCityEditCounter] = useState(0); // Force re-render on city object mutation
   const [showSettingsMap, setShowSettingsMap] = useState(false);
@@ -4750,8 +4749,6 @@ const CityExplorer = () => {
         try {
           const gmwSnap = await database.ref('settings/googleMaxWaypoints').once('value');
           if (gmwSnap.val() !== null) setGoogleMaxWaypoints(gmwSnap.val());
-          const gmmSnap = await database.ref('settings/googleMaxMapPoints').once('value');
-          if (gmmSnap.val() !== null) setGoogleMaxMapPoints(gmmSnap.val());
           const msSnap = await database.ref('settings/maxStops').once('value');
           const fmSnap = await database.ref('settings/fetchMoreCount').once('value');
           const drSnap = await database.ref('settings/defaultRadius').once('value');
@@ -4863,10 +4860,6 @@ const CityExplorer = () => {
     
     database.ref('settings/googleMaxWaypoints').on('value', (snap) => {
       if (snap.val() !== null) setGoogleMaxWaypoints(snap.val());
-    });
-    
-    database.ref('settings/googleMaxMapPoints').on('value', (snap) => {
-      if (snap.val() !== null) setGoogleMaxMapPoints(snap.val());
     });
     
     database.ref('settings/maxStops').on('value', (snap) => {
@@ -6533,11 +6526,15 @@ const CityExplorer = () => {
     const stripped = { ...r };
     if (stripped.stops) {
       stripped.stops = stripped.stops.map(s => {
-        if (s.uploadedImage && s.uploadedImage.startsWith('data:')) {
-          const { uploadedImage, ...rest } = s;
-          return rest;
+        const clean = { ...s };
+        if (clean.uploadedImage && clean.uploadedImage.startsWith('data:')) {
+          delete clean.uploadedImage;
         }
-        return { ...s };
+        if (clean.uploadedImage && clean.uploadedImage.length > 200) {
+          delete clean.uploadedImage;
+        }
+        delete clean.imageUrls;
+        return clean;
       });
     }
     return stripped;
@@ -8798,7 +8795,7 @@ const CityExplorer = () => {
             <div style={{
               position: 'sticky',
               bottom: '20px',
-              zIndex: 100,
+              zIndex: 20,
               marginTop: '20px'
             }}>
               <button
@@ -10195,6 +10192,7 @@ const CityExplorer = () => {
                           className={`flex items-center justify-between gap-2 rounded-lg p-2 border ${
                             savedRoute.inProgress ? 'border-orange-300 bg-orange-50' : 'border-gray-200 bg-white'
                           } hover:bg-blue-50 cursor-pointer`}
+                          style={{ overflow: 'hidden' }}
                           onClick={() => loadSavedRoute(savedRoute)}
                         >
                           <div className="flex-1 min-w-0">
@@ -10209,7 +10207,7 @@ const CityExplorer = () => {
                               <span className="text-[10px] text-gray-400 flex-shrink-0">{savedRoute.stops?.length || 0} stops</span>
                             </div>
                             {savedRoute.notes && (
-                              <div className="text-[10px] text-gray-500 truncate mt-0.5">📝 {savedRoute.notes}</div>
+                              <div className="text-[10px] text-gray-500 mt-0.5" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>📝 {savedRoute.notes}</div>
                             )}
                           </div>
                           <button
@@ -12776,7 +12774,7 @@ const CityExplorer = () => {
                 <div className="max-h-32 overflow-y-auto space-y-0.5">
                   {(editingRoute.stops || []).map((stop, idx) => (
                     <div key={idx} className="flex items-center gap-1 text-xs bg-gray-50 px-2 py-1 rounded">
-                      <span className="text-gray-400">{idx + 1}.</span>
+                      <span className="text-gray-400">{window.BKK.stopLabel(idx)}.</span>
                       <span className="font-medium truncate">{stop.name}</span>
                       {stop.rating && <span className="text-yellow-600">⭐{stop.rating}</span>}
                     </div>
@@ -12789,7 +12787,7 @@ const CityExplorer = () => {
               <div className="flex gap-2">
                 <button
                   onClick={() => {
-                    const shareText = `🗺️ ${editingRoute.name}\n📍 ${editingRoute.areaName}\n🎯 ${editingRoute.stops?.length || 0} stops\n${editingRoute.circular ? t('route.circularRoute') : t('route.linearDesc')}\n\nstops:\n${(editingRoute.stops || []).map((s, i) => `${i+1}. ${s.name}${s.address ? ' - ' + s.address : ''}`).join('\n')}`;
+                    const shareText = `🗺️ ${editingRoute.name}\n📍 ${editingRoute.areaName}\n🎯 ${editingRoute.stops?.length || 0} stops\n${editingRoute.circular ? t('route.circularRoute') : t('route.linearDesc')}\n\nstops:\n${(editingRoute.stops || []).map((s, i) => `${window.BKK.stopLabel(i)}. ${s.name}${s.address ? ' - ' + s.address : ''}`).join('\n')}`;
                     if (navigator.share) {
                       navigator.share({ title: editingRoute.name, text: shareText });
                     } else {
@@ -12804,7 +12802,7 @@ const CityExplorer = () => {
                 <button
                   onClick={() => {
                     const pois = (editingRoute.stops || []).map((s, i) => {
-                      let line = `${i+1}. ${s.name}`;
+                      let line = `${window.BKK.stopLabel(i)}. ${s.name}`;
                       if (s.address) line += `\n   📍 ${s.address}`;
                       if (s.description) line += `\n   ${s.description}`;
                       if (s.todayHours) line += `\n   🕐 ${s.todayHours}`;

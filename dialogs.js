@@ -1144,7 +1144,7 @@
                 <div className="max-h-32 overflow-y-auto space-y-0.5">
                   {(editingRoute.stops || []).map((stop, idx) => (
                     <div key={idx} className="flex items-center gap-1 text-xs bg-gray-50 px-2 py-1 rounded">
-                      <span className="text-gray-400">{idx + 1}.</span>
+                      <span className="text-gray-400">{window.BKK.stopLabel(idx)}.</span>
                       <span className="font-medium truncate">{stop.name}</span>
                       {stop.rating && <span className="text-yellow-600">⭐{stop.rating}</span>}
                     </div>
@@ -1157,7 +1157,7 @@
               <div className="flex gap-2">
                 <button
                   onClick={() => {
-                    const shareText = `🗺️ ${editingRoute.name}\n📍 ${editingRoute.areaName}\n🎯 ${editingRoute.stops?.length || 0} stops\n${editingRoute.circular ? t('route.circularRoute') : t('route.linearDesc')}\n\nstops:\n${(editingRoute.stops || []).map((s, i) => `${i+1}. ${s.name}${s.address ? ' - ' + s.address : ''}`).join('\n')}`;
+                    const shareText = `🗺️ ${editingRoute.name}\n📍 ${editingRoute.areaName}\n🎯 ${editingRoute.stops?.length || 0} stops\n${editingRoute.circular ? t('route.circularRoute') : t('route.linearDesc')}\n\nstops:\n${(editingRoute.stops || []).map((s, i) => `${window.BKK.stopLabel(i)}. ${s.name}${s.address ? ' - ' + s.address : ''}`).join('\n')}`;
                     if (navigator.share) {
                       navigator.share({ title: editingRoute.name, text: shareText });
                     } else {
@@ -1172,7 +1172,7 @@
                 <button
                   onClick={() => {
                     const pois = (editingRoute.stops || []).map((s, i) => {
-                      let line = `${i+1}. ${s.name}`;
+                      let line = `${window.BKK.stopLabel(i)}. ${s.name}`;
                       if (s.address) line += `\n   📍 ${s.address}`;
                       if (s.description) line += `\n   ${s.description}`;
                       if (s.todayHours) line += `\n   🕐 ${s.todayHours}`;

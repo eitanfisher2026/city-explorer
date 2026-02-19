@@ -837,7 +837,7 @@
             <div style={{
               position: 'sticky',
               bottom: '20px',
-              zIndex: 100,
+              zIndex: 20,
               marginTop: '20px'
             }}>
               <button
@@ -2249,6 +2249,7 @@
                           className={`flex items-center justify-between gap-2 rounded-lg p-2 border ${
                             savedRoute.inProgress ? 'border-orange-300 bg-orange-50' : 'border-gray-200 bg-white'
                           } hover:bg-blue-50 cursor-pointer`}
+                          style={{ overflow: 'hidden' }}
                           onClick={() => loadSavedRoute(savedRoute)}
                         >
                           <div className="flex-1 min-w-0">
@@ -2263,7 +2264,7 @@
                               <span className="text-[10px] text-gray-400 flex-shrink-0">{savedRoute.stops?.length || 0} stops</span>
                             </div>
                             {savedRoute.notes && (
-                              <div className="text-[10px] text-gray-500 truncate mt-0.5">📝 {savedRoute.notes}</div>
+                              <div className="text-[10px] text-gray-500 mt-0.5" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>📝 {savedRoute.notes}</div>
                             )}
                           </div>
                           <button
