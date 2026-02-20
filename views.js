@@ -122,7 +122,7 @@
         </div>
       )}      <div className="max-w-4xl mx-auto p-2 sm:p-4 pb-32">
         {/* ACTIVE TRAIL MODE — shown when user opened Google Maps route */}
-        {activeTrail && wizardMode && (
+        {activeTrail && (
           <div className="view-fade-in">
             <div style={{ textAlign: 'center', marginBottom: '8px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
@@ -474,8 +474,8 @@
 
         {/* Wizard Step 3 = results, or normal mode */}
         
-        {/* Navigation Tabs - hidden in wizard mode */}
-        {!wizardMode && (
+        {/* Navigation Tabs - hidden in wizard mode and active trail */}
+        {!wizardMode && !activeTrail && (
         <div className="flex flex-wrap gap-1 mb-4 bg-white rounded-lg p-1.5 shadow">
           <button
             onClick={() => { setCurrentView('form'); window.scrollTo(0, 0); }}
