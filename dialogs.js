@@ -2447,15 +2447,14 @@
 
         {/* ===== QUICK CAPTURE DIALOG (Light) ===== */}
         {showQuickCapture && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end justify-center" onClick={(e) => { if (e.target === e.currentTarget) setShowQuickCapture(false); }}>
-            <div className="bg-white rounded-t-2xl w-full max-w-lg shadow-2xl" style={{ maxHeight: '85vh', overflow: 'auto' }}>
+          <div className="fixed inset-0 bg-white z-50 flex flex-col" style={{ overflow: 'auto' }}>
               {/* Header */}
-              <div style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', padding: '12px 16px', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <span style={{ color: 'white', fontWeight: 'bold', fontSize: '16px' }}>📸 {t('trail.capturePlace')}</span>
                 <button onClick={() => setShowQuickCapture(false)} style={{ color: 'white', background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>✕</button>
               </div>
 
-              <div style={{ padding: '12px 16px' }}>
+              <div style={{ padding: '12px 16px', flex: 1 }}>
                 {/* Nearest stop indicator */}
                 {newLocation.gpsLoading && (
                   <div style={{ padding: '6px 10px', background: '#f0fdf4', borderRadius: '8px', marginBottom: '8px', fontSize: '11px', color: '#6b7280', textAlign: 'center' }}>
@@ -2564,43 +2563,54 @@
                   </div>
                 )}
 
-                {/* Save Button */}
-                <button
-                  onClick={() => {
-                    if (!newLocation.uploadedImage) {
-                      showToast('📸 ' + t('trail.photoRequired'), 'warning');
-                      return;
-                    }
-                    // Default interest if none selected
-                    if (!newLocation.interests || newLocation.interests.length === 0) {
-                      const defaultInterest = activeTrail?.interests?.[0] || 'spotted';
-                      newLocation.interests = [defaultInterest];
-                    }
-                    // Generate name if empty
-                    if (!newLocation.name.trim()) {
-                      const result = window.BKK.generateLocationName(
-                        newLocation.interests[0], newLocation.lat, newLocation.lng,
-                        interestCounters, allInterestOptions, areaOptions
-                      );
-                      newLocation.name = result?.name || ('Spotted #' + Date.now().toString().slice(-4));
-                    }
-                    addCustomLocation(true);
-                    setShowQuickCapture(false);
-                    showToast('✅ ' + t('trail.saved'), 'success');
-                  }}
-                  disabled={!newLocation.uploadedImage}
-                  style={{
-                    width: '100%', padding: '14px', border: 'none', borderRadius: '12px',
-                    fontSize: '16px', fontWeight: 'bold',
-                    cursor: newLocation.uploadedImage ? 'pointer' : 'not-allowed',
-                    background: newLocation.uploadedImage ? 'linear-gradient(135deg, #22c55e, #16a34a)' : '#e5e7eb',
-                    color: newLocation.uploadedImage ? 'white' : '#9ca3af',
-                    boxShadow: newLocation.uploadedImage ? '0 4px 15px rgba(34,197,94,0.4)' : 'none'
-                  }}
-                >
-                  {`✅ ${t('trail.saveAndContinue')}`}
-                </button>
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => setShowQuickCapture(false)}
+                    style={{
+                      padding: '14px 20px', border: 'none', borderRadius: '12px',
+                      fontSize: '14px', fontWeight: 'bold', cursor: 'pointer',
+                      background: '#fee2e2', color: '#dc2626'
+                    }}
+                  >
+                    {t('general.cancel')}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!newLocation.uploadedImage) {
+                        showToast('📸 ' + t('trail.photoRequired'), 'warning');
+                        return;
+                      }
+                      // Default interest if none selected
+                      if (!newLocation.interests || newLocation.interests.length === 0) {
+                        const defaultInterest = activeTrail?.interests?.[0] || 'spotted';
+                        newLocation.interests = [defaultInterest];
+                      }
+                      // Generate name if empty
+                      if (!newLocation.name.trim()) {
+                        const result = window.BKK.generateLocationName(
+                          newLocation.interests[0], newLocation.lat, newLocation.lng,
+                          interestCounters, allInterestOptions, areaOptions
+                        );
+                        newLocation.name = result?.name || ('Spotted #' + Date.now().toString().slice(-4));
+                      }
+                      addCustomLocation(true);
+                      setShowQuickCapture(false);
+                      showToast('✅ ' + t('trail.saved'), 'success');
+                    }}
+                    disabled={!newLocation.uploadedImage}
+                    style={{
+                      flex: 1, padding: '14px', border: 'none', borderRadius: '12px',
+                      fontSize: '16px', fontWeight: 'bold',
+                      cursor: newLocation.uploadedImage ? 'pointer' : 'not-allowed',
+                      background: newLocation.uploadedImage ? 'linear-gradient(135deg, #22c55e, #16a34a)' : '#e5e7eb',
+                      color: newLocation.uploadedImage ? 'white' : '#9ca3af',
+                      boxShadow: newLocation.uploadedImage ? '0 4px 15px rgba(34,197,94,0.4)' : 'none'
+                    }}
+                  >
+                    {`✅ ${t('trail.saveAndContinue')}`}
+                  </button>
+                </div>
               </div>
-            </div>
           </div>
         )}

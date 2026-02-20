@@ -130,7 +130,7 @@
                   {currentLang === 'he' ? '🇬🇧 EN' : '🇮🇱 עב'}
                 </button>
                 <span style={{ fontSize: '10px', color: '#9ca3af' }}>
-                  {(() => { const mins = Math.round((Date.now() - activeTrail.startedAt) / 60000); return mins < 60 ? `${mins}m` : `${Math.floor(mins/60)}h ${mins%60}m`; })()}
+                  ⏱️ {(() => { const mins = Math.round((Date.now() - activeTrail.startedAt) / 60000); return mins < 60 ? `${mins} ${t('general.min')}` : `${Math.floor(mins/60)}h ${mins%60}m`; })()}
                 </span>
               </div>
               
@@ -254,11 +254,11 @@
                   showToast(t('trail.ended'), 'success');
                 }}
                 style={{
-                  padding: '10px 16px', background: '#f3f4f6', color: '#6b7280',
+                  padding: '10px 20px', background: '#fee2e2', color: '#dc2626',
                   border: 'none', borderRadius: '12px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer'
                 }}
               >
-                {t('trail.end')}
+                {`🏁 ${t('trail.endTrail')}`}
               </button>
             </div>
 
@@ -272,9 +272,9 @@
                 window.scrollTo(0, 0);
               }}
               style={{
-                width: '100%', marginTop: '8px', padding: '8px',
-                background: 'none', border: '1px dashed #d1d5db', borderRadius: '12px',
-                fontSize: '11px', color: '#9ca3af', cursor: 'pointer'
+                width: '100%', marginTop: '8px', padding: '10px',
+                background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '12px',
+                fontSize: '12px', fontWeight: 'bold', color: '#0284c7', cursor: 'pointer'
               }}
             >
               {`🔄 ${t('trail.newTrail')}`}
