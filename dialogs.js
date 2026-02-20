@@ -1059,6 +1059,11 @@
                           }
                           
                           showToast(t('interests.interestUpdated'), 'success');
+                          setShowAddInterestDialog(false);
+                          setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, inProgress: false, locked: false, scope: 'global' });
+                          setEditingCustomInterest(null);
+                          window._savingInterest = false;
+                          return;
                         } else {
                           // ADD MODE - check for duplicate name
                           const dupCheck = customInterests.find(i => 
@@ -1067,6 +1072,7 @@
                           );
                           if (dupCheck) {
                             showToast(`⚠️ "${newInterest.label}" ${t('interests.alreadyExists')}`, 'warning');
+                            window._savingInterest = false;
                             return;
                           }
                           const interestId = 'custom_' + Date.now();
@@ -1124,6 +1130,7 @@
                             localStorage.setItem('bangkok_custom_interests', JSON.stringify(updated));
                             showToast(`✅ ${newInterestData.label} — ${t('interests.interestAdded')}`, 'success');
                           }
+                          window._savingInterest = false;
                           return; // Skip the setShow/setNew below since we already did it
                         }
                         
