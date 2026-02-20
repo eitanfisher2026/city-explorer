@@ -122,7 +122,7 @@
         </div>
       )}      <div className="max-w-4xl mx-auto p-2 sm:p-4 pb-32">
         {/* ACTIVE TRAIL MODE — shown when user opened Google Maps route */}
-        {activeTrail && wizardMode && wizardStep < 3 && (
+        {activeTrail && wizardMode && (
           <div className="view-fade-in">
             <div style={{ textAlign: 'center', marginBottom: '8px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
@@ -249,7 +249,7 @@
         )}
 
         {/* WIZARD MODE */}
-        {wizardMode && (!activeTrail || wizardStep >= 3) && (
+        {wizardMode && !activeTrail && (
           <div className={wizardStep < 3 ? "view-fade-in" : ""}>
             {/* Wizard Header — shown on all steps */}
             <div style={{ textAlign: 'center', marginBottom: '4px' }}>

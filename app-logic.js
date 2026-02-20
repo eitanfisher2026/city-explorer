@@ -72,6 +72,25 @@
     return null;
   });
   const [showQuickCapture, setShowQuickCapture] = useState(false);
+
+  // Detect return from Google Maps — check localStorage for activeTrail
+  React.useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        try {
+          const saved = localStorage.getItem('foufou_active_trail');
+          if (saved && !activeTrail) {
+            const trail = JSON.parse(saved);
+            if (trail.startedAt && (Date.now() - trail.startedAt) < 8 * 60 * 60 * 1000) {
+              setActiveTrail(trail);
+            }
+          }
+        } catch(e) {}
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [activeTrail]);
   const [routeType, setRouteType] = useState(() => {
     // Load from localStorage or default to 'circular'
     const saved = localStorage.getItem('bangkok_route_type');
