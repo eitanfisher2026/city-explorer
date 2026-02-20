@@ -110,15 +110,27 @@
 
       {/* Update Banner */}
       {updateAvailable && (
-        <div className="mx-2 mb-2 bg-green-500 text-white rounded-lg p-2 flex items-center justify-between shadow-lg animate-pulse"
-          style={{ animationDuration: '2s' }}>
-          <span className="text-sm font-bold">{t("general.newVersionAvailableBanner")}</span>
-          <button
-            onClick={applyUpdate}
-            className="bg-white text-green-700 px-3 py-1 rounded-lg text-sm font-bold hover:bg-green-100"
-          >
-            {t("general.updateNow")}
-          </button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
+            <div style={{ fontSize: '40px', marginBottom: '8px' }}>🐾</div>
+            <h3 className="text-lg font-bold mb-2">{t("general.newVersionAvailableBanner")}</h3>
+            <p className="text-sm text-gray-500 mb-4">{t("general.updateDesc")}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setUpdateAvailable(false)}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-500 bg-gray-100 hover:bg-gray-200"
+              >
+                {t("general.later")}
+              </button>
+              <button
+                onClick={applyUpdate}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-white"
+                style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}
+              >
+                {t("general.updateNow")}
+              </button>
+            </div>
+          </div>
         </div>
       )}      <div className="max-w-4xl mx-auto p-2 sm:p-4 pb-32">
         {/* ACTIVE TRAIL MODE — shown when user opened Google Maps route */}

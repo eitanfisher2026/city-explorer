@@ -74,9 +74,11 @@
   const [showQuickCapture, setShowQuickCapture] = useState(false);
 
   // Detect return from Google Maps — check localStorage for activeTrail
+  // Also check for app updates when returning to tab
   React.useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
+        // Check for active trail
         try {
           const saved = localStorage.getItem('foufou_active_trail');
           if (saved) {
@@ -86,7 +88,6 @@
               setCurrentView('form');
               window.scrollTo(0, 0);
             } else {
-              // Expired
               localStorage.removeItem('foufou_active_trail');
               setActiveTrail(null);
             }

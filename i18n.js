@@ -216,7 +216,9 @@ general: {
   noPlacesWithCoords: 'אין מקומות עם קואורדינטות תקינות',
 
   updateNow: 'עדכן עכשיו',
-  newVersionAvailableBanner: '🔄 גרסה חדשה זמינה!',
+  newVersionAvailableBanner: 'גרסה חדשה זמינה!',
+  updateDesc: 'יש גרסה חדשה של FouFou עם שיפורים ותיקונים',
+  later: 'אח״כ',
   howItWorks: 'איך זה עובד?',
   nearMe: 'קרוב אליי',
   next: 'המשך',
@@ -904,7 +906,9 @@ general: {
   noPlacesWithCoords: 'No places with valid coordinates',
 
   updateNow: 'Update now',
-  newVersionAvailableBanner: '🔄 New version available!',
+  newVersionAvailableBanner: 'New version available!',
+  updateDesc: 'A new version of FouFou is available with improvements and fixes',
+  later: 'Later',
   howItWorks: 'How it works',
   nearMe: 'Near me',
   next: 'Next',
