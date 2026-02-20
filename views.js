@@ -573,7 +573,7 @@
         )}
 
         {/* Wizard Step 3: breadcrumb with back link */}
-        {wizardMode && wizardStep === 3 && !isGenerating && (
+        {wizardMode && wizardStep === 3 && !isGenerating && !activeTrail && (
           <div style={{ 
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
             fontSize: '11px', color: '#9ca3af', marginBottom: '6px', flexWrap: 'wrap'
