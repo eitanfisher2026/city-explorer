@@ -417,26 +417,13 @@
                   <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '1px' }}>GPS (1km)</div>
                 </button>
 
-                {/* All Bangkok option */}
-                <button
-                  onClick={() => setFormData({...formData, searchMode: 'all'})}
-                  style={{ width: '100%', padding: '8px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr',
-                    border: formData.searchMode === 'all' ? '2px solid #8b5cf6' : '1.5px solid #e5e7eb',
-                    background: formData.searchMode === 'all' ? 'linear-gradient(135deg, #f5f3ff, #ede9fe)' : 'white',
-                    marginBottom: '6px', transition: 'all 0.2s'
-                  }}
-                >
-                  <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#7c3aed' }}>{`🌏 ${t('general.all')} ${tLabel(window.BKK.selectedCity) || t('general.city')}`}</div>
-                  <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '1px' }}>{t('places.thisCity')}</div>
-                </button>
-
                 {/* Continue button */}
                 <button
                   onClick={() => { setWizardStep(2); window.scrollTo(0, 0); }}
-                  disabled={!formData.area && formData.searchMode !== 'radius' && formData.searchMode !== 'all'}
-                  style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', cursor: formData.area || formData.searchMode === 'radius' || formData.searchMode === 'all' ? 'pointer' : 'not-allowed',
-                    background: formData.area || formData.searchMode === 'radius' || formData.searchMode === 'all' ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#d1d5db',
-                    color: 'white', fontSize: '16px', fontWeight: 'bold', boxShadow: formData.area || formData.searchMode === 'radius' || formData.searchMode === 'all' ? '0 4px 6px rgba(37,99,235,0.3)' : 'none'
+                  disabled={!formData.area && formData.searchMode !== 'radius'}
+                  style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', cursor: formData.area || formData.searchMode === 'radius' ? 'pointer' : 'not-allowed',
+                    background: formData.area || formData.searchMode === 'radius' ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#d1d5db',
+                    color: 'white', fontSize: '16px', fontWeight: 'bold', boxShadow: formData.area || formData.searchMode === 'radius' ? '0 4px 6px rgba(37,99,235,0.3)' : 'none'
                   }}
                 >{t("general.next")}</button>
               </div>
@@ -633,73 +620,60 @@
           </div>
         )}
 
-        {/* QUICK LAUNCH — "Yalla" fast path, shown in wizard step 3 when route is loaded */}
-        {wizardMode && wizardStep === 3 && !isGenerating && route && !activeTrail && (
-          <div style={{ background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', borderRadius: '16px', padding: '14px', marginBottom: '10px', border: '2px solid #86efac', boxShadow: '0 2px 8px rgba(34,197,94,0.15)' }}>
-            <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-              <span style={{ fontSize: '14px', fontWeight: 'bold' }}>{`🐾 ${route.stops.length} ${t('wizard.placesFound')}`}</span>
+        {/* QUICK LAUNCH — "Yalla" fast path, shown in wizard step 3 when route is loaded, hidden after manual config */}
+        {wizardMode && wizardStep === 3 && !isGenerating && route && route.stops?.length > 0 && !activeTrail && !route.optimized && (
+          <div style={{ background: 'white', borderRadius: '16px', padding: '14px', marginBottom: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+            <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+              <span style={{ fontSize: '15px', fontWeight: 'bold' }}>{`🐾 ${route.stops.length} ${t('wizard.placesFound')}`}</span>
             </div>
+
+            {/* Yalla - quick go */}
             <button
               onClick={() => {
-                // Auto-pick start point based on search mode
+                const isCircular = formData.searchMode === 'radius';
+                setRouteType(isCircular ? 'circular' : 'linear');
                 let autoStart = null;
                 if (formData.searchMode === 'radius' && formData.gpsLat && formData.gpsLng) {
                   autoStart = { lat: formData.gpsLat, lng: formData.gpsLng, address: t('wizard.myLocation') };
                 } else {
-                  // Use first stop as start point
                   const firstWithCoords = route.stops.find(s => s.lat && s.lng);
                   if (firstWithCoords) autoStart = { lat: firstWithCoords.lat, lng: firstWithCoords.lng, address: firstWithCoords.name };
                 }
-                if (!autoStart) {
-                  showToast(t('form.chooseStartBeforeCalc'), 'warning');
-                  return;
-                }
-                // Set start point in form
+                if (!autoStart) { showToast(t('form.chooseStartBeforeCalc'), 'warning'); return; }
                 setFormData(prev => ({...prev, startPoint: `${autoStart.lat},${autoStart.lng}`}));
-
-                // Optimize route
-                const isCircular = routeType === 'circular';
                 const activeStops = route.stops.filter(s => !disabledStops.includes((s.name || '').toLowerCase().trim()) && s.lat && s.lng);
                 if (activeStops.length < 2) { showToast(t('places.noPlacesWithCoords'), 'warning'); return; }
-                
                 const optimized = optimizeStopOrder(activeStops, autoStart, isCircular);
                 const inactiveStops = route.stops.filter(s => disabledStops.includes((s.name || '').toLowerCase().trim()));
-                const newRoute = { ...route, stops: [...optimized, ...inactiveStops], circular: isCircular, optimized: true, startPoint: autoStart.address, startPointCoords: autoStart };
-                setRoute(newRoute);
-
-                // Build Google Maps URLs and open
+                setRoute({ ...route, stops: [...optimized, ...inactiveStops], circular: isCircular, optimized: true, startPoint: autoStart.address, startPointCoords: autoStart });
                 const urls = window.BKK.buildGoogleMapsUrls(
                   optimized.map(s => ({ lat: s.lat, lng: s.lng, name: s.name })),
-                  `${autoStart.lat},${autoStart.lng}`,
-                  isCircular,
-                  window.BKK.googleMaxWaypoints || 12
+                  `${autoStart.lat},${autoStart.lng}`, isCircular, window.BKK.googleMaxWaypoints || 12
                 );
-                
                 startActiveTrail(optimized, formData.interests, formData.area);
                 if (urls.length > 0) window.open(urls[0].url, 'city_explorer_map');
-                showToast(`🚀 ${optimized.length} ${t('route.stops')}`, 'success');
+                showToast(`🚀 ${optimized.length} ${t('route.stops')} (${isCircular ? t('route.circular') : t('route.linear')})`, 'success');
               }}
               style={{
-                width: '100%', padding: '16px', border: 'none', borderRadius: '14px',
-                background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: 'white',
-                fontSize: '18px', fontWeight: 'bold', cursor: 'pointer',
-                boxShadow: '0 4px 15px rgba(34,197,94,0.4)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                width: '100%', padding: '14px', border: '2px solid #22c55e', borderRadius: '14px',
+                background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', color: '#15803d',
+                fontSize: '15px', fontWeight: 'bold', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: '10px', textAlign: 'start',
+                direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr'
               }}
             >
-              <span>🚀</span>
-              <span>{t('wizard.yallaGo')}</span>
+              <span style={{ fontSize: '24px' }}>🚀</span>
+              <div>
+                <div>{t('wizard.yallaGo')}</div>
+                <div style={{ fontSize: '10px', color: '#6b7280', fontWeight: 'normal' }}>{t('wizard.yallaDesc')}</div>
+              </div>
             </button>
-            <button
-              onClick={() => window.scrollTo({ top: document.getElementById('route-results')?.offsetTop - 80 || 600, behavior: 'smooth' })}
-              style={{
-                width: '100%', marginTop: '6px', padding: '8px',
-                background: 'none', border: 'none', borderRadius: '8px',
-                fontSize: '11px', color: '#6b7280', cursor: 'pointer', textDecoration: 'underline'
-              }}
-            >
-              {`⚙️ ${t('wizard.customizeRoute')}`}
-            </button>
+
+            {/* Hint: scroll down for manual */}
+            <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '11px', color: '#9ca3af' }}>
+              {t('wizard.orScrollToCustomize')}
+              <span style={{ display: 'block', fontSize: '14px', marginTop: '2px' }}>↓</span>
+            </div>
           </div>
         )}
 

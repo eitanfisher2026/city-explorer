@@ -346,7 +346,7 @@ nav: {
 // --- Wizard / Quick Mode ---
 wizard: {
   step1Title: 'איפה מטיילים?',
-  step1Subtitle: 'בחרו בין איזור / קרוב אליי / כל העיר',
+  step1Subtitle: 'בחרו איזור או קרוב אליי',
   step2Title: 'מה מעניין אותך?',
   step2Subtitle: 'בחר תחום אחד או יותר',
   step3Title: 'תוצאות',
@@ -358,7 +358,10 @@ wizard: {
   allAreasMap: '🗺️ מפת כל האזורים',
   placesFound: 'מקומות נמצאו!',
   yallaGo: 'יאללה לדרך!',
+  yallaDesc: 'חשב מסלול אופטימלי ופתח בגוגל מפות',
   customizeRoute: 'כוונן מסלול ידנית',
+  customizeDesc: 'בחר נקודת התחלה, השהה נקודות, שנה סדר',
+  orScrollToCustomize: 'או גלול למטה לכוונן ידנית',
 },
 
 // --- Form / Search ---
@@ -1037,7 +1040,7 @@ nav: {
 
 wizard: {
   step1Title: 'Plan your trip',
-  step1Subtitle: 'Choose between area / near me / whole city',
+  step1Subtitle: 'Choose an area or near me',
   step2Title: 'What interests you?',
   step2Subtitle: 'Choose one or more topics',
   step3Title: 'Results',
@@ -1049,7 +1052,10 @@ wizard: {
   allAreasMap: '🗺️ All areas map',
   placesFound: 'places found!',
   yallaGo: 'Let\'s Go!',
-  customizeRoute: 'Customize route manually',
+  yallaDesc: 'Calculate optimal route and open in Google Maps',
+  customizeRoute: 'Customize route',
+  customizeDesc: 'Choose start point, skip stops, reorder',
+  orScrollToCustomize: 'or scroll down to customize manually',
 },
 
 form: {
