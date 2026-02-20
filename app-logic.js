@@ -2880,9 +2880,13 @@
       console.log('[ROUTE] Route set, staying in form view');
       console.log('[ROUTE] Route object:', newRoute);
       
-      // Scroll to results
+      // Scroll to results (or top in wizard mode for Yalla button)
       setTimeout(() => {
-        document.getElementById('route-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (wizardMode) {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          document.getElementById('route-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       }, 100);
       
       // Stay in form view to show compact list
