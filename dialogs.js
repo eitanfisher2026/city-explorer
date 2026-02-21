@@ -712,7 +712,7 @@
                 <button
                   onClick={() => {
                     setShowAddInterestDialog(false);
-                    setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, inProgress: false, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1 });
+                    setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, inProgress: false, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10 });
                     setEditingCustomInterest(null);
                   }}
                   className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center"
@@ -894,16 +894,23 @@
                     )}
                   </div>
 
-                  {/* Category, Weight & Min Stops for route planning */}
+                  {/* Category, Weight, Min & Max Stops for route planning */}
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs font-bold text-purple-800">🏷️</span>
                     <select
                       value={newInterest.category || 'attraction'}
                       onChange={(e) => {
                         const cat = e.target.value;
-                        const weightDefaults = { attraction: 3, break: 1, meal: 1, experience: 1, shopping: 2, nature: 2 };
-                        const minDefaults = { attraction: 1, break: 1, meal: 1, experience: 1, shopping: 1, nature: 1 };
-                        setNewInterest({...newInterest, category: cat, weight: weightDefaults[cat] || 2, minStops: minDefaults[cat] || 1});
+                        const defaults = {
+                          attraction: { weight: 3, minStops: 1, maxStops: 10 },
+                          break:      { weight: 1, minStops: 1, maxStops: 2 },
+                          meal:       { weight: 1, minStops: 1, maxStops: 2 },
+                          experience: { weight: 1, minStops: 1, maxStops: 3 },
+                          shopping:   { weight: 2, minStops: 1, maxStops: 5 },
+                          nature:     { weight: 2, minStops: 1, maxStops: 5 }
+                        };
+                        const d = defaults[cat] || defaults.attraction;
+                        setNewInterest({...newInterest, category: cat, weight: d.weight, minStops: d.minStops, maxStops: d.maxStops});
                       }}
                       className="p-1 text-xs border rounded flex-1"
                     >
@@ -916,30 +923,33 @@
                     </select>
                     <span className="text-[10px] text-gray-500">{t('interests.weight')}:</span>
                     <input
-                      type="number"
-                      min="1"
-                      max="5"
-                      value={newInterest.weight || ({'attraction':3,'break':1,'meal':1,'experience':1,'shopping':2,'nature':2}[newInterest.category || 'attraction'] || 2)}
+                      type="number" min="1" max="5"
+                      value={newInterest.weight || 2}
                       onChange={(e) => setNewInterest({...newInterest, weight: Math.max(1, Math.min(5, parseInt(e.target.value) || 1))})}
                       className="w-10 p-1 text-xs border rounded text-center"
                     />
                     <span className="text-[10px] text-gray-500">{t('interests.minStops')}:</span>
                     <input
-                      type="number"
-                      min="0"
-                      max="5"
+                      type="number" min="0" max="10"
                       value={newInterest.minStops != null ? newInterest.minStops : 1}
-                      onChange={(e) => setNewInterest({...newInterest, minStops: Math.max(0, Math.min(5, parseInt(e.target.value) || 0))})}
+                      onChange={(e) => setNewInterest({...newInterest, minStops: Math.max(0, Math.min(10, parseInt(e.target.value) || 0))})}
+                      className="w-10 p-1 text-xs border rounded text-center"
+                    />
+                    <span className="text-[10px] text-gray-500">{t('interests.maxStopsLabel')}:</span>
+                    <input
+                      type="number" min="1" max="15"
+                      value={newInterest.maxStops || 10}
+                      onChange={(e) => setNewInterest({...newInterest, maxStops: Math.max(1, Math.min(15, parseInt(e.target.value) || 1))})}
                       className="w-10 p-1 text-xs border rounded text-center"
                     />
                   </div>
                 </div>
 
-                {/* Counter for auto-naming (#️⃣ Next: #7) — only in edit mode */}
-                {editingCustomInterest && (
-                <div className="flex items-center gap-2 px-1">
+                {/* Counter for auto-naming — only in edit mode + admin */}
+                {editingCustomInterest && isUnlocked && (
+                <div className="flex items-center gap-2 px-4 py-1 bg-gray-50 border-t border-gray-100" style={{ direction: 'rtl' }}>
                   <span className="text-xs font-bold text-gray-600">#️⃣</span>
-                  <span className="text-[10px] text-gray-500">Next #:</span>
+                  <span className="text-[10px] text-gray-500">{t('interests.nextNumber')}:</span>
                   <input
                     type="number"
                     min="0"
@@ -951,9 +961,9 @@
                         database.ref(`cities/${selectedCityId}/interestCounters/${editingCustomInterest.id}`).set(newCounter);
                       }
                     }}
-                    className="w-16 p-1 text-xs border rounded text-center"
+                    className="w-14 p-1 text-xs border rounded text-center"
                   />
-                  <span className="text-[9px] text-gray-400">({editingCustomInterest.labelEn || editingCustomInterest.label} {'{Area}'} #{(interestCounters[editingCustomInterest.id] || 0) + 1})</span>
+                  <span className="text-[9px] text-gray-400 truncate">({tLabel(editingCustomInterest)} · {tLabel(window.BKK.selectedCity)} #{(interestCounters[editingCustomInterest.id] || 0) + 1})</span>
                 </div>
                 )}
 
@@ -1063,6 +1073,7 @@
                             configData.category = newInterest.category || 'attraction';
                             configData.weight = newInterest.weight || 3;
                             configData.minStops = newInterest.minStops != null ? newInterest.minStops : 1;
+                            configData.maxStops = newInterest.maxStops || 10;
                             if (isUnlocked) {
                               configData.labelOverride = newInterest.label.trim();
                               configData.iconOverride = newInterest.icon || '';
@@ -1088,7 +1099,8 @@
                               cityId: newInterest.scope === 'local' ? (newInterest.cityId || selectedCityId) : '',
                               category: newInterest.category || 'attraction',
                               weight: newInterest.weight || 3,
-                              minStops: newInterest.minStops != null ? newInterest.minStops : 1
+                              minStops: newInterest.minStops != null ? newInterest.minStops : 1,
+                              maxStops: newInterest.maxStops || 10
                             };
                             delete updatedInterest.builtIn;
                             
@@ -1106,7 +1118,7 @@
                           
                           showToast(t('interests.interestUpdated'), 'success');
                           setShowAddInterestDialog(false);
-                          setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, inProgress: false, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1 });
+                          setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, inProgress: false, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10 });
                           setEditingCustomInterest(null);
                           window._savingInterest = false;
                           return;
@@ -1135,12 +1147,13 @@
                             cityId: newInterest.scope === 'local' ? (newInterest.cityId || selectedCityId) : '',
                             category: newInterest.category || 'attraction',
                             weight: newInterest.weight || 3,
-                              minStops: newInterest.minStops != null ? newInterest.minStops : 1
+                              minStops: newInterest.minStops != null ? newInterest.minStops : 1,
+                              maxStops: newInterest.maxStops || 10
                           };
                           
                           // Close dialog immediately
                           setShowAddInterestDialog(false);
-                          setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, inProgress: false, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1 });
+                          setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, inProgress: false, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10 });
                           setEditingCustomInterest(null);
                           
                           // Add to local state immediately so it shows in UI
@@ -1184,7 +1197,7 @@
                         }
                         
                         setShowAddInterestDialog(false);
-                        setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, inProgress: false, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1 });
+                        setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, inProgress: false, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10 });
                         setEditingCustomInterest(null);
                         window._savingInterest = false;
                       }}
@@ -1202,7 +1215,7 @@
                 <button
                   onClick={() => {
                     setShowAddInterestDialog(false);
-                    setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, inProgress: false, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1 });
+                    setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, inProgress: false, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10 });
                     setEditingCustomInterest(null);
                   }}
                   className="px-5 py-2.5 rounded-lg bg-green-500 text-white text-sm font-bold hover:bg-green-600"

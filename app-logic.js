@@ -147,7 +147,7 @@
   const [locationSearchResults, setLocationSearchResults] = useState(null); // null=hidden, []=no results, [...]= results
   const [editingCustomInterest, setEditingCustomInterest] = useState(null);
   const [showAddInterestDialog, setShowAddInterestDialog] = useState(false);
-  const [newInterest, setNewInterest] = useState({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, inProgress: false, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1 });
+  const [newInterest, setNewInterest] = useState({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, inProgress: false, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10 });
   const [iconPickerConfig, setIconPickerConfig] = useState(null); // { description: '', callback: fn, suggestions: [], loading: false }
   const [showEditLocationDialog, setShowEditLocationDialog] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
@@ -2069,7 +2069,8 @@
         cityId: config.cityId || opt.cityId || '',
         category: config.category || opt.category || 'attraction',
         weight: config.weight || opt.weight || 3,
-        minStops: config.minStops != null ? config.minStops : (opt.minStops != null ? opt.minStops : 1)
+        minStops: config.minStops != null ? config.minStops : (opt.minStops != null ? opt.minStops : 1),
+        maxStops: config.maxStops || opt.maxStops || 10
       };
     });
   }, [interestOptions, uncoveredInterests, cityCustomInterests, interestConfig]);
@@ -2376,42 +2377,57 @@
     maxTotal = maxTotal || formData.maxStops || 10;
     
     // Build per-interest config
-    const config = {};
+    const cfg = {};
     let totalWeight = 0;
-    let totalMin = 0;
     for (const interestId of selectedInterests) {
       const interestObj = allInterestOptions.find(o => o.id === interestId);
-      const weight = interestObj?.weight || 2;
-      const minStops = interestObj?.minStops != null ? interestObj.minStops : 1;
-      config[interestId] = { weight, minStops, category: interestObj?.category || 'attraction', allocated: 0 };
-      totalWeight += weight;
-      totalMin += minStops;
+      cfg[interestId] = {
+        weight: interestObj?.weight || 2,
+        minStops: interestObj?.minStops != null ? interestObj.minStops : 1,
+        maxStops: interestObj?.maxStops || 10,
+        category: interestObj?.category || 'attraction'
+      };
+      totalWeight += cfg[interestId].weight;
     }
     
-    // Step 1: Guarantee minimums
+    // Step 1: Guarantee minimums (capped by maxStops per interest)
     const limits = {};
     let allocated = 0;
     for (const id of selectedInterests) {
-      const min = Math.min(config[id].minStops, maxTotal - allocated);
-      limits[id] = { max: min, category: config[id].category };
+      const min = Math.min(cfg[id].minStops, cfg[id].maxStops, maxTotal - allocated);
+      limits[id] = { max: min, category: cfg[id].category };
       allocated += min;
     }
     
-    // Step 2: Distribute remaining slots by weight
+    // Step 2: Distribute remaining by weight, respecting maxStops cap
     let remaining = maxTotal - allocated;
     if (remaining > 0 && totalWeight > 0) {
-      // First pass: proportional allocation
-      const extraPerInterest = {};
-      for (const id of selectedInterests) {
-        extraPerInterest[id] = Math.floor((config[id].weight / totalWeight) * remaining);
-        limits[id].max += extraPerInterest[id];
-        allocated += extraPerInterest[id];
+      // Multiple passes: allocate proportionally, redistribute overflow
+      for (let pass = 0; pass < 3 && remaining > 0; pass++) {
+        // Recalculate weight of interests that haven't hit their cap
+        let activeWeight = 0;
+        for (const id of selectedInterests) {
+          if (limits[id].max < cfg[id].maxStops) activeWeight += cfg[id].weight;
+        }
+        if (activeWeight <= 0) break;
+        
+        for (const id of selectedInterests) {
+          if (remaining <= 0) break;
+          if (limits[id].max >= cfg[id].maxStops) continue; // already at cap
+          const share = Math.floor((cfg[id].weight / activeWeight) * remaining);
+          const canAdd = Math.min(share, cfg[id].maxStops - limits[id].max, remaining);
+          limits[id].max += canAdd;
+          allocated += canAdd;
+          remaining = maxTotal - allocated;
+        }
       }
-      // Second pass: distribute leftover from rounding (give to highest weight first)
+      
+      // Final: distribute any leftover 1-by-1 to highest weight (not at cap)
       remaining = maxTotal - allocated;
-      const sorted = [...selectedInterests].sort((a, b) => config[b].weight - config[a].weight);
+      const sorted = [...selectedInterests].sort((a, b) => cfg[b].weight - cfg[a].weight);
       for (const id of sorted) {
         if (remaining <= 0) break;
+        if (limits[id].max >= cfg[id].maxStops) continue;
         limits[id].max += 1;
         remaining -= 1;
       }
@@ -2694,41 +2710,56 @@
       // Calculate stops needed per interest using category-based maxStops
       const maxStops = formData.maxStops || 10;
       
-      // Build per-interest stop limits using weight + minStops
+      // Build per-interest stop limits using weight + min + max
       const interestLimits = {};
       let totalWeight = 0;
-      let totalMin = 0;
+      const interestCfg = {};
       for (const interest of formData.interests) {
         const interestObj = allInterestOptions.find(o => o.id === interest);
-        const weight = interestObj?.weight || 2;
-        const minStops = interestObj?.minStops != null ? interestObj.minStops : 1;
-        interestLimits[interest] = minStops;
-        totalWeight += weight;
-        totalMin += minStops;
+        interestCfg[interest] = {
+          weight: interestObj?.weight || 2,
+          minStops: interestObj?.minStops != null ? interestObj.minStops : 1,
+          maxStops: interestObj?.maxStops || 10
+        };
+        totalWeight += interestCfg[interest].weight;
       }
       
-      // Distribute remaining slots by weight
-      let remaining = maxStops - totalMin;
+      // Step 1: Guarantee minimums
+      let allocated = 0;
+      for (const interest of formData.interests) {
+        const min = Math.min(interestCfg[interest].minStops, interestCfg[interest].maxStops, maxStops - allocated);
+        interestLimits[interest] = min;
+        allocated += min;
+      }
+      
+      // Step 2: Distribute remaining by weight, respecting maxStops cap
+      let remaining = maxStops - allocated;
       if (remaining > 0 && totalWeight > 0) {
-        let allocated = 0;
-        for (const interest of formData.interests) {
-          const interestObj = allInterestOptions.find(o => o.id === interest);
-          const weight = interestObj?.weight || 2;
-          const extra = Math.floor((weight / totalWeight) * remaining);
-          interestLimits[interest] += extra;
-          allocated += extra;
+        for (let pass = 0; pass < 3 && remaining > 0; pass++) {
+          let activeWeight = 0;
+          for (const interest of formData.interests) {
+            if (interestLimits[interest] < interestCfg[interest].maxStops) activeWeight += interestCfg[interest].weight;
+          }
+          if (activeWeight <= 0) break;
+          
+          for (const interest of formData.interests) {
+            if (remaining <= 0) break;
+            if (interestLimits[interest] >= interestCfg[interest].maxStops) continue;
+            const share = Math.floor((interestCfg[interest].weight / activeWeight) * remaining);
+            const canAdd = Math.min(share, interestCfg[interest].maxStops - interestLimits[interest], remaining);
+            interestLimits[interest] += canAdd;
+            allocated += canAdd;
+            remaining = maxStops - allocated;
+          }
         }
-        // Leftover from rounding → highest weight first
-        let leftover = remaining - allocated;
-        const sorted = [...formData.interests].sort((a, b) => {
-          const wA = allInterestOptions.find(o => o.id === a)?.weight || 2;
-          const wB = allInterestOptions.find(o => o.id === b)?.weight || 2;
-          return wB - wA;
-        });
+        
+        remaining = maxStops - allocated;
+        const sorted = [...formData.interests].sort((a, b) => interestCfg[b].weight - interestCfg[a].weight);
         for (const interest of sorted) {
-          if (leftover <= 0) break;
+          if (remaining <= 0) break;
+          if (interestLimits[interest] >= interestCfg[interest].maxStops) continue;
           interestLimits[interest] += 1;
-          leftover -= 1;
+          remaining -= 1;
         }
       }
       

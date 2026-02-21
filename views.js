@@ -2434,7 +2434,8 @@
                   cityId: config.cityId || interest.cityId || '',
                   category: config.category || interest.category || 'attraction',
                   weight: config.weight || interest.weight || ({'attraction':3,'break':1,'meal':1,'experience':1,'shopping':2,'nature':2}[config.category || interest.category || 'attraction'] || 2),
-                  minStops: config.minStops != null ? config.minStops : (interest.minStops != null ? interest.minStops : 1)
+                  minStops: config.minStops != null ? config.minStops : (interest.minStops != null ? interest.minStops : 1),
+                  maxStops: config.maxStops || interest.maxStops || 10
                 });
                 setShowAddInterestDialog(true);
               };
